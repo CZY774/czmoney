@@ -1,1 +1,27 @@
-<svg width="192" height="192" xmlns="http://www.w3.org/2000/svg"><rect width="192" height="192" fill="#0b1221"/><text x="96" y="110" text-anchor="middle" fill="#1f8ef1" font-size="48" font-family="Arial">CZ</text></svg>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 512 512">
+  <defs>
+    <style>
+      .cls-1 {
+        font-size: 147.38px;
+      }
+
+      .cls-2 {
+        fill: #0f1a24;
+        stroke-width: 0px;
+      }
+
+      .cls-3 {
+        fill: #fff;
+        font-family: Inter-Black, Inter;
+        font-weight: 800;
+      }
+
+      .cls-4 {
+        font-size: 130px;
+      }
+    </style>
+  </defs>
+  <rect class="cls-2" width="512" height="512"/>
+  <text class="cls-3" transform="translate(12.29 384.91)"><tspan class="cls-1"><tspan x="0" y="0">CZ</tspan></tspan><tspan class="cls-4"><tspan x="0" y="98">moneY</tspan></tspan></text>
+</svg>
