@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	* {
+		@apply border-card;
+	}
+	
+	body {
+		@apply bg-background text-muted font-sans;
+	}
+	
+	html {
+		color-scheme: dark;
+	}
+}
+
+@layer components {
+	.container {
+		@apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+	}
+	
+	.card {
+		@apply bg-card rounded-lg border border-card/50 shadow-lg;
+	}
+	
+	.btn {
+		@apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background;
+	}
+	
+	.btn-primary {
+		@apply btn bg-accent text-white hover:bg-accent/90 focus:ring-accent;
+	}
+	
+	.btn-secondary {
+		@apply btn bg-card text-muted hover:bg-card/80 border border-muted/20 focus:ring-muted;
+	}
+	
+	.btn-danger {
+		@apply btn bg-danger text-white hover:bg-danger/90 focus:ring-danger;
+	}
+	
+	.input {
+		@apply w-full px-4 py-2 bg-card border border-muted/20 rounded-lg text-white placeholder-muted/50 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors;
+	}
+	
+	.label {
+		@apply block text-sm font-medium text-muted mb-1;
+	}
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	@apply bg-background;
+}
+
+::-webkit-scrollbar-thumb {
+	@apply bg-muted/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	@apply bg-muted/50;
+}
+
+/* Loading spinner */
+.spinner {
+	border: 3px solid rgba(255, 255, 255, 0.1);
+	border-radius: 50%;
+	border-top: 3px solid #1f8ef1;
+	width: 40px;
+	height: 40px;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.fade-in {
+	animation: fadeIn 0.3s ease-out;
+}
