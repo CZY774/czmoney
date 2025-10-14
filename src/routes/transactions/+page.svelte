@@ -1,524 +1,280 @@
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
-  import { page } from "$app/stores";
-  import { goto } from "$app/navigation";
-  import { supabase, getUser } from "$lib/services/supabase";
-  import {
-    formatCurrency,
-    formatDate,
-    getCurrentMonth,
-    parseAmount,
-  } from "$lib/utils";
-  import {
-    enqueuePendingTransaction,
-    processPendingQueue,
-  } from "$lib/services/sync";
-
+  import { supabase } from "$lib/services/supabase";
+  import { formatCurrency, formatDate } from "$lib/utils";
+  import { queueTransaction, getCachedTransactions, cacheTransactions } from "$lib/services/sync";
+  import Button from "$lib/components/ui/button.svelte";
+  import Card from "$lib/components/ui/card.svelte";
+  import Input from "$lib/components/ui/input.svelte";
+  import Select from "$lib/components/ui/select.svelte";
+  
   let user = null;
   let transactions = [];
   let categories = [];
   let loading = true;
-  let showModal = false;
-  let saving = false;
-  let error = "";
-
-  // Filters
-  let selectedMonth = getCurrentMonth();
-  let selectedCategory = "";
-  let selectedType = "";
-
+  let showForm = false;
+  let editingId = null;
+  let isOffline = false;
+  
   // Form data
   let formData = {
-    id: null,
-    txn_date: new Date().toISOString().split("T")[0],
-    category_id: "",
-    type: "expense",
-    amount: "",
-    description: "",
+    txn_date: new Date().toISOString().split('T')[0],
+    category_id: '',
+    type: 'expense',
+    amount: '',
+    description: ''
   };
 
-  $: filteredTransactions = transactions.filter((txn) => {
-    let match = true;
-    if (selectedMonth) match = match && txn.txn_date.startsWith(selectedMonth);
-    if (selectedCategory) match = match && txn.category_id === selectedCategory;
-    if (selectedType) match = match && txn.type === selectedType;
-    return match;
-  });
-
   onMount(async () => {
-    const { user: currentUser } = await getUser();
-    user = currentUser;
-
+    const { data } = await supabase.auth.getSession();
+    user = data.session?.user;
+    
     if (user) {
       await loadData();
-
-      // Check if we should open add modal from URL
-      if ($page.url.searchParams.get("add") === "true") {
-        openAddModal();
-      }
     }
+    loading = false;
+
+    // Monitor online status
+    isOffline = !navigator.onLine;
+    window.addEventListener('online', () => isOffline = false);
+    window.addEventListener('offline', () => isOffline = true);
   });
 
   async function loadData() {
-    loading = true;
+    if (!navigator.onLine) {
+      // Load from cache when offline
+      transactions = await getCachedTransactions();
+      return;
+    }
 
-    try {
-      // Load categories
-      const { data: categoriesData } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("name");
-      categories = categoriesData || [];
+    // Load transactions
+    const { data: txns } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        categories(name)
+      `)
+      .eq('user_id', user.id)
+      .order('txn_date', { ascending: false });
+    
+    transactions = txns || [];
 
-      // Load transactions
-      const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - 6);
+    // Cache for offline use
+    await cacheTransactions(transactions);
 
-      const { data: txnData } = await supabase
-        .from("transactions")
-        .select("*, categories(*)")
-        .eq("user_id", user.id)
-        .gte("txn_date", startDate.toISOString().split("T")[0])
-        .order("txn_date", { ascending: false });
+    // Load categories
+    const { data: cats } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('name');
+    
+    categories = cats || [];
+  }
 
-      transactions = txnData || [];
-    } catch (err) {
-      console.error("Error loading data:", err);
-    } finally {
-      loading = false;
+  async function saveTransaction() {
+    const data = {
+      ...formData,
+      amount: parseInt(formData.amount),
+      user_id: user.id
+    };
+
+    if (!navigator.onLine) {
+      // Queue for offline sync
+      const tempId = `temp_${Date.now()}`;
+      const tempTransaction = {
+        id: tempId,
+        ...data,
+        categories: { name: categories.find(c => c.id === data.category_id)?.name || 'Unknown' },
+        _pending: true
+      };
+      
+      transactions = [tempTransaction, ...transactions];
+      await queueTransaction(editingId ? 'update' : 'create', editingId ? { ...data, id: editingId } : data);
+      
+      resetForm();
+      return;
+    }
+
+    // Online - save directly
+    if (editingId) {
+      await supabase
+        .from('transactions')
+        .update(data)
+        .eq('id', editingId);
+    } else {
+      await supabase
+        .from('transactions')
+        .insert([data]);
+    }
+
+    resetForm();
+    await loadData();
+  }
+
+  async function deleteTransaction(id) {
+    if (confirm('Delete this transaction?')) {
+      if (!navigator.onLine) {
+        // Queue for offline sync
+        transactions = transactions.filter(t => t.id !== id);
+        await queueTransaction('delete', { id });
+        return;
+      }
+
+      // Online - delete directly
+      await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', id);
+      
+      await loadData();
     }
   }
 
-  function openAddModal() {
+  function editTransaction(txn) {
+    if (txn._pending) return; // Can't edit pending transactions
+    
     formData = {
-      id: null,
-      txn_date: new Date().toISOString().split("T")[0],
-      category_id: "",
-      type: "expense",
-      amount: "",
-      description: "",
-    };
-    error = "";
-    showModal = true;
-    goto("/transactions", { replaceState: true });
-  }
-
-  function openEditModal(txn) {
-    formData = {
-      id: txn.id,
       txn_date: txn.txn_date,
       category_id: txn.category_id,
       type: txn.type,
       amount: txn.amount.toString(),
-      description: txn.description || "",
+      description: txn.description || ''
     };
-    error = "";
-    showModal = true;
+    editingId = txn.id;
+    showForm = true;
   }
 
-  function closeModal() {
-    showModal = false;
+  function resetForm() {
     formData = {
-      id: null,
-      txn_date: new Date().toISOString().split("T")[0],
-      category_id: "",
-      type: "expense",
-      amount: "",
-      description: "",
+      txn_date: new Date().toISOString().split('T')[0],
+      category_id: '',
+      type: 'expense',
+      amount: '',
+      description: ''
     };
-    error = "";
-  }
-
-  async function handleSubmit() {
-    error = "";
-
-    // Validation
-    if (!formData.category_id) {
-      error = "Please select a category";
-      return;
-    }
-
-    const amount = parseAmount(formData.amount);
-    if (amount <= 0) {
-      error = "Please enter a valid amount";
-      return;
-    }
-
-    saving = true;
-
-    try {
-      const txnData = {
-        txn_date: formData.txn_date,
-        category_id: formData.category_id,
-        type: formData.type,
-        amount: amount,
-        description: formData.description.trim() || null,
-        user_id: user.id,
-      };
-
-      if (formData.id) {
-        // Update existing
-        const { error: updateError } = await supabase
-          .from("transactions")
-          .update(txnData)
-          .eq("id", formData.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Create new
-        if (!navigator.onLine) {
-          // Offline: queue for later sync
-          await enqueuePendingTransaction(txnData);
-          // Add to local list with temp ID
-          transactions = [
-            {
-              ...txnData,
-              id: "temp_" + Date.now(),
-              categories: categories.find((c) => c.id === txnData.category_id),
-              synced: false,
-            },
-            ...transactions,
-          ];
-        } else {
-          // Online: save to server
-          const { data, error: insertError } = await supabase
-            .from("transactions")
-            .insert([txnData])
-            .select("*, categories(*)")
-            .single();
-
-          if (insertError) throw insertError;
-          transactions = [data, ...transactions];
-        }
-      }
-
-      closeModal();
-
-      // Trigger sync if online
-      if (navigator.onLine) {
-        processPendingQueue(user.id);
-      }
-    } catch (err) {
-      error = err.message || "Failed to save transaction";
-    } finally {
-      saving = false;
-    }
-  }
-
-  async function deleteTransaction(id) {
-    if (!confirm("Are you sure you want to delete this transaction?")) return;
-
-    try {
-      const { error: deleteError } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", id);
-
-      if (deleteError) throw deleteError;
-
-      transactions = transactions.filter((t) => t.id !== id);
-    } catch (err) {
-      alert("Failed to delete transaction: " + err.message);
-    }
-  }
-
-  // Generate month options for filter
-  function getMonthOptions() {
-    const options = [];
-    const now = new Date();
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const value = date.toISOString().substring(0, 7);
-      const label = date.toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      });
-      options.push({ value, label });
-    }
-    return options;
+    editingId = null;
+    showForm = false;
   }
 </script>
 
-<div class="container py-6 fade-in">
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold text-white">Transactions</h1>
-    <button on:click={openAddModal} class="btn-primary">
-      <svg
-        class="w-5 h-5 inline-block mr-1"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 4v16m8-8H4"
-        />
-      </svg>
-      Add Transaction
-    </button>
+{#if loading}
+  <div class="flex items-center justify-center min-h-64">
+    <div class="text-lg">Loading...</div>
   </div>
-
-  <!-- Filters -->
-  <div class="card p-4 mb-6">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+{:else}
+  <div class="space-y-6">
+    <div class="flex justify-between items-center">
       <div>
-        <label for="month-filter" class="label">Month</label>
-        <select id="month-filter" bind:value={selectedMonth} class="input">
-          <option value="">All months</option>
-          {#each getMonthOptions() as opt}
-            <option value={opt.value}>{opt.label}</option>
-          {/each}
-        </select>
+        <h1 class="text-3xl font-bold">Transactions</h1>
+        {#if isOffline}
+          <p class="text-sm text-yellow-600">📱 Offline mode - changes will sync when online</p>
+        {/if}
       </div>
-
-      <div>
-        <label for="category-filter" class="label">Category</label>
-        <select id="category-filter" bind:value={selectedCategory} class="input">
-          <option value="">All categories</option>
-          {#each categories as cat}
-            <option value={cat.id}>{cat.name}</option>
-          {/each}
-        </select>
-      </div>
-
-      <div>
-        <label for="type-filter" class="label">Type</label>
-        <select id="type-filter" bind:value={selectedType} class="input">
-          <option value="">All types</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
-      </div>
+      <Button on:click={() => showForm = !showForm}>
+        {showForm ? 'Cancel' : 'Add Transaction'}
+      </Button>
     </div>
-  </div>
 
-  <!-- Transactions List -->
-  {#if loading}
-    <div class="flex justify-center py-12">
-      <div class="spinner"></div>
-    </div>
-  {:else if filteredTransactions.length > 0}
-    <div class="space-y-3">
-      {#each filteredTransactions as txn}
-        <div class="card p-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4 flex-1">
-              <div
-                class="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                style="background-color: {txn.categories?.color || '#64748b'}20"
-              >
-                <span
-                  class="text-lg font-semibold"
-                  style="color: {txn.categories?.color || '#64748b'}"
-                >
-                  {txn.categories?.name?.charAt(0) || "?"}
-                </span>
-              </div>
+    {#if showForm}
+      <Card className="p-6">
+        <h2 class="text-xl font-semibold mb-4">
+          {editingId ? 'Edit' : 'Add'} Transaction
+        </h2>
+        
+        <form on:submit|preventDefault={saveTransaction} class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Date</label>
+            <Input type="date" bind:value={formData.txn_date} required />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Type</label>
+            <Select bind:value={formData.type}>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </Select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Category</label>
+            <Select bind:value={formData.category_id} required>
+              <option value="">Select category</option>
+              {#each categories.filter(c => c.type === formData.type) as cat}
+                <option value={cat.id}>{cat.name}</option>
+              {/each}
+            </Select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium mb-2">Amount (IDR)</label>
+            <Input type="number" bind:value={formData.amount} required />
+          </div>
+          
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-2">Description</label>
+            <Input bind:value={formData.description} placeholder="Optional" />
+          </div>
+          
+          <div class="md:col-span-2 flex gap-2">
+            <Button type="submit">
+              {editingId ? 'Update' : 'Add'} Transaction
+            </Button>
+            <Button type="button" variant="outline" on:click={resetForm}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </Card>
+    {/if}
 
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center space-x-2">
-                  <p class="text-white font-medium">
-                    {txn.categories?.name || "Uncategorized"}
-                  </p>
-                  {#if !txn.synced}
-                    <span
-                      class="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded"
-                      >Pending</span
-                    >
+    <Card className="p-6">
+      <h2 class="text-xl font-semibold mb-4">Transaction History</h2>
+      
+      {#if transactions.length === 0}
+        <p class="text-muted-foreground">No transactions yet.</p>
+      {:else}
+        <div class="space-y-2">
+          {#each transactions as txn}
+            <div class="flex justify-between items-center p-4 border rounded hover:bg-muted/50" 
+                 class:bg-yellow-50={txn._pending} class:border-yellow-300={txn._pending}>
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">{txn.description || 'No description'}</span>
+                  <span class="text-xs bg-muted px-2 py-1 rounded">
+                    {txn.categories?.name || 'No category'}
+                  </span>
+                  {#if txn._pending}
+                    <span class="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded">
+                      Pending sync
+                    </span>
                   {/if}
                 </div>
-                <p class="text-sm text-muted">{formatDate(txn.txn_date)}</p>
-                {#if txn.description}
-                  <p class="text-sm text-muted truncate">{txn.description}</p>
-                {/if}
+                <p class="text-sm text-muted-foreground">
+                  {formatDate(txn.txn_date)}
+                </p>
+              </div>
+              
+              <div class="flex items-center gap-4">
+                <p class="font-semibold" 
+                   class:text-green-500={txn.type === 'income'} 
+                   class:text-red-500={txn.type === 'expense'}>
+                  {txn.type === 'expense' ? '-' : '+'}{formatCurrency(txn.amount)}
+                </p>
+                
+                <div class="flex gap-2">
+                  <Button size="sm" variant="outline" on:click={() => editTransaction(txn)} disabled={txn._pending}>
+                    Edit
+                  </Button>
+                  <Button size="sm" variant="destructive" on:click={() => deleteTransaction(txn.id)}>
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
-
-            <div class="flex items-center space-x-4">
-              <p
-                class="text-lg font-bold {txn.type === 'income'
-                  ? 'text-success'
-                  : 'text-danger'}"
-              >
-                {txn.type === "income" ? "+" : "-"}{formatCurrency(txn.amount)}
-              </p>
-
-              <div class="flex space-x-2">
-                <button
-                  on:click={() => openEditModal(txn)}
-                  class="text-muted hover:text-accent transition-colors"
-                  title="Edit"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-
-                <button
-                  on:click={() => deleteTransaction(txn.id)}
-                  class="text-muted hover:text-danger transition-colors"
-                  title="Delete"
-                >
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      {/each}
-    </div>
-  {:else}
-    <div class="card p-12 text-center">
-      <svg
-        class="w-16 h-16 mx-auto text-muted/50 mb-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-        />
-      </svg>
-      <p class="text-muted mb-4">No transactions found</p>
-      <button on:click={openAddModal} class="btn-primary">
-        Add Your First Transaction
-      </button>
-    </div>
-  {/if}
-</div>
-
-<!-- Add/Edit Modal -->
-{#if showModal}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->  <div
-    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-    on:click={closeModal} on:keydown={(e) => e.key === "Escape" && closeModal()} role="dialog" aria-modal="true"
-  >
-    <div class="card p-6 max-w-md w-full" on:click|stopPropagation role="document">
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->      <h2 class="text-xl font-semibold text-white mb-4">
-        {formData.id ? "Edit Transaction" : "Add Transaction"}
-      </h2>
-
-      {#if error}
-        <div
-          class="bg-danger/10 border border-danger/50 text-danger px-4 py-3 rounded-lg mb-4"
-        >
-          {error}
+          {/each}
         </div>
       {/if}
-
-      <form on:submit|preventDefault={handleSubmit}>
-        <div class="mb-4">
-          <label for="form-date" class="label">Date</label>
-          <input
-            type="date" id="form-date"
-            bind:value={formData.txn_date}
-            class="input"
-            required
-          />
-        </div>
-
-        <div class="mb-4">
-          <label for="form-type" class="label">Type</label>
-          <div class="flex space-x-4">
-            <label class="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                bind:group={formData.type}
-                value="expense"
-                class="text-accent"
-              />
-              <span class="text-muted">Expense</span>
-            </label>
-            <label class="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="radio"
-                bind:group={formData.type}
-                value="income"
-                class="text-accent"
-              />
-              <span class="text-muted">Income</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="mb-4">
-          <label for="form-category" class="label">Category</label>
-          <select id="form-category" bind:value={formData.category_id} class="input" required>
-            <option value="">Select category</option>
-            {#each categories.filter((c) => c.type === formData.type) as cat}
-              <option value={cat.id}>{cat.name}</option>
-            {/each}
-          </select>
-        </div>
-
-        <div class="mb-4">
-          <label for="form-amount" class="label">Amount</label>
-          <input
-            type="number" id="form-amount"
-            bind:value={formData.amount}
-            class="input"
-            placeholder="0"
-            step="1"
-            min="1"
-            required
-          />
-        </div>
-
-        <div class="mb-6">
-          <label for="form-description" class="label">Description (optional)</label>
-          <textarea
-            id="form-description" bind:value={formData.description}
-            class="input"
-            rows="3"
-            placeholder="Add a note..."
-          ></textarea>
-        </div>
-
-        <div class="flex space-x-3">
-          <button type="submit" class="btn-primary flex-1" disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </button>
-          <button
-            type="button"
-            on:click={closeModal}
-            class="btn-secondary"
-            disabled={saving}
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+    </Card>
   </div>
 {/if}
