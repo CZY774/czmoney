@@ -1,10 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { env } from '$env/dynamic/private';
 
 export async function handle({ event, resolve }) {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('Missing Supabase environment variables');
+    return resolve(event);
+  }
+
+  const supabase = createClient(
+    env.VITE_SUPABASE_URL,
+    env.SUPABASE_SERVICE_ROLE_KEY
+  );
   
   const token = event.cookies.get('sb-access-token');
   if (token) {
