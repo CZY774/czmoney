@@ -186,9 +186,9 @@
 
       <form on:submit|preventDefault={saveProfile}>
         <div class="mb-4">
-          <label class="label">Full Name</label>
+          <label for="full-name" class="label">Full Name</label>
           <input
-            type="text"
+            id="full-name"
             bind:value={profileForm.full_name}
             class="input"
             placeholder="Your name"
@@ -196,9 +196,9 @@
         </div>
 
         <div class="mb-4">
-          <label class="label">Email</label>
+          <label for="email" class="label">Email</label>
           <input
-            type="email"
+            id="email"
             value={user.email}
             class="input"
             disabled
@@ -207,9 +207,9 @@
         </div>
 
         <div class="mb-4">
-          <label class="label">Monthly Income</label>
+          <label for="monthly-income" class="label">Monthly Income</label>
           <input
-            type="number"
+            id="monthly-income"            type="number"
             bind:value={profileForm.monthly_income}
             class="input"
             placeholder="0"
@@ -221,10 +221,10 @@
         </div>
 
         <div class="mb-4">
-          <label class="label">Monthly Savings Target</label>
+          <label for="savings-target" class="label">Monthly Savings Target</label>
           <input
             type="number"
-            bind:value={profileForm.savings_target}
+            id="savings-target"            bind:value={profileForm.savings_target}
             class="input"
             placeholder="0"
             step="1000"
@@ -235,8 +235,8 @@
         </div>
 
         <div class="mb-6">
-          <label class="label">Preferred Currency</label>
-          <select bind:value={profileForm.preferred_currency} class="input">
+          <label for="currency" class="label">Preferred Currency</label>
+          <select id="currency" bind:value={profileForm.preferred_currency} class="input">
             <option value="IDR">IDR (Indonesian Rupiah)</option>
             <option value="USD">USD (US Dollar)</option>
             <option value="EUR">EUR (Euro)</option>
@@ -300,8 +300,8 @@
 
       {#if reminderForm.enabled}
         <div class="mb-4">
-          <label class="label">Frequency</label>
-          <select bind:value={reminderForm.frequency} class="input">
+          <label for="frequency" class="label">Frequency</label>
+          <select id="frequency" bind:value={reminderForm.frequency} class="input">
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
@@ -309,8 +309,8 @@
         </div>
 
         <div class="mb-4">
-          <label class="label">Time</label>
-          <input type="time" bind:value={reminderForm.time} class="input" />
+          <label for="reminder-time" class="label">Time</label>
+          <input id="reminder-time" type="time" bind:value={reminderForm.time} class="input" />
         </div>
       {/if}
     </div>
