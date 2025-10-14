@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { supabase } from "$lib/services/supabase";
+  import { supabase, getSession } from "$lib/services/supabase";
   import { formatCurrency } from "$lib/utils";
   import Button from "$lib/components/ui/button.svelte";
   import Card from "$lib/components/ui/card.svelte";
@@ -14,7 +14,7 @@
   let loading = true;
 
   onMount(async () => {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await getSession();
     user = data.session?.user;
     
     if (!user) {
