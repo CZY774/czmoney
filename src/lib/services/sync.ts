@@ -1,83 +1,117 @@
-import { get, set, del } from 'idb-keyval';
+import { get, set, del, keys } from 'idb-keyval';
 import { supabase } from './supabase';
-import { browser } from '$app/environment';
 
 interface PendingTransaction {
   id: string;
-  txn_date: string;
-  category_id: string;
-  type: 'income' | 'expense';
-  amount: number;
-  description: string;
-  user_id: string;
-  created_at: string;
+  data: any;
+  action: 'create' | 'update' | 'delete';
+  timestamp: number;
 }
 
-const PENDING_KEY = 'pending_transactions';
-const CACHE_KEY = 'cached_transactions';
-
-export async function enqueueTxn(transaction: Omit<PendingTransaction, 'id' | 'created_at'>) {
-  if (!browser) return;
-  
-  const pending = await get(PENDING_KEY) || [];
-  const newTxn: PendingTransaction = {
-    ...transaction,
-    id: crypto.randomUUID(),
-    created_at: new Date().toISOString()
+// Queue transaction for offline sync
+export async function queueTransaction(action: 'create' | 'update' | 'delete', data: any) {
+  const id = `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const pending: PendingTransaction = {
+    id,
+    data,
+    action,
+    timestamp: Date.now()
   };
   
-  pending.push(newTxn);
-  await set(PENDING_KEY, pending);
-  
-  return newTxn;
+  await set(id, pending);
+  return id;
 }
 
-export async function processPendingQueue() {
-  if (!browser) return;
+// Process all pending transactions
+export async function syncPendingTransactions() {
+  if (!navigator.onLine) return { synced: 0, failed: 0 };
   
-  const pending: PendingTransaction[] = await get(PENDING_KEY) || [];
-  if (pending.length === 0) return;
+  const pendingKeys = await keys();
+  const pendingIds = pendingKeys.filter(key => key.toString().startsWith('pending_'));
   
-  const processed = [];
+  let synced = 0;
+  let failed = 0;
   
-  for (const txn of pending) {
+  for (const key of pendingIds) {
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .insert([{
-          txn_date: txn.txn_date,
-          category_id: txn.category_id,
-          type: txn.type,
-          amount: txn.amount,
-          description: txn.description,
-          user_id: txn.user_id
-        }]);
-        
-      if (!error) {
-        processed.push(txn.id);
+      const pending: PendingTransaction = await get(key);
+      if (!pending) continue;
+      
+      let success = false;
+      
+      switch (pending.action) {
+        case 'create':
+          const { error: createError } = await supabase
+            .from('transactions')
+            .insert([pending.data]);
+          success = !createError;
+          break;
+          
+        case 'update':
+          const { error: updateError } = await supabase
+            .from('transactions')
+            .update(pending.data)
+            .eq('id', pending.data.id);
+          success = !updateError;
+          break;
+          
+        case 'delete':
+          const { error: deleteError } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', pending.data.id);
+          success = !deleteError;
+          break;
       }
-    } catch (err) {
-      console.error('Sync error:', err);
+      
+      if (success) {
+        await del(key);
+        synced++;
+      } else {
+        failed++;
+      }
+    } catch (error) {
+      failed++;
     }
   }
   
-  if (processed.length > 0) {
-    const remaining = pending.filter(txn => !processed.includes(txn.id));
-    await set(PENDING_KEY, remaining);
-  }
+  return { synced, failed };
 }
 
-export function setupSyncListeners() {
-  if (!browser) return;
+// Get sync status
+export async function getSyncStatus() {
+  const pendingKeys = await keys();
+  const pendingCount = pendingKeys.filter(key => key.toString().startsWith('pending_')).length;
   
-  window.addEventListener('online', processPendingQueue);
-  
-  // Process queue on page focus
-  window.addEventListener('focus', processPendingQueue);
+  return {
+    pending: pendingCount,
+    lastSync: await get('lastSync') || null
+  };
 }
 
-export async function getPendingCount(): Promise<number> {
-  if (!browser) return 0;
-  const pending = await get(PENDING_KEY) || [];
-  return pending.length;
+// Cache transactions for offline viewing
+export async function cacheTransactions(transactions: any[]) {
+  await set('cached_transactions', {
+    data: transactions,
+    timestamp: Date.now()
+  });
+}
+
+// Get cached transactions
+export async function getCachedTransactions() {
+  const cached = await get('cached_transactions');
+  if (!cached) return [];
+  
+  // Return cached data if less than 1 hour old
+  const isRecent = (Date.now() - cached.timestamp) < 3600000;
+  return isRecent ? cached.data : [];
+}
+
+// Auto-sync when online
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    syncPendingTransactions().then(() => {
+      set('lastSync', Date.now());
+    });
+  });
 }
