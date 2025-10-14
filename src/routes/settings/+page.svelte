@@ -1,353 +1,250 @@
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
-  import { supabase, getUser, signOut } from "$lib/services/supabase";
-  import { parseAmount } from "$lib/utils";
-  import { processPendingQueue, getPendingCount } from "$lib/services/sync";
-
+  import { supabase } from "$lib/services/supabase";
+  import { formatCurrency } from "$lib/utils";
+  import { getSyncStatus, syncPendingTransactions } from "$lib/services/sync";
+  import Button from "$lib/components/ui/button.svelte";
+  import Card from "$lib/components/ui/card.svelte";
+  import Input from "$lib/components/ui/input.svelte";
+  import Select from "$lib/components/ui/select.svelte";
+  
   let user = null;
   let profile = null;
   let loading = true;
   let saving = false;
   let syncing = false;
-  let pendingCount = 0;
-  let error = "";
-  let success = "";
-
-  // Profile form
-  let profileForm = {
-    full_name: "",
-    monthly_income: "",
-    savings_target: "",
-    preferred_currency: "IDR",
-  };
-
-  // Reminder form
-  let reminderForm = {
-    enabled: false,
-    frequency: "weekly",
-    time: "09:00",
+  let syncStatus = { pending: 0, lastSync: null };
+  
+  let formData = {
+    full_name: '',
+    monthly_income: '',
+    savings_target: '',
+    preferred_currency: 'IDR'
   };
 
   onMount(async () => {
-    const { user: currentUser } = await getUser();
-    user = currentUser;
-
+    const { data } = await supabase.auth.getSession();
+    user = data.session?.user;
+    
     if (user) {
       await loadProfile();
-      pendingCount = await getPendingCount();
-
-      // Check notification permission
-      if ("Notification" in window && Notification.permission === "default") {
-        // Notification permission not yet asked
-      }
+      await loadSyncStatus();
     }
+    loading = false;
   });
 
   async function loadProfile() {
-    loading = true;
-
-    try {
-      const { data, error: loadError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (loadError) throw loadError;
-
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (data) {
       profile = data;
-      profileForm = {
-        full_name: data.full_name || "",
-        monthly_income: data.monthly_income || "",
-        savings_target: data.savings_target || "",
-        preferred_currency: data.preferred_currency || "IDR",
+      formData = {
+        full_name: data.full_name || '',
+        monthly_income: data.monthly_income?.toString() || '',
+        savings_target: data.savings_target?.toString() || '',
+        preferred_currency: data.preferred_currency || 'IDR'
       };
-    } catch (err) {
-      console.error("Error loading profile:", err);
-    } finally {
-      loading = false;
     }
+  }
+
+  async function loadSyncStatus() {
+    syncStatus = await getSyncStatus();
   }
 
   async function saveProfile() {
-    error = "";
-    success = "";
     saving = true;
+    
+    const profileData = {
+      id: user.id,
+      full_name: formData.full_name,
+      monthly_income: formData.monthly_income ? parseInt(formData.monthly_income) : null,
+      savings_target: formData.savings_target ? parseInt(formData.savings_target) : null,
+      preferred_currency: formData.preferred_currency
+    };
 
-    try {
-      const updateData = {
-        full_name: profileForm.full_name.trim(),
-        monthly_income: parseAmount(profileForm.monthly_income),
-        savings_target: parseAmount(profileForm.savings_target),
-        preferred_currency: profileForm.preferred_currency,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update(updateData)
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-
-      profile = { ...profile, ...updateData };
-      success = "Profile updated successfully!";
-
-      setTimeout(() => {
-        success = "";
-      }, 3000);
-    } catch (err) {
-      error = err.message || "Failed to update profile";
-    } finally {
-      saving = false;
+    const { error } = await supabase
+      .from('profiles')
+      .upsert(profileData);
+    
+    if (!error) {
+      await loadProfile();
     }
+    
+    saving = false;
   }
 
-  async function requestNotificationPermission() {
-    if (!("Notification" in window)) {
-      alert("Notifications are not supported in this browser");
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-
-    if (permission === "granted") {
-      success = "Notifications enabled!";
-      reminderForm.enabled = true;
-    } else {
-      error = "Notification permission denied";
-    }
-  }
-
-  async function syncNow() {
+  async function manualSync() {
     syncing = true;
-
-    try {
-      const result = await processPendingQueue(user.id);
-
-      if (result.success) {
-        if (result.synced > 0) {
-          success = `Synced ${result.synced} transaction(s) successfully!`;
-          pendingCount = result.remaining || 0;
-        } else {
-          success = "Already up to date!";
-        }
-      } else {
-        throw new Error(result.error || "Sync failed");
-      }
-    } catch (err) {
-      error = err.message || "Failed to sync";
-    } finally {
-      syncing = false;
-      setTimeout(() => {
-        success = "";
-        error = "";
-      }, 3000);
-    }
+    await syncPendingTransactions();
+    await loadSyncStatus();
+    syncing = false;
   }
 
-  async function handleSignOut() {
-    if (!confirm("Are you sure you want to sign out?")) return;
-
-    await signOut();
-    goto("/auth/login");
+  async function signOut() {
+    await supabase.auth.signOut();
   }
+
+  // Calculate savings progress
+  $: savingsProgress = profile?.monthly_income && profile?.savings_target 
+    ? Math.min((profile.savings_target / profile.monthly_income) * 100, 100)
+    : 0;
 </script>
 
-<div class="container py-6 fade-in max-w-3xl">
-  <h1 class="text-2xl font-bold text-white mb-6">Settings</h1>
+{#if loading}
+  <div class="flex items-center justify-center min-h-64">
+    <div class="text-lg">Loading...</div>
+  </div>
+{:else}
+  <div class="space-y-6">
+    <h1 class="text-3xl font-bold">Settings</h1>
 
-  {#if loading}
-    <div class="flex justify-center py-12">
-      <div class="spinner"></div>
-    </div>
-  {:else}
-    <!-- Success/Error Messages -->
-    {#if error}
-      <div
-        class="bg-danger/10 border border-danger/50 text-danger px-4 py-3 rounded-lg mb-4"
-      >
-        {error}
-      </div>
-    {/if}
-
-    {#if success}
-      <div
-        class="bg-success/10 border border-success/50 text-success px-4 py-3 rounded-lg mb-4"
-      >
-        {success}
-      </div>
-    {/if}
-
-    <!-- Profile Section -->
-    <div class="card p-6 mb-6">
-      <h2 class="text-xl font-semibold text-white mb-4">Profile</h2>
-
-      <form on:submit|preventDefault={saveProfile}>
-        <div class="mb-4">
-          <label for="full-name" class="label">Full Name</label>
-          <input
-            id="full-name"
-            bind:value={profileForm.full_name}
-            class="input"
-            placeholder="Your name"
-          />
+    <!-- Profile Settings -->
+    <Card className="p-6">
+      <h2 class="text-xl font-semibold mb-4">Profile Information</h2>
+      
+      <form on:submit|preventDefault={saveProfile} class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-2">Full Name</label>
+          <Input bind:value={formData.full_name} placeholder="Your full name" />
         </div>
-
-        <div class="mb-4">
-          <label for="email" class="label">Email</label>
-          <input
-            id="email"
-            value={user.email}
-            class="input"
-            disabled
-            title="Email cannot be changed"
-          />
+        
+        <div>
+          <label class="block text-sm font-medium mb-2">Email</label>
+          <Input value={user?.email || ''} disabled />
         </div>
-
-        <div class="mb-4">
-          <label for="monthly-income" class="label">Monthly Income</label>
-          <input
-            id="monthly-income"            type="number"
-            bind:value={profileForm.monthly_income}
-            class="input"
-            placeholder="0"
-            step="1000"
-          />
-          <p class="text-xs text-muted mt-1">
-            This helps calculate your savings progress
-          </p>
+        
+        <div>
+          <label class="block text-sm font-medium mb-2">Monthly Income (IDR)</label>
+          <Input type="number" bind:value={formData.monthly_income} placeholder="0" />
         </div>
-
-        <div class="mb-4">
-          <label for="savings-target" class="label">Monthly Savings Target</label>
-          <input
-            type="number"
-            id="savings-target"            bind:value={profileForm.savings_target}
-            class="input"
-            placeholder="0"
-            step="1000"
-          />
-          <p class="text-xs text-muted mt-1">
-            Set a goal to track your monthly savings
-          </p>
+        
+        <div>
+          <label class="block text-sm font-medium mb-2">Monthly Savings Target (IDR)</label>
+          <Input type="number" bind:value={formData.savings_target} placeholder="0" />
         </div>
-
-        <div class="mb-6">
-          <label for="currency" class="label">Preferred Currency</label>
-          <select id="currency" bind:value={profileForm.preferred_currency} class="input">
+        
+        <div>
+          <label class="block text-sm font-medium mb-2">Preferred Currency</label>
+          <Select bind:value={formData.preferred_currency}>
             <option value="IDR">IDR (Indonesian Rupiah)</option>
             <option value="USD">USD (US Dollar)</option>
             <option value="EUR">EUR (Euro)</option>
-          </select>
+          </Select>
+        </div>
+        
+        <Button type="submit" disabled={saving}>
+          {saving ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </form>
+    </Card>
+
+    <!-- Offline Sync Status -->
+    <Card className="p-6">
+      <h2 class="text-xl font-semibold mb-4">Offline Sync</h2>
+      
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="font-medium">Sync Status</p>
+            <p class="text-sm text-muted-foreground">
+              {syncStatus.pending} pending transactions
+            </p>
+            {#if syncStatus.lastSync}
+              <p class="text-xs text-muted-foreground">
+                Last sync: {new Date(syncStatus.lastSync).toLocaleString()}
+              </p>
+            {/if}
+          </div>
+          
+          <Button on:click={manualSync} disabled={syncing || syncStatus.pending === 0}>
+            {syncing ? 'Syncing...' : 'Sync Now'}
+          </Button>
         </div>
 
-        <button type="submit" class="btn-primary" disabled={saving}>
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
-      </form>
-    </div>
+        {#if syncStatus.pending > 0}
+          <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+            <p class="text-sm text-yellow-600">
+              You have {syncStatus.pending} transactions waiting to sync. 
+              Connect to the internet to sync automatically.
+            </p>
+          </div>
+        {/if}
+      </div>
+    </Card>
 
-    <!-- Sync Section -->
-    <div class="card p-6 mb-6">
-      <h2 class="text-xl font-semibold text-white mb-4">Offline Sync</h2>
-
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <p class="text-white mb-1">Pending Transactions</p>
-          <p class="text-sm text-muted">
-            {pendingCount} transaction(s) waiting to sync
+    <!-- Savings Progress -->
+    {#if profile?.monthly_income && profile?.savings_target}
+      <Card className="p-6">
+        <h2 class="text-xl font-semibold mb-4">Savings Goal</h2>
+        
+        <div class="space-y-4">
+          <div class="flex justify-between text-sm">
+            <span>Monthly Target: {formatCurrency(profile.savings_target)}</span>
+            <span>Income: {formatCurrency(profile.monthly_income)}</span>
+          </div>
+          
+          <div class="w-full bg-muted rounded-full h-2">
+            <div 
+              class="bg-primary h-2 rounded-full transition-all duration-300"
+              style="width: {savingsProgress}%"
+            ></div>
+          </div>
+          
+          <p class="text-sm text-muted-foreground">
+            {savingsProgress.toFixed(1)}% of income allocated to savings
           </p>
         </div>
+      </Card>
+    {/if}
 
-        <button
-          on:click={syncNow}
-          class="btn-primary"
-          disabled={syncing || pendingCount === 0}
-        >
-          {syncing ? "Syncing..." : "Sync Now"}
-        </button>
-      </div>
-
-      <div class="bg-background rounded-lg p-4">
-        <p class="text-muted text-sm">
-          CZmoneY automatically syncs your data when you're online. Transactions
-          created offline will be synced when connection is restored.
-        </p>
-      </div>
-    </div>
-
-    <!-- Reminders Section -->
-    <div class="card p-6 mb-6">
-      <h2 class="text-xl font-semibold text-white mb-4">Reminders</h2>
-
-      <div class="mb-4">
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-white">Enable Reminders</label>
-          <button
-            on:click={requestNotificationPermission}
-            class="btn-secondary text-sm"
-            disabled={reminderForm.enabled}
-          >
-            {reminderForm.enabled ? "Enabled" : "Enable"}
-          </button>
+    <!-- App Information -->
+    <Card className="p-6">
+      <h2 class="text-xl font-semibold mb-4">App Information</h2>
+      
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between">
+          <span>Version</span>
+          <span>1.0.0</span>
         </div>
-        <p class="text-xs text-muted">
-          Get reminders to record your daily expenses and stay on track
-        </p>
-      </div>
-
-      {#if reminderForm.enabled}
-        <div class="mb-4">
-          <label for="frequency" class="label">Frequency</label>
-          <select id="frequency" bind:value={reminderForm.frequency} class="input">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
+        
+        <div class="flex justify-between">
+          <span>User ID</span>
+          <span class="font-mono text-xs">{user?.id?.slice(0, 8)}...</span>
+        </div>
+        
+        <div class="flex justify-between">
+          <span>Account Created</span>
+          <span>{new Date(user?.created_at).toLocaleDateString()}</span>
         </div>
 
-        <div class="mb-4">
-          <label for="reminder-time" class="label">Time</label>
-          <input id="reminder-time" type="time" bind:value={reminderForm.time} class="input" />
+        <div class="flex justify-between">
+          <span>Online Status</span>
+          <span class:text-green-500={navigator.onLine} class:text-red-500={!navigator.onLine}>
+            {navigator.onLine ? 'Online' : 'Offline'}
+          </span>
         </div>
-      {/if}
-    </div>
+      </div>
+    </Card>
 
-    <!-- Account Section -->
-    <div class="card p-6 mb-6">
-      <h2 class="text-xl font-semibold text-white mb-4">Account</h2>
-
+    <!-- Danger Zone -->
+    <Card className="p-6 border-destructive">
+      <h2 class="text-xl font-semibold mb-4 text-destructive">Account Actions</h2>
+      
       <div class="space-y-4">
         <div>
-          <p class="text-muted text-sm mb-2">Account created</p>
-          <p class="text-white">
-            {new Date(user.created_at).toLocaleDateString()}
+          <h3 class="font-medium mb-2">Sign Out</h3>
+          <p class="text-sm text-muted-foreground mb-3">
+            Sign out of your account on this device.
           </p>
-        </div>
-
-        <div class="pt-4 border-t border-muted/20">
-          <button on:click={handleSignOut} class="btn-danger">
+          <Button variant="outline" on:click={signOut}>
             Sign Out
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
-
-    <!-- App Info -->
-    <div class="card p-6">
-      <h2 class="text-xl font-semibold text-white mb-4">About</h2>
-
-      <div class="space-y-2 text-sm">
-        <p class="text-muted">
-          <strong class="text-white">CZmoneY</strong> v0.1.0
-        </p>
-        <p class="text-muted">
-          A personal finance manager built with SvelteKit, Supabase, and AI
-        </p>
-        <p class="text-muted">Made with ❤️ for better financial management</p>
-      </div>
-    </div>
-  {/if}
-</div>
+    </Card>
+  </div>
+{/if}
