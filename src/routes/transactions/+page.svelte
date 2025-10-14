@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { supabase } from "$lib/services/supabase";
+  import { supabase, getSession } from "$lib/services/supabase";
   import { formatCurrency, formatDate } from "$lib/utils";
   import { queueTransaction, getCachedTransactions, cacheTransactions } from "$lib/services/sync";
   import Button from "$lib/components/ui/button.svelte";
@@ -26,7 +26,7 @@
   };
 
   onMount(async () => {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await getSession();
     user = data.session?.user;
     
     if (user) {
@@ -184,21 +184,21 @@
         
         <form on:submit|preventDefault={saveTransaction} class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium mb-2">Date</label>
-            <Input type="date" bind:value={formData.txn_date} required />
+            <label for="txn-date" class="block text-sm font-medium mb-2">Date</label>
+            <Input id="txn-date" type="date" bind:value={formData.txn_date} required />
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-2">Type</label>
-            <Select bind:value={formData.type}>
+            <label for="txn-type" class="block text-sm font-medium mb-2">Type</label>
+            <Select id="txn-type" bind:value={formData.type}>
               <option value="income">Income</option>
               <option value="expense">Expense</option>
             </Select>
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-2">Category</label>
-            <Select bind:value={formData.category_id} required>
+            <label for="txn-category" class="block text-sm font-medium mb-2">Category</label>
+            <Select id="txn-category" bind:value={formData.category_id} required>
               <option value="">Select category</option>
               {#each categories.filter(c => c.type === formData.type) as cat}
                 <option value={cat.id}>{cat.name}</option>
@@ -207,13 +207,13 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-2">Amount (IDR)</label>
-            <Input type="number" bind:value={formData.amount} required />
+            <label for="txn-amount" class="block text-sm font-medium mb-2">Amount (IDR)</label>
+            <Input id="txn-amount" type="number" bind:value={formData.amount} required />
           </div>
           
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium mb-2">Description</label>
-            <Input bind:value={formData.description} placeholder="Optional" />
+            <label for="txn-description" class="block text-sm font-medium mb-2">Description</label>
+            <Input id="txn-description" bind:value={formData.description} placeholder="Optional" />
           </div>
           
           <div class="md:col-span-2 flex gap-2">
