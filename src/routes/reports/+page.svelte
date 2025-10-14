@@ -248,8 +248,8 @@
 
   <!-- Month Selector -->
   <div class="card p-4 mb-6">
-    <label class="label">Select Month</label>
-    <select bind:value={selectedMonth} class="input max-w-xs">
+    <label for="month-select" class="label">Select Month</label>
+    <select id="month-select" bind:value={selectedMonth} class="input max-w-xs">
       {#each getMonthOptions() as opt}
         <option value={opt.value}>{opt.label}</option>
       {/each}
