@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { supabase } from "$lib/services/supabase";
+  import { supabase, getSession } from "$lib/services/supabase";
   import Button from "$lib/components/ui/button.svelte";
   import Card from "$lib/components/ui/card.svelte";
   import Input from "$lib/components/ui/input.svelte";
@@ -50,13 +50,13 @@
     
     <form on:submit|preventDefault={handleRegister} class="space-y-4">
       <div>
-        <label class="block text-sm font-medium mb-2">Email</label>
-        <Input type="email" bind:value={email} required />
+        <label for="reg-email" class="block text-sm font-medium mb-2">Email</label>
+        <Input id="reg-email" type="email" bind:value={email} required />
       </div>
       
       <div>
-        <label class="block text-sm font-medium mb-2">Password</label>
-        <Input type="password" bind:value={password} required />
+        <label for="reg-password" class="block text-sm font-medium mb-2">Password</label>
+        <Input id="reg-password" type="password" bind:value={password} required />
       </div>
       
       <Button type="submit" className="w-full" disabled={loading}>
