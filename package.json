@@ -13,25 +13,30 @@
     "@sveltejs/adapter-auto": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "@types/node": "^24.7.2",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "svelte": "^4.2.7",
     "svelte-check": "^3.6.0",
     "tailwindcss": "^3.3.6",
+    "typescript": "^5.9.3",
     "vite": "^5.0.3",
     "vite-plugin-pwa": "^0.17.4"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "@tailwindcss/typography": "^0.5.19",
     "apexcharts": "^3.45.0",
     "bits-ui": "^0.11.0",
-    "clsx": "^2.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dayjs": "^1.11.10",
     "idb-keyval": "^6.2.1",
+    "lucide-svelte": "^0.545.0",
     "openai": "^4.20.1",
     "svelte-apexcharts": "^1.0.2",
-    "tailwind-merge": "^2.1.0",
-    "tailwind-variants": "^0.1.18"
+    "tailwind-merge": "^2.6.0",
+    "tailwind-variants": "^0.1.20"
   },
   "type": "module"
 }
