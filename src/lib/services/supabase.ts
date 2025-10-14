@@ -4,10 +4,14 @@ import { browser } from '$app/environment';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function getSession() {
-  if (!browser) return { session: null };
+  if (!browser) return { data: { session: null } };
   return await supabase.auth.getSession();
 }
 
