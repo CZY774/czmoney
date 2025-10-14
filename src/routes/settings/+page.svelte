@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { supabase } from "$lib/services/supabase";
+  import { supabase, getSession } from "$lib/services/supabase";
   import { formatCurrency } from "$lib/utils";
   import { getSyncStatus, syncPendingTransactions } from "$lib/services/sync";
   import Button from "$lib/components/ui/button.svelte";
@@ -23,7 +23,7 @@
   };
 
   onMount(async () => {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await getSession();
     user = data.session?.user;
     
     if (user) {
@@ -108,28 +108,28 @@
       
       <form on:submit|preventDefault={saveProfile} class="space-y-4">
         <div>
-          <label class="block text-sm font-medium mb-2">Full Name</label>
-          <Input bind:value={formData.full_name} placeholder="Your full name" />
+          <label for="full-name" class="block text-sm font-medium mb-2">Full Name</label>
+          <Input id="full-name" bind:value={formData.full_name} placeholder="Your full name" />
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-2">Email</label>
-          <Input value={user?.email || ''} disabled />
+          <label for="email" class="block text-sm font-medium mb-2">Email</label>
+          <Input id="email" value={user?.email || ''} disabled />
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-2">Monthly Income (IDR)</label>
-          <Input type="number" bind:value={formData.monthly_income} placeholder="0" />
+          <label for="monthly-income" class="block text-sm font-medium mb-2">Monthly Income (IDR)</label>
+          <Input id="monthly-income" type="number" bind:value={formData.monthly_income} placeholder="0" />
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-2">Monthly Savings Target (IDR)</label>
-          <Input type="number" bind:value={formData.savings_target} placeholder="0" />
+          <label for="savings-target" class="block text-sm font-medium mb-2">Monthly Savings Target (IDR)</label>
+          <Input id="savings-target" type="number" bind:value={formData.savings_target} placeholder="0" />
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-2">Preferred Currency</label>
-          <Select bind:value={formData.preferred_currency}>
+          <label for="currency" class="block text-sm font-medium mb-2">Preferred Currency</label>
+          <Select id="currency" bind:value={formData.preferred_currency}>
             <option value="IDR">IDR (Indonesian Rupiah)</option>
             <option value="USD">USD (US Dollar)</option>
             <option value="EUR">EUR (Euro)</option>
