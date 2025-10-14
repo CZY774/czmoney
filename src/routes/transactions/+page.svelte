@@ -266,8 +266,8 @@
   <div class="card p-4 mb-6">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
-        <label class="label">Month</label>
-        <select bind:value={selectedMonth} class="input">
+        <label for="month-filter" class="label">Month</label>
+        <select id="month-filter" bind:value={selectedMonth} class="input">
           <option value="">All months</option>
           {#each getMonthOptions() as opt}
             <option value={opt.value}>{opt.label}</option>
@@ -276,8 +276,8 @@
       </div>
 
       <div>
-        <label class="label">Category</label>
-        <select bind:value={selectedCategory} class="input">
+        <label for="category-filter" class="label">Category</label>
+        <select id="category-filter" bind:value={selectedCategory} class="input">
           <option value="">All categories</option>
           {#each categories as cat}
             <option value={cat.id}>{cat.name}</option>
@@ -286,8 +286,8 @@
       </div>
 
       <div>
-        <label class="label">Type</label>
-        <select bind:value={selectedType} class="input">
+        <label for="type-filter" class="label">Type</label>
+        <select id="type-filter" bind:value={selectedType} class="input">
           <option value="">All types</option>
           <option value="income">Income</option>
           <option value="expense">Expense</option>
@@ -418,12 +418,14 @@
 
 <!-- Add/Edit Modal -->
 {#if showModal}
-  <div
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->  <div
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-    on:click={closeModal}
+    on:click={closeModal} on:keydown={(e) => e.key === "Escape" && closeModal()} role="dialog" aria-modal="true"
   >
-    <div class="card p-6 max-w-md w-full" on:click|stopPropagation>
-      <h2 class="text-xl font-semibold text-white mb-4">
+    <div class="card p-6 max-w-md w-full" on:click|stopPropagation role="document">
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
+    <!-- svelte-ignore a11y-no-static-element-interactions -->      <h2 class="text-xl font-semibold text-white mb-4">
         {formData.id ? "Edit Transaction" : "Add Transaction"}
       </h2>
 
@@ -437,9 +439,9 @@
 
       <form on:submit|preventDefault={handleSubmit}>
         <div class="mb-4">
-          <label class="label">Date</label>
+          <label for="form-date" class="label">Date</label>
           <input
-            type="date"
+            type="date" id="form-date"
             bind:value={formData.txn_date}
             class="input"
             required
@@ -447,7 +449,7 @@
         </div>
 
         <div class="mb-4">
-          <label class="label">Type</label>
+          <label for="form-type" class="label">Type</label>
           <div class="flex space-x-4">
             <label class="flex items-center space-x-2 cursor-pointer">
               <input
@@ -471,8 +473,8 @@
         </div>
 
         <div class="mb-4">
-          <label class="label">Category</label>
-          <select bind:value={formData.category_id} class="input" required>
+          <label for="form-category" class="label">Category</label>
+          <select id="form-category" bind:value={formData.category_id} class="input" required>
             <option value="">Select category</option>
             {#each categories.filter((c) => c.type === formData.type) as cat}
               <option value={cat.id}>{cat.name}</option>
@@ -481,9 +483,9 @@
         </div>
 
         <div class="mb-4">
-          <label class="label">Amount</label>
+          <label for="form-amount" class="label">Amount</label>
           <input
-            type="number"
+            type="number" id="form-amount"
             bind:value={formData.amount}
             class="input"
             placeholder="0"
@@ -494,9 +496,9 @@
         </div>
 
         <div class="mb-6">
-          <label class="label">Description (optional)</label>
+          <label for="form-description" class="label">Description (optional)</label>
           <textarea
-            bind:value={formData.description}
+            id="form-description" bind:value={formData.description}
             class="input"
             rows="3"
             placeholder="Add a note..."
