@@ -1,14 +1,15 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { env } from '$env/dynamic/private';
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  env.VITE_SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: env.OPENAI_API_KEY
 });
 
 export async function POST({ request, locals }) {
