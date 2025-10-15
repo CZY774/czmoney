@@ -25,7 +25,6 @@
     "vite-plugin-pwa": "^0.17.4"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.39.0",
     "@sveltejs/adapter-vercel": "^5.10.3",
     "@tailwindcss/typography": "^0.5.19",
