@@ -11,7 +11,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-export async function POST({ request }) {
+async function handleRequest(request, url) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader) {
     return json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,8 +24,13 @@ export async function POST({ request }) {
     return json({ error: 'Invalid token' }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { month } = body; // Format: YYYY-MM
+  let month;
+  if (request.method === 'POST') {
+    const body = await request.json();
+    month = body.month;
+  } else {
+    month = url.searchParams.get('month');
+  }
 
   if (!month) {
     return json({ error: 'Month parameter required' }, { status: 400 });
@@ -143,4 +148,12 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
       details: error.message 
     }, { status: 500 });
   }
+}
+
+export async function GET({ request, url }) {
+  return handleRequest(request, url);
+}
+
+export async function POST({ request, url }) {
+  return handleRequest(request, url);
 }
