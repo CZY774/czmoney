@@ -155,15 +155,15 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
     console.error('AI Summary Error:', error);
     return json({ 
       error: 'Failed to generate summary',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }
 
-export async function GET({ request, url }) {
+export async function GET({ request, url }: { request: Request, url: URL }) {
   return handleRequest(request, url);
 }
 
-export async function POST({ request, url }) {
+export async function POST({ request, url }: { request: Request, url: URL }) {
   return handleRequest(request, url);
 }
