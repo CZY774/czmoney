@@ -24,14 +24,13 @@
     };
   });
 
-  $: if (mounted && chartContainer && (income || expense)) {
-    if (chart) {
-      chart.destroy();
-    }
-    setTimeout(renderChart, 50);
+  $: if (mounted && chartContainer && (income >= 0 || expense >= 0)) {
+    setTimeout(renderChart, 100);
   }
 
   function renderChart() {
+    if (!chartContainer || !mounted) return;
+    
     try {
       const options = {
         chart: {
@@ -58,10 +57,15 @@
         }]
       };
 
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+      
       chart = new ApexCharts(chartContainer, options);
-      chart.render();
+      chart.render().catch(err => console.warn('Chart render failed:', err));
     } catch (error) {
-      console.error('Chart render error:', error);
+      console.warn('Chart render error:', error);
     }
   }
 </script>
