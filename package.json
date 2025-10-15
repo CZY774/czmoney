@@ -25,6 +25,7 @@
     "vite-plugin-pwa": "^0.17.4"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.39.0",
     "@sveltejs/adapter-vercel": "^5.10.3",
     "@tailwindcss/typography": "^0.5.19",
@@ -37,7 +38,6 @@
     "dotenv": "^17.2.3",
     "idb-keyval": "^6.2.1",
     "lucide-svelte": "^0.545.0",
-    "openai": "^4.20.1",
     "svelte-apexcharts": "^1.0.2",
     "tailwind-merge": "^2.6.0",
     "tailwind-variants": "^0.1.20",
