@@ -1,27 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
 import { json, type RequestHandler } from '@sveltejs/kit';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize clients only if environment variables exist
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const openaiKey = process.env.OPENAI_API_KEY;
+const geminiKey = process.env.GEMINI_API_KEY;
 
 let supabase: any = null;
-let openai: any = null;
+let genAI: any = null;
 
 if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
 }
 
-if (openaiKey) {
-  openai = new OpenAI({ apiKey: openaiKey });
+if (geminiKey) {
+  genAI = new GoogleGenerativeAI(geminiKey);
 }
 
 async function handleRequest(request: Request, url: URL) {
   try {
     // Check if services are available
-    if (!supabase || !openai) {
+    if (!supabase || !genAI) {
       return json({ 
         error: 'AI service temporarily unavailable',
         details: 'Missing configuration'
@@ -142,14 +142,10 @@ ${JSON.stringify(summaryData)}
 
 Focus on: spending patterns, month-over-month changes, and actionable advice. Keep it under 70 words.`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 100,
-      temperature: 0.7
-    });
-
-    const aiSummary = completion.choices[0]?.message?.content || 
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const aiSummary = response.text() || 
       "Unable to generate summary at this time. Please try again later.";
 
     return json({ 
@@ -162,10 +158,10 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
     
     // More specific error handling
     if (error instanceof Error) {
-      if (error.message.includes('OpenAI')) {
+      if (error.message.includes('Gemini') || error.message.includes('GoogleGenerativeAI')) {
         return json({ 
           error: 'AI service unavailable',
-          details: 'OpenAI API error - check API key and credits'
+          details: 'Gemini API error - check API key and quota'
         }, { status: 503 });
       }
       if (error.message.includes('supabase') || error.message.includes('database')) {
