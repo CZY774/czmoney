@@ -40,7 +40,13 @@ async function handleRequest(request: Request, url: URL) {
       return json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const month = url.searchParams.get('month');
+    // Get month from URL params (GET) or request body (POST)
+    let month = url.searchParams.get('month');
+    if (!month && request.method === 'POST') {
+      const body = await request.json();
+      month = body.month;
+    }
+    
     if (!month) {
       return json({ error: 'Month parameter required (YYYY-MM)' }, { status: 400 });
     }
