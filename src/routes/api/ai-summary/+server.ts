@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { json } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 import OpenAI from 'openai';
 
 // Validate environment variables
@@ -28,29 +28,21 @@ async function handleRequest(request: Request, url: URL) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-  const { data: { user } } = await supabase.auth.getUser(token);
-  
-  if (!user) {
-    return json({ error: 'Invalid token' }, { status: 401 });
-  }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    
+    if (!user) {
+      return json({ error: 'Invalid token' }, { status: 401 });
+    }
 
-  let month;
-  if (request.method === 'POST') {
-    const body = await request.json();
-    month = body.month;
-  } else {
-    month = url.searchParams.get('month');
-  }
+    const month = url.searchParams.get('month');
+    if (!month) {
+      return json({ error: 'Month parameter required (YYYY-MM)' }, { status: 400 });
+    }
 
-  if (!month) {
-    return json({ error: 'Month parameter required' }, { status: 400 });
-  }
-
-  try {
-    // Get current month data
+    // Get current month transactions
     const [year, monthNum] = month.split('-');
     const startDate = `${year}-${monthNum}-01`;
-    const endDate = new Date(year, monthNum, 0).toISOString().split('T')[0];
+    const endDate = new Date(parseInt(year), parseInt(monthNum), 0).toISOString().split('T')[0];
 
     const { data: currentTransactions } = await supabase
       .from('transactions')
@@ -58,18 +50,6 @@ async function handleRequest(request: Request, url: URL) {
       .eq('user_id', user.id)
       .gte('txn_date', startDate)
       .lte('txn_date', endDate);
-
-    // Get previous month data for comparison
-    const prevMonth = new Date(year, monthNum - 2, 1);
-    const prevStartDate = prevMonth.toISOString().split('T')[0];
-    const prevEndDate = new Date(year, monthNum - 1, 0).toISOString().split('T')[0];
-
-    const { data: prevTransactions } = await supabase
-      .from('transactions')
-      .select('*, categories(name)')
-      .eq('user_id', user.id)
-      .gte('txn_date', prevStartDate)
-      .lte('txn_date', prevEndDate);
 
     if (!currentTransactions || currentTransactions.length === 0) {
       return json({ 
@@ -81,15 +61,29 @@ async function handleRequest(request: Request, url: URL) {
     const currentIncome = currentTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
-    
+
     const currentExpense = currentTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
+    // Get previous month for comparison
+    const prevMonth = new Date(parseInt(year), parseInt(monthNum) - 2, 1);
+    const prevYear = prevMonth.getFullYear();
+    const prevMonthNum = String(prevMonth.getMonth() + 1).padStart(2, '0');
+    const prevStartDate = `${prevYear}-${prevMonthNum}-01`;
+    const prevEndDate = new Date(prevYear, prevMonth.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    const { data: prevTransactions } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('txn_date', prevStartDate)
+      .lte('txn_date', prevEndDate);
+
     const prevIncome = prevTransactions
       ? prevTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0)
       : 0;
-    
+
     const prevExpense = prevTransactions
       ? prevTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)
       : 0;
@@ -160,10 +154,10 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
   }
 }
 
-export async function GET({ request, url }: { request: Request, url: URL }) {
+export const GET: RequestHandler = async ({ request, url }) => {
   return handleRequest(request, url);
-}
+};
 
-export async function POST({ request, url }: { request: Request, url: URL }) {
+export const POST: RequestHandler = async ({ request, url }) => {
   return handleRequest(request, url);
-}
+};
