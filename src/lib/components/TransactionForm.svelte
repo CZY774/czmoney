@@ -192,7 +192,8 @@
             type="number" 
             bind:value={form.amount}
             min="0"
-            step="1000"
+            step="1"
+            inputmode="numeric"
             class="w-full p-2 border border-border rounded bg-background"
             placeholder="0"
             required
