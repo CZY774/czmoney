@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import ApexCharts from 'apexcharts';
 
-  export let balance = { income: 0, expense: 0 };
+  export let income = 0;
+  export let expense = 0;
 
   let chartContainer;
   let chart;
@@ -23,6 +24,13 @@
     };
   });
 
+  $: if (mounted && chartContainer && (income || expense)) {
+    if (chart) {
+      chart.destroy();
+    }
+    setTimeout(renderChart, 50);
+  }
+
   function renderChart() {
     try {
       const options = {
@@ -35,7 +43,7 @@
         },
         series: [{
           name: 'Amount',
-          data: [balance.income || 0, balance.expense || 0]
+          data: [income || 0, expense || 0]
         }],
         xaxis: {
           categories: ['Income', 'Expense']
