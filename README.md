@@ -142,7 +142,7 @@ czmoney/
 
 ### First Time Setup
 
-1. **Sign Up**: Create an account at `/auth/register`
+1. **Register**: Create an account at `/auth/register`
 2. **Profile**: Set your monthly income and savings target in Settings
 3. **Add Transactions**: Use the FAB button or Transactions page
 4. **View Reports**: Check Reports page for insights and AI summary
