@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
   import "../app.css";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
@@ -6,17 +6,15 @@
   import { goto } from "$app/navigation";
   import { getSyncStatus } from "$lib/services/sync";
   
-  let user = null;
-  let loading = true;
+  export let data;
+  
+  let user = data.user;
+  let loading = false;
   let syncStatus = { pending: 0, lastSync: null };
   let isOffline = false;
   let mobileMenuOpen = false;
 
   onMount(async () => {
-    const { data } = await getSession();
-    user = data.session?.user || null;
-    loading = false;
-
     supabase.auth.onAuthStateChange((event, session) => {
       user = session?.user || null;
     });
