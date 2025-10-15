@@ -8,13 +8,17 @@
   
   export let data;
   
-  let user = data.user;
-  let loading = false;
+  let user = null;
+  let loading = true;
   let syncStatus = { pending: 0, lastSync: null };
   let isOffline = false;
   let mobileMenuOpen = false;
 
   onMount(async () => {
+    const { data } = await getSession();
+    user = data.session?.user || null;
+    loading = false;
+
     supabase.auth.onAuthStateChange((event, session) => {
       user = session?.user || null;
     });
