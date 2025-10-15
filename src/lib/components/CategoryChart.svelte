@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import ApexCharts from 'apexcharts';
 
-  export let data = [];
+  export let categories = [];
 
   let chartContainer;
   let chart;
@@ -11,7 +11,7 @@
   onMount(() => {
     mounted = true;
     setTimeout(() => {
-      if (chartContainer && mounted && data.length > 0) {
+      if (chartContainer && mounted && categories.length > 0) {
         renderChart();
       }
     }, 100);
@@ -23,10 +23,17 @@
     };
   });
 
+  $: if (mounted && chartContainer && categories.length > 0) {
+    if (chart) {
+      chart.destroy();
+    }
+    setTimeout(renderChart, 50);
+  }
+
   function renderChart() {
     try {
       const options = {
-        series: data.map(d => d.amount),
+        series: categories.map(d => d.amount),
         chart: {
           type: 'pie',
           height: 250,
@@ -34,7 +41,7 @@
           background: 'transparent',
           toolbar: { show: false }
         },
-        labels: data.map(d => d.name),
+        labels: categories.map(d => d.name),
         theme: { mode: 'dark' },
         responsive: [{
           breakpoint: 768,
@@ -53,7 +60,7 @@
   }
 </script>
 
-{#if data.length > 0}
+{#if categories.length > 0}
   <div bind:this={chartContainer} class="w-full min-h-[250px] md:min-h-[300px]"></div>
 {:else}
   <div class="min-h-[250px] flex items-center justify-center text-muted-foreground">
