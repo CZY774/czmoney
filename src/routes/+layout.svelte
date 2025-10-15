@@ -6,7 +6,7 @@
   import { goto } from "$app/navigation";
   import { getSyncStatus } from "$lib/services/sync";
   
-  export let data;
+
   
   let user = null;
   let loading = true;
