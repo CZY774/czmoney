@@ -6,7 +6,7 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 
 - 💰 **Transaction Management**: Track income and expenses with categories
 - 📊 **Visual Reports**: Interactive charts and monthly breakdowns
-- 🤖 **AI Insights**: Get personalized financial advice powered by OpenAI
+- 🤖 **AI Insights**: Get personalized financial advice powered by Google Gemini
 - 📱 **PWA Support**: Install as mobile/desktop app with offline capability
 - 🔄 **Offline Sync**: Work offline, sync automatically when online
 - 📈 **Savings Tracker**: Set and monitor monthly savings targets
@@ -19,7 +19,7 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 - **Frontend**: SvelteKit + TailwindCSS
 - **Database & Auth**: Supabase (PostgreSQL)
 - **Charts**: ApexCharts
-- **AI**: OpenAI API (GPT-4o-mini)
+- **AI**: Google Gemini API (Gemini Pro)
 - **Offline Storage**: IndexedDB (idb-keyval)
 - **Hosting**: Vercel (recommended)
 
@@ -27,7 +27,7 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 
 - Node.js 18+ and npm
 - Supabase account (free tier works)
-- OpenAI API key
+- Google Gemini API key
 - Vercel account (for deployment)
 
 ## Setup Instructions
@@ -62,14 +62,14 @@ Fill in your credentials:
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-OPENAI_API_KEY=sk-your-openai-key
+GEMINI_API_KEY=your-gemini-api-key
 PUBLIC_APP_NAME=CZmoneY
 PUBLIC_PWA_THEME_COLOR=#0b1221
 ```
 
 **Important**: 
 - `VITE_*` variables are exposed to the client
-- `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY` are server-only (never expose to client)
+- `SUPABASE_SERVICE_ROLE_KEY` and `GEMINI_API_KEY` are server-only (never expose to client)
 
 ### 4. Local Development
 
@@ -110,7 +110,7 @@ Add these in your Vercel project settings:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (mark as sensitive)
-- `OPENAI_API_KEY` (mark as sensitive)
+- `GEMINI_API_KEY` (mark as sensitive)
 - `PUBLIC_APP_NAME`
 - `PUBLIC_PWA_THEME_COLOR`
 
@@ -233,10 +233,10 @@ npm run build
 - Check RLS policies are enabled
 - Ensure SQL script ran successfully
 
-### OpenAI API Errors
+### Gemini API Errors
 
-- Verify API key is correct and has credits
-- Check API endpoint in `src/routes/api/ai-summary/+server.js`
+- Verify API key is correct and has quota
+- Check API endpoint in `src/routes/api/ai-summary/+server.ts`
 - AI summary is optional - app works without it
 
 ### Offline Sync Not Working
@@ -325,7 +325,7 @@ For issues or questions:
 
 - Built with [SvelteKit](https://kit.svelte.dev/)
 - Database by [Supabase](https://supabase.com/)
-- AI by [OpenAI](https://openai.com/)
+- AI by [Google Gemini](https://ai.google.dev/)
 - Charts by [ApexCharts](https://apexcharts.com/)
 - Icons from [Heroicons](https://heroicons.com/)
 
