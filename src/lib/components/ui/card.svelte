@@ -1,9 +1,7 @@
-<script lang="ts">
-  import { cn } from "$lib/utils";
-  
-  export let className: string = "";
+<script>
+  export let className = '';
 </script>
 
-<div class={cn("rounded-xl border bg-card text-card-foreground shadow", className)} {...$$restProps}>
+<div class="bg-card border border-border rounded-lg {className}">
   <slot />
 </div>
