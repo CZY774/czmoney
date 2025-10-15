@@ -2,26 +2,32 @@ import { createClient } from '@supabase/supabase-js';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import OpenAI from 'openai';
 
-// Validate environment variables
-if (!process.env.VITE_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('Missing Supabase environment variables');
+// Initialize clients only if environment variables exist
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const openaiKey = process.env.OPENAI_API_KEY;
+
+let supabase: any = null;
+let openai: any = null;
+
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
 }
 
-if (!process.env.OPENAI_API_KEY) {
-  console.error('Missing OpenAI API key');
+if (openaiKey) {
+  openai = new OpenAI({ apiKey: openaiKey });
 }
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!
-});
 
 async function handleRequest(request: Request, url: URL) {
   try {
+    // Check if services are available
+    if (!supabase || !openai) {
+      return json({ 
+        error: 'AI service temporarily unavailable',
+        details: 'Missing configuration'
+      }, { status: 503 });
+    }
+
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
       return json({ error: 'Unauthorized' }, { status: 401 });
