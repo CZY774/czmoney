@@ -33,6 +33,7 @@
     "clsx": "^2.1.1",
     "csv-parse": "^6.1.0",
     "dayjs": "^1.11.10",
+    "dotenv": "^17.2.3",
     "idb-keyval": "^6.2.1",
     "lucide-svelte": "^0.545.0",
     "openai": "^4.20.1",
