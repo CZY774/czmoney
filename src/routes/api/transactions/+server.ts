@@ -2,12 +2,21 @@ import { createClient } from '@supabase/supabase-js';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import type { Transaction } from '$lib/types';
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Initialize client only if environment variables exist
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase: any = null;
+
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+}
 
 export const GET: RequestHandler = async ({ url, request }) => {
+  if (!supabase) {
+    return json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
   const authHeader = request.headers.get('authorization');
   if (!authHeader) {
     return json({ error: 'Unauthorized' }, { status: 401 });
@@ -55,6 +64,10 @@ export const GET: RequestHandler = async ({ url, request }) => {
 };
 
 export const POST: RequestHandler = async ({ request }) => {
+  if (!supabase) {
+    return json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
   const authHeader = request.headers.get('authorization');
   if (!authHeader) {
     return json({ error: 'Unauthorized' }, { status: 401 });
@@ -95,6 +108,10 @@ export const POST: RequestHandler = async ({ request }) => {
 };
 
 export const PUT: RequestHandler = async ({ request }) => {
+  if (!supabase) {
+    return json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
   const authHeader = request.headers.get('authorization');
   if (!authHeader) {
     return json({ error: 'Unauthorized' }, { status: 401 });
@@ -136,6 +153,10 @@ export const PUT: RequestHandler = async ({ request }) => {
 };
 
 export const DELETE: RequestHandler = async ({ request }) => {
+  if (!supabase) {
+    return json({ error: 'Service unavailable' }, { status: 503 });
+  }
+
   const authHeader = request.headers.get('authorization');
   if (!authHeader) {
     return json({ error: 'Unauthorized' }, { status: 401 });
