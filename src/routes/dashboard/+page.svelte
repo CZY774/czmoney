@@ -11,10 +11,15 @@
   let categoryData = [];
   let loading = true;
 
-  export let data;
-  user = data.user;
-
   onMount(async () => {
+    const { data } = await supabase.auth.getSession();
+    user = data.session?.user;
+    
+    if (!user) {
+      goto('/auth/login');
+      return;
+    }
+
     await loadDashboardData();
     loading = false;
   });
