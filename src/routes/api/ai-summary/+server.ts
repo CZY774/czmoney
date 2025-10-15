@@ -159,6 +159,23 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
 
   } catch (error) {
     console.error('AI Summary Error:', error);
+    
+    // More specific error handling
+    if (error instanceof Error) {
+      if (error.message.includes('OpenAI')) {
+        return json({ 
+          error: 'AI service unavailable',
+          details: 'OpenAI API error - check API key and credits'
+        }, { status: 503 });
+      }
+      if (error.message.includes('supabase') || error.message.includes('database')) {
+        return json({ 
+          error: 'Database error',
+          details: 'Unable to fetch transaction data'
+        }, { status: 503 });
+      }
+    }
+    
     return json({ 
       error: 'Failed to generate summary',
       details: error instanceof Error ? error.message : 'Unknown error'
