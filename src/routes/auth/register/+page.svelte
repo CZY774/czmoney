@@ -39,12 +39,12 @@
 </script>
 
 <svelte:head>
-  <title>Sign Up - CZmoneY</title>
+  <title>Register - CZmoneY</title>
 </svelte:head>
 
 <div class="min-h-screen bg-background flex items-center justify-center p-4">
   <div class="bg-card border border-border rounded-lg w-full max-w-md p-6">
-    <h1 class="text-2xl font-bold text-center mb-6">Sign Up</h1>
+    <h1 class="text-2xl font-bold text-center mb-6">Register</h1>
     
     {#if error}
       <div class="bg-destructive/10 text-destructive p-3 rounded mb-4">
@@ -96,13 +96,13 @@
         disabled={loading}
         class="w-full px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
       >
-        {loading ? "Creating account..." : "Sign Up"}
+        {loading ? "Creating account..." : "Register"}
       </button>
     </form>
     
     <p class="text-center mt-4 text-sm">
       Already have an account? 
-      <a href="/auth/login" class="text-primary hover:underline">Sign in</a>
+      <a href="/auth/login" class="text-primary hover:underline">Login</a>
     </p>
   </div>
 </div>
