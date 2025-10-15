@@ -178,9 +178,7 @@
           {#each transactions as txn}
             <div class="flex justify-between items-center p-4 border rounded-lg hover:bg-muted/50 transition-colors">
               <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center" 
-                     class:bg-emerald-500/20={txn.type === 'income'} 
-                     class:bg-red-500/20={txn.type === 'expense'}>
+                <div class="w-10 h-10 rounded-full flex items-center justify-center {txn.type === 'income' ? 'bg-emerald-500/20' : 'bg-red-500/20'}">
                   <span class="text-sm">
                     {txn.type === 'income' ? '💰' : '💸'}
                   </span>
