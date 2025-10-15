@@ -1,23 +1,45 @@
-<script lang="ts">
-  import { cn } from "$lib/utils";
-  
-  export let className: string = "";
-  export let value: string = "";
-  export let id: string = "";
+<script>
+  export let type = 'text';
+  export let value = '';
+  export let placeholder = '';
+  export let required = false;
+  export let id = '';
 </script>
 
-<input
-  {id}
-  bind:value
-  class={cn(
-    "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-    className
-  )}
-  {...$$restProps}
-  on:input
-  on:change
-  on:keydown
-  on:keyup
-  on:focus
-  on:blur
-/>
+{#if type === 'email'}
+  <input 
+    type="email"
+    {id}
+    {placeholder}
+    {required}
+    bind:value
+    class="w-full p-2 border border-border rounded bg-background"
+  />
+{:else if type === 'password'}
+  <input 
+    type="password"
+    {id}
+    {placeholder}
+    {required}
+    bind:value
+    class="w-full p-2 border border-border rounded bg-background"
+  />
+{:else if type === 'number'}
+  <input 
+    type="number"
+    {id}
+    {placeholder}
+    {required}
+    bind:value
+    class="w-full p-2 border border-border rounded bg-background"
+  />
+{:else}
+  <input 
+    type="text"
+    {id}
+    {placeholder}
+    {required}
+    bind:value
+    class="w-full p-2 border border-border rounded bg-background"
+  />
+{/if}
