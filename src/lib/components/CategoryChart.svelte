@@ -24,13 +24,12 @@
   });
 
   $: if (mounted && chartContainer && categories.length > 0) {
-    if (chart) {
-      chart.destroy();
-    }
-    setTimeout(renderChart, 50);
+    setTimeout(renderChart, 100);
   }
 
   function renderChart() {
+    if (!chartContainer || !mounted || categories.length === 0) return;
+    
     try {
       const options = {
         series: categories.map(d => d.amount),
@@ -52,10 +51,15 @@
         }]
       };
 
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+
       chart = new ApexCharts(chartContainer, options);
-      chart.render();
+      chart.render().catch(err => console.warn('Chart render failed:', err));
     } catch (error) {
-      console.error('Chart render error:', error);
+      console.warn('Chart render error:', error);
     }
   }
 </script>
