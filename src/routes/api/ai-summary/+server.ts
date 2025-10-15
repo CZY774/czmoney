@@ -2,22 +2,32 @@ import { createClient } from '@supabase/supabase-js';
 import { json } from '@sveltejs/kit';
 import OpenAI from 'openai';
 
+// Validate environment variables
+if (!process.env.VITE_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Missing Supabase environment variables');
+}
+
+if (!process.env.OPENAI_API_KEY) {
+  console.error('Missing OpenAI API key');
+}
+
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.VITE_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY!
 });
 
-async function handleRequest(request, url) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) {
-    return json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function handleRequest(request: Request, url: URL) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace('Bearer ', '');
   const { data: { user } } = await supabase.auth.getUser(token);
   
   if (!user) {
