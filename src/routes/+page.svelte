@@ -25,7 +25,6 @@
   });
 
   async function loadDashboardData() {
-    // Get current month transactions
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     
@@ -39,7 +38,6 @@
     if (transactions) {
       recentTransactions = transactions.slice(0, 5);
       
-      // Calculate balance
       balance.income = transactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0);
@@ -50,7 +48,6 @@
       
       balance.total = balance.income - balance.expense;
 
-      // Calculate category data for chart
       const categoryTotals = {};
       transactions
         .filter(t => t.type === 'expense')
@@ -79,27 +76,27 @@
 
 {#if loading}
   <div class="flex items-center justify-center min-h-64">
-    <div class="text-lg">Loading dashboard...</div>
+    <div class="text-lg text-muted-foreground">Loading dashboard...</div>
   </div>
 {:else}
-  <div class="space-y-6">
-    <h1 class="text-3xl font-bold">Dashboard</h1>
+  <div class="space-y-8">
+    <h1 class="text-4xl font-bold">Dashboard</h1>
     
     <!-- Balance Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-card p-6 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">Total Income</h3>
-        <p class="text-2xl font-bold text-green-500">{formatCurrency(balance.income)}</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h3 class="text-sm font-medium text-muted-foreground mb-2">Total Income</h3>
+        <p class="text-3xl font-bold text-green-400">{formatCurrency(balance.income)}</p>
       </div>
       
-      <div class="bg-card p-6 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">Total Expense</h3>
-        <p class="text-2xl font-bold text-red-500">{formatCurrency(balance.expense)}</p>
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h3 class="text-sm font-medium text-muted-foreground mb-2">Total Expense</h3>
+        <p class="text-3xl font-bold text-red-400">{formatCurrency(balance.expense)}</p>
       </div>
       
-      <div class="bg-card p-6 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">Balance</h3>
-        <p class="text-2xl font-bold {balance.total >= 0 ? 'text-green-500' : 'text-red-500'}">
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h3 class="text-sm font-medium text-muted-foreground mb-2">Balance</h3>
+        <p class="text-3xl font-bold {balance.total >= 0 ? 'text-green-400' : 'text-red-400'}">
           {formatCurrency(balance.total)}
         </p>
       </div>
@@ -109,40 +106,50 @@
     <div class="flex gap-4">
       <button 
         on:click={() => goto('/transactions')}
-        class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+        class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
       >
         Add Transaction
       </button>
       <button 
         on:click={() => goto('/reports')}
-        class="px-6 py-3 border border-border rounded-lg hover:bg-accent"
+        class="px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium"
       >
         View Reports
       </button>
     </div>
 
     <!-- Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <BalanceChart income={balance.income} expense={balance.expense} />
-      <CategoryChart categories={categoryData} />
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h2 class="text-xl font-semibold mb-4">Income vs Expense</h2>
+        <BalanceChart income={balance.income} expense={balance.expense} />
+      </div>
+      
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h2 class="text-xl font-semibold mb-4">Expense Categories</h2>
+        <CategoryChart categories={categoryData} />
+      </div>
     </div>
 
     <!-- Recent Transactions -->
-    <div class="bg-card p-6 rounded-lg border">
-      <h2 class="text-xl font-semibold mb-4">Recent Transactions</h2>
+    <div class="bg-card p-6 rounded-lg border border-border">
+      <h2 class="text-xl font-semibold mb-6">Recent Transactions</h2>
       
       {#if recentTransactions.length === 0}
-        <p class="text-muted-foreground">No transactions yet. <a href="/transactions" class="text-primary hover:underline">Add your first transaction</a></p>
+        <p class="text-muted-foreground text-center py-8">
+          No transactions yet. 
+          <a href="/transactions" class="text-primary hover:underline">Add your first transaction</a>
+        </p>
       {:else}
-        <div class="space-y-3">
+        <div class="space-y-4">
           {#each recentTransactions as transaction}
-            <div class="flex justify-between items-center py-2 border-b border-border last:border-b-0">
+            <div class="flex justify-between items-center py-3 border-b border-border last:border-b-0">
               <div>
                 <p class="font-medium">{transaction.description || 'No description'}</p>
                 <p class="text-sm text-muted-foreground">{new Date(transaction.txn_date).toLocaleDateString()}</p>
               </div>
               <div class="text-right">
-                <p class="font-medium {transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}">
+                <p class="font-semibold {transaction.type === 'income' ? 'text-green-400' : 'text-red-400'}">
                   {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                 </p>
                 <p class="text-sm text-muted-foreground capitalize">{transaction.type}</p>
