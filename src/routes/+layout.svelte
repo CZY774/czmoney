@@ -100,11 +100,16 @@
           </div>
 
           <!-- Mobile Menu Button -->
-          <button 
+          <button
+            type="button"
             class="md:hidden p-2 rounded-md hover:bg-accent"
+            aria-label="Toggle mobile menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
             on:click={() => mobileMenuOpen = !mobileMenuOpen}
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" role="img" aria-hidden="true">
+              <title>Menu</title>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
           </button>
@@ -112,7 +117,7 @@
 
         <!-- Mobile Menu -->
         {#if mobileMenuOpen}
-          <div class="md:hidden py-4 border-t border-border">
+          <div id="mobile-menu" class="md:hidden py-4 border-t border-border">
             <div class="flex flex-col space-y-3">
               <a href="/" class="py-2 text-sm font-medium {isActive('/') ? 'text-primary' : 'text-muted-foreground'}">
                 Dashboard
