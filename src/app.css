@@ -1,37 +1,42 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: 210 40% 7%;
-    --foreground: 210 40% 98%;
-    --card: 210 40% 10%;
-    --card-foreground: 210 40% 98%;
-    --popover: 210 40% 10%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 210 40% 9%;
-    --secondary: 210 40% 15%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 210 40% 15%;
-    --muted-foreground: 210 40% 63%;
-    --accent: 210 40% 15%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 210 40% 18%;
-    --input: 210 40% 18%;
-    --ring: 210 40% 98%;
-    --radius: 0.5rem;
-  }
+@source "./src/**/*.{html,js,svelte,ts}";
+
+@theme {
+  --color-border: hsl(210 40% 18%);
+  --color-input: hsl(210 40% 18%);
+  --color-ring: hsl(210 40% 98%);
+  --color-background: hsl(210 40% 7%);
+  --color-foreground: hsl(210 40% 98%);
+  --color-primary: hsl(210 40% 98%);
+  --color-primary-foreground: hsl(210 40% 9%);
+  --color-secondary: hsl(210 40% 15%);
+  --color-secondary-foreground: hsl(210 40% 98%);
+  --color-destructive: hsl(0 62.8% 30.6%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-muted: hsl(210 40% 15%);
+  --color-muted-foreground: hsl(210 40% 63%);
+  --color-accent: hsl(210 40% 15%);
+  --color-accent-foreground: hsl(210 40% 98%);
+  --color-popover: hsl(210 40% 10%);
+  --color-popover-foreground: hsl(210 40% 98%);
+  --color-card: hsl(210 40% 10%);
+  --color-card-foreground: hsl(210 40% 98%);
+  
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
+  
+  --font-family-sans: Inter, system-ui, sans-serif;
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
+    border-color: theme(colors.border);
   }
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: Inter, system-ui, sans-serif;
+    background-color: theme(colors.background);
+    color: theme(colors.foreground);
+    font-family: theme(fontFamily.sans);
   }
 }
