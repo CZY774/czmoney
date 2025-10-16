@@ -1,32 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Initialize clients only if environment variables exist
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const geminiKey = process.env.GEMINI_API_KEY;
-
-let supabase: any = null;
-let genAI: any = null;
-
-if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
-}
-
-if (geminiKey) {
-  genAI = new GoogleGenerativeAI(geminiKey);
-}
+import { env } from '$env/dynamic/private';
 
 async function handleRequest(request: Request, url: URL) {
   try {
+    // Get environment variables using SvelteKit's env
+    const supabaseUrl = env.VITE_SUPABASE_URL;
+    const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
+    const geminiKey = env.GEMINI_API_KEY;
+
     // Check if services are available
-    if (!supabase || !genAI) {
+    if (!supabaseUrl || !supabaseKey || !geminiKey) {
       return json({ 
         error: 'AI service temporarily unavailable',
         details: 'Missing configuration'
       }, { status: 503 });
     }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const genAI = new GoogleGenerativeAI(geminiKey);
 
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
