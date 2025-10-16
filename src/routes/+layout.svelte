@@ -70,7 +70,7 @@
 
           <!-- Desktop Menu -->
           <div class="hidden md:flex items-center space-x-6">
-            <a href="/dashboard" class="text-sm {isActive('/dashboard') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}">Dashboard</a>
+            <a href="/" class="text-sm {isActive('/') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}">Dashboard</a>
             <a href="/transactions" class="text-sm {isActive('/transactions') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}">Transactions</a>
             <a href="/reports" class="text-sm {isActive('/reports') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}">Reports</a>
             <a href="/settings" class="text-sm {isActive('/settings') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}">Settings</a>
@@ -102,7 +102,7 @@
         {#if mobileMenuOpen}
           <div class="md:hidden mt-3 pt-3 border-t border-border">
             <div class="flex flex-col space-y-2">
-              <a href="/dashboard" class="py-2 text-sm {isActive('/dashboard') ? 'text-foreground' : 'text-muted-foreground'}">Dashboard</a>
+              <a href="/" class="py-2 text-sm {isActive('/') ? 'text-foreground' : 'text-muted-foreground'}">Dashboard</a>
               <a href="/transactions" class="py-2 text-sm {isActive('/transactions') ? 'text-foreground' : 'text-muted-foreground'}">Transactions</a>
               <a href="/reports" class="py-2 text-sm {isActive('/reports') ? 'text-foreground' : 'text-muted-foreground'}">Reports</a>
               <a href="/settings" class="py-2 text-sm {isActive('/settings') ? 'text-foreground' : 'text-muted-foreground'}">Settings</a>
