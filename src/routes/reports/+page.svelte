@@ -50,7 +50,6 @@
       
       monthlyData.balance = monthlyData.income - monthlyData.expense;
 
-      // Calculate category data
       const categoryTotals = {};
       transactions
         .filter(t => t.type === 'expense')
@@ -137,10 +136,9 @@
     }).format(amount);
   }
 
-  // Reload data when month changes
   $: if (selectedMonth && user) {
     loadMonthlyData();
-    aiSummary = ''; // Clear previous AI summary
+    aiSummary = '';
   }
 </script>
 
@@ -148,70 +146,68 @@
   <title>Reports - CZmoneY</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class="space-y-8">
   <div class="flex justify-between items-center">
-    <h1 class="text-3xl font-bold">Reports</h1>
-    <div class="flex gap-3">
-      <button 
-        on:click={exportCSV}
-        class="px-4 py-2 border border-border rounded-lg hover:bg-accent"
-      >
-        Export CSV
-      </button>
-    </div>
+    <h1 class="text-4xl font-bold">Reports</h1>
+    <button 
+      on:click={exportCSV}
+      class="px-4 py-2 border border-border rounded-lg hover:bg-accent font-medium"
+    >
+      Export CSV
+    </button>
   </div>
 
   <!-- Month Selector -->
-  <div class="bg-card p-4 rounded-lg border">
-    <label for="month-select" class="block text-sm font-medium mb-2">Select Month</label>
+  <div class="bg-card p-6 rounded-lg border border-border">
+    <label for="month-select" class="block text-sm font-medium mb-3">Select Month</label>
     <input 
       id="month-select"
       type="month" 
       bind:value={selectedMonth}
-      class="p-2 border border-border rounded bg-background"
+      class="p-3 border border-border rounded-lg bg-background text-foreground"
     />
   </div>
 
   {#if loading}
     <div class="flex items-center justify-center min-h-64">
-      <div class="text-lg">Loading reports...</div>
+      <div class="text-lg text-muted-foreground">Loading reports...</div>
     </div>
   {:else}
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="bg-card p-6 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">Total Income</h3>
-        <p class="text-2xl font-bold text-green-500">{formatCurrency(monthlyData.income)}</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h3 class="text-sm font-medium text-muted-foreground mb-2">Total Income</h3>
+        <p class="text-3xl font-bold text-green-400">{formatCurrency(monthlyData.income)}</p>
       </div>
       
-      <div class="bg-card p-6 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">Total Expense</h3>
-        <p class="text-2xl font-bold text-red-500">{formatCurrency(monthlyData.expense)}</p>
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h3 class="text-sm font-medium text-muted-foreground mb-2">Total Expense</h3>
+        <p class="text-3xl font-bold text-red-400">{formatCurrency(monthlyData.expense)}</p>
       </div>
       
-      <div class="bg-card p-6 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">Net Balance</h3>
-        <p class="text-2xl font-bold {monthlyData.balance >= 0 ? 'text-green-500' : 'text-red-500'}">
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h3 class="text-sm font-medium text-muted-foreground mb-2">Net Balance</h3>
+        <p class="text-3xl font-bold {monthlyData.balance >= 0 ? 'text-green-400' : 'text-red-400'}">
           {formatCurrency(monthlyData.balance)}
         </p>
       </div>
     </div>
 
     <!-- AI Summary -->
-    <div class="bg-card p-6 rounded-lg border">
-      <div class="flex justify-between items-center mb-4">
+    <div class="bg-card p-6 rounded-lg border border-border">
+      <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-semibold">AI Insights</h2>
         <button 
           on:click={generateAISummary}
           disabled={generatingAI || !monthlyData.transactions.length}
-          class="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+          class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
         >
           {generatingAI ? 'Generating...' : 'Generate Summary'}
         </button>
       </div>
       
       {#if aiSummary}
-        <div class="p-4 bg-accent/20 rounded border-l-4 border-primary">
+        <div class="p-4 bg-accent/20 rounded-lg border-l-4 border-primary">
           <p class="text-sm leading-relaxed">{aiSummary}</p>
         </div>
       {:else if !monthlyData.transactions.length}
@@ -223,26 +219,29 @@
 
     <!-- Category Chart -->
     {#if categoryData.length > 0}
-      <CategoryChart categories={categoryData} />
+      <div class="bg-card p-6 rounded-lg border border-border">
+        <h2 class="text-xl font-semibold mb-4">Expense Categories</h2>
+        <CategoryChart categories={categoryData} />
+      </div>
     {/if}
 
     <!-- Category Breakdown Table -->
     {#if categoryData.length > 0}
-      <div class="bg-card rounded-lg border">
-        <div class="p-4 border-b border-border">
+      <div class="bg-card rounded-lg border border-border">
+        <div class="p-6 border-b border-border">
           <h2 class="text-xl font-semibold">Category Breakdown</h2>
         </div>
         <div class="divide-y divide-border">
           {#each categoryData as category}
             <div class="p-4 flex justify-between items-center">
               <span class="font-medium">{category.name}</span>
-              <span class="font-semibold text-red-500">{formatCurrency(category.amount)}</span>
+              <span class="font-semibold text-red-400">{formatCurrency(category.amount)}</span>
             </div>
           {/each}
         </div>
       </div>
     {:else}
-      <div class="bg-card p-8 rounded-lg border text-center">
+      <div class="bg-card p-8 rounded-lg border border-border text-center">
         <p class="text-muted-foreground">No expense data available for this month.</p>
       </div>
     {/if}
