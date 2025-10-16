@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import type { Transaction } from '$lib/types';
 
 // Initialize client only if environment variables exist
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = env.VITE_SUPABASE_URL;
+const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
 let supabase: any = null;
 
