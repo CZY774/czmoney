@@ -1,13 +1,13 @@
 <script>
-  export let type = 'text';
-  export let value = '';
-  export let placeholder = '';
+  export let type = "text";
+  export let value = "";
+  export let placeholder = "";
   export let required = false;
-  export let id = '';
+  export let id = "";
 </script>
 
-{#if type === 'email'}
-  <input 
+{#if type === "email"}
+  <input
     type="email"
     {id}
     {placeholder}
@@ -15,8 +15,8 @@
     bind:value
     class="w-full p-2 border border-border rounded bg-background"
   />
-{:else if type === 'password'}
-  <input 
+{:else if type === "password"}
+  <input
     type="password"
     {id}
     {placeholder}
@@ -24,8 +24,8 @@
     bind:value
     class="w-full p-2 border border-border rounded bg-background"
   />
-{:else if type === 'number'}
-  <input 
+{:else if type === "number"}
+  <input
     type="number"
     {id}
     {placeholder}
@@ -34,7 +34,7 @@
     class="w-full p-2 border border-border rounded bg-background"
   />
 {:else}
-  <input 
+  <input
     type="text"
     {id}
     {placeholder}
