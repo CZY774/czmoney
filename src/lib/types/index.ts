@@ -3,7 +3,7 @@ export interface Transaction {
   user_id: string;
   txn_date: string;
   category_id: string;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   amount: number;
   description?: string;
   created_at: string;
@@ -13,7 +13,7 @@ export interface Category {
   id: string;
   user_id: string;
   name: string;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   color?: string;
   created_at: string;
 }
@@ -38,7 +38,7 @@ export interface MonthlyReport {
 export interface CategorySummary {
   category_id: string;
   category_name: string;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   total: number;
   count: number;
 }
