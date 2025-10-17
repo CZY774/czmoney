@@ -80,24 +80,10 @@
 {:else if !user}
   <!-- Landing Page -->
   <div class="min-h-screen flex flex-col">
-    <!-- Header -->
-    <header class="border-b border-border">
-      <div class="max-w-4xl mx-auto px-6">
-        <div class="flex justify-center items-center h-16">
-          <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span class="text-primary-foreground font-bold text-sm">CZ</span>
-            </div>
-            <span class="font-semibold text-lg">CZmoneY</span>
-          </div>
-        </div>
-      </div>
-    </header>
-
     <!-- Main -->
     <main class="flex-1 flex items-center justify-center px-6">
       <div class="max-w-md mx-auto text-center">
-        <h1 class="text-3xl font-bold mb-4">Personal Finance Tracker</h1>
+        <h1 class="text-3xl font-bold mb-4">CZmoneY</h1>
         <p class="text-muted-foreground mb-8">
           Track expenses, view reports, get insights.
         </p>
