@@ -1,18 +1,18 @@
-import tailwindcss from '@tailwindcss/vite';
+import tailwindcss from "@tailwindcss/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  
+  const env = loadEnv(mode, process.cwd(), "");
+
   return {
     plugins: [
       tailwindcss(),
       sveltekit(),
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
+        includeAssets: ["favicon.ico", "icon-192.png", "icon-512.png"],
         manifest: {
           name: "CZmoneY - Personal Finance",
           short_name: "CZmoneY",
@@ -27,15 +27,15 @@ export default defineConfig(({ mode }) => {
               src: "/icon-192.png",
               sizes: "192x192",
               type: "image/png",
-              purpose: "any maskable"
+              purpose: "any maskable",
             },
             {
               src: "/icon-512.png",
-              sizes: "512x512", 
+              sizes: "512x512",
               type: "image/png",
-              purpose: "any maskable"
-            }
-          ]
+              purpose: "any maskable",
+            },
+          ],
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
@@ -60,18 +60,22 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          entryFileNames: 'assets/[name]-[hash].js',
-          chunkFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash].[ext]'
-        }
-      }
+          entryFileNames: "assets/[name]-[hash].js",
+          chunkFileNames: "assets/[name]-[hash].js",
+          assetFileNames: "assets/[name]-[hash].[ext]",
+        },
+      },
     },
     define: {
-      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
-      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY),
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
+        env.VITE_SUPABASE_URL
+      ),
+      "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(
+        env.VITE_SUPABASE_ANON_KEY
+      ),
     },
     resolve: {
-      dedupe: ['svelte-apexcharts']
-    }
+      dedupe: ["svelte-apexcharts"],
+    },
   };
 });
