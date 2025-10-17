@@ -28,7 +28,7 @@
       </button>
       
       <button 
-        on:click={() => goto('/dashboard')}
+        on:click={() => goto('/')}
         class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
       >
         🏠 Dashboard
