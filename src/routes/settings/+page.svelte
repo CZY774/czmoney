@@ -1,15 +1,15 @@
 <script>
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/services/supabase';
-  import { goto } from '$app/navigation';
-  import { syncPendingTransactions, getSyncStatus } from '$lib/services/sync';
+  import { onMount } from "svelte";
+  import { supabase } from "$lib/services/supabase";
+  import { goto } from "$app/navigation";
+  import { syncPendingTransactions, getSyncStatus } from "$lib/services/sync";
 
   let user = null;
   let profile = {
-    full_name: '',
-    monthly_income: '',
-    savings_target: '',
-    preferred_currency: 'IDR'
+    full_name: "",
+    monthly_income: "",
+    savings_target: "",
+    preferred_currency: "IDR",
   };
   let syncStatus = { pending: 0, lastSync: null };
   let loading = true;
@@ -20,9 +20,9 @@
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
     user = data.session?.user;
-    
+
     if (!user) {
-      goto('/auth/login');
+      goto("/auth/login");
       return;
     }
 
@@ -32,26 +32,26 @@
 
     // Monitor online status
     isOffline = !navigator.onLine;
-    window.addEventListener('online', () => {
+    window.addEventListener("online", () => {
       isOffline = false;
       loadSyncStatus();
     });
-    window.addEventListener('offline', () => isOffline = true);
+    window.addEventListener("offline", () => (isOffline = true));
   });
 
   async function loadProfile() {
     const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
       .single();
 
     if (data) {
       profile = {
-        full_name: data.full_name || '',
-        monthly_income: data.monthly_income || '',
-        savings_target: data.savings_target || '',
-        preferred_currency: data.preferred_currency || 'IDR'
+        full_name: data.full_name || "",
+        monthly_income: data.monthly_income || "",
+        savings_target: data.savings_target || "",
+        preferred_currency: data.preferred_currency || "IDR",
       };
     }
   }
@@ -62,26 +62,28 @@
 
   async function saveProfile() {
     saving = true;
-    
+
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          full_name: profile.full_name,
-          monthly_income: profile.monthly_income ? parseInt(profile.monthly_income) : null,
-          savings_target: profile.savings_target ? parseInt(profile.savings_target) : null,
-          preferred_currency: profile.preferred_currency
-        });
+      const { error } = await supabase.from("profiles").upsert({
+        id: user.id,
+        full_name: profile.full_name,
+        monthly_income: profile.monthly_income
+          ? parseInt(profile.monthly_income)
+          : null,
+        savings_target: profile.savings_target
+          ? parseInt(profile.savings_target)
+          : null,
+        preferred_currency: profile.preferred_currency,
+      });
 
       if (error) {
-        alert('Failed to save profile');
+        alert("Failed to save profile");
         console.error(error);
       } else {
-        alert('Profile saved successfully');
+        alert("Profile saved successfully");
       }
     } catch (error) {
-      alert('Error saving profile');
+      alert("Error saving profile");
       console.error(error);
     } finally {
       saving = false;
@@ -90,25 +92,25 @@
 
   async function manualSync() {
     if (isOffline) {
-      alert('Cannot sync while offline');
+      alert("Cannot sync while offline");
       return;
     }
 
     syncing = true;
-    
+
     try {
       const result = await syncPendingTransactions();
       await loadSyncStatus();
-      
+
       if (result.synced > 0) {
         alert(`Successfully synced ${result.synced} transactions`);
       } else if (result.failed > 0) {
         alert(`Failed to sync ${result.failed} transactions`);
       } else {
-        alert('No transactions to sync');
+        alert("No transactions to sync");
       }
     } catch (error) {
-      alert('Sync failed');
+      alert("Sync failed");
       console.error(error);
     } finally {
       syncing = false;
@@ -117,13 +119,13 @@
 
   async function signOut() {
     await supabase.auth.signOut();
-    goto('/');
+    goto("/");
   }
 
   function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR'
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
     }).format(amount);
   }
 </script>
@@ -145,10 +147,12 @@
       <h2 class="text-xl font-semibold mb-4">Profile</h2>
       <div class="space-y-4">
         <div>
-          <label for="full-name" class="block text-sm font-medium mb-1">Full Name</label>
-          <input 
+          <label for="full-name" class="block text-sm font-medium mb-1"
+            >Full Name</label
+          >
+          <input
             id="full-name"
-            type="text" 
+            type="text"
             bind:value={profile.full_name}
             class="w-full p-2 border border-border rounded bg-background"
             placeholder="Your full name"
@@ -156,10 +160,12 @@
         </div>
 
         <div>
-          <label for="monthly-income" class="block text-sm font-medium mb-1">Monthly Income (IDR)</label>
-          <input 
+          <label for="monthly-income" class="block text-sm font-medium mb-1"
+            >Monthly Income (IDR)</label
+          >
+          <input
             id="monthly-income"
-            type="number" 
+            type="number"
             bind:value={profile.monthly_income}
             class="w-full p-2 border border-border rounded bg-background"
             placeholder="0"
@@ -169,10 +175,12 @@
         </div>
 
         <div>
-          <label for="savings-target" class="block text-sm font-medium mb-1">Monthly Savings Target (IDR)</label>
-          <input 
+          <label for="savings-target" class="block text-sm font-medium mb-1"
+            >Monthly Savings Target (IDR)</label
+          >
+          <input
             id="savings-target"
-            type="number" 
+            type="number"
             bind:value={profile.savings_target}
             class="w-full p-2 border border-border rounded bg-background"
             placeholder="0"
@@ -182,8 +190,10 @@
         </div>
 
         <div>
-          <label for="currency" class="block text-sm font-medium mb-1">Preferred Currency</label>
-          <select 
+          <label for="currency" class="block text-sm font-medium mb-1"
+            >Preferred Currency</label
+          >
+          <select
             id="currency"
             bind:value={profile.preferred_currency}
             class="w-full p-2 border border-border rounded bg-background"
@@ -194,12 +204,12 @@
           </select>
         </div>
 
-        <button 
+        <button
           on:click={saveProfile}
           disabled={saving}
           class="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
         >
-          {saving ? 'Saving...' : 'Save Profile'}
+          {saving ? "Saving..." : "Save Profile"}
         </button>
       </div>
     </div>
@@ -212,10 +222,14 @@
           <div>
             <p class="font-medium">Connection Status</p>
             <p class="text-sm text-muted-foreground">
-              {isOffline ? 'Offline' : 'Online'}
+              {isOffline ? "Offline" : "Online"}
             </p>
           </div>
-          <div class="w-3 h-3 rounded-full {isOffline ? 'bg-red-500' : 'bg-green-500'}"></div>
+          <div
+            class="w-3 h-3 rounded-full {isOffline
+              ? 'bg-red-500'
+              : 'bg-green-500'}"
+          ></div>
         </div>
 
         <div class="flex items-center justify-between">
@@ -239,12 +253,12 @@
           </div>
         {/if}
 
-        <button 
+        <button
           on:click={manualSync}
           disabled={syncing || isOffline || syncStatus.pending === 0}
           class="px-4 py-2 border border-border rounded hover:bg-accent disabled:opacity-50"
         >
-          {syncing ? 'Syncing...' : 'Sync Now'}
+          {syncing ? "Syncing..." : "Sync Now"}
         </button>
       </div>
     </div>
@@ -263,7 +277,7 @@
           <p class="text-sm text-muted-foreground font-mono">{user?.id}</p>
         </div>
 
-        <button 
+        <button
           on:click={signOut}
           class="px-4 py-2 text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
         >
