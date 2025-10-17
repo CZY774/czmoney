@@ -1,8 +1,8 @@
 <script>
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/services/supabase';
-  import { goto } from '$app/navigation';
-  import TransactionForm from '$lib/components/TransactionForm.svelte';
+  import { onMount } from "svelte";
+  import { supabase } from "$lib/services/supabase";
+  import { goto } from "$app/navigation";
+  import TransactionForm from "$lib/components/TransactionForm.svelte";
 
   let user = null;
   let transactions = [];
@@ -10,20 +10,20 @@
   let loading = true;
   let showForm = false;
   let editingTransaction = null;
-  
+
   // Filters
   let filters = {
     month: new Date().toISOString().slice(0, 7), // YYYY-MM
-    category: '',
-    type: ''
+    category: "",
+    type: "",
   };
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
     user = data.session?.user;
-    
+
     if (!user) {
-      goto('/auth/login');
+      goto("/auth/login");
       return;
     }
 
@@ -34,11 +34,11 @@
 
   async function loadCategories() {
     const { data } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('name');
-    
+      .from("categories")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("name");
+
     if (data) {
       categories = data;
     }
@@ -47,16 +47,16 @@
   async function loadTransactions() {
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token;
-    
+
     const params = new URLSearchParams();
-    if (filters.month) params.append('month', filters.month);
-    if (filters.category) params.append('category', filters.category);
-    if (filters.type) params.append('type', filters.type);
+    if (filters.month) params.append("month", filters.month);
+    if (filters.category) params.append("category", filters.category);
+    if (filters.type) params.append("type", filters.type);
 
     const response = await fetch(`/api/transactions?${params}`, {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (response.ok) {
@@ -66,26 +66,26 @@
   }
 
   async function deleteTransaction(id) {
-    if (!confirm('Are you sure you want to delete this transaction?')) {
+    if (!confirm("Are you sure you want to delete this transaction?")) {
       return;
     }
 
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token;
 
-    const response = await fetch('/api/transactions', {
-      method: 'DELETE',
+    const response = await fetch("/api/transactions", {
+      method: "DELETE",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id }),
     });
 
     if (response.ok) {
       await loadTransactions();
     } else {
-      alert('Failed to delete transaction');
+      alert("Failed to delete transaction");
     }
   }
 
@@ -104,19 +104,23 @@
   }
 
   function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR'
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
     }).format(amount);
   }
 
   function getCategoryName(categoryId) {
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'No Category';
+    const category = categories.find((c) => c.id === categoryId);
+    return category ? category.name : "No Category";
   }
 
   // Reload when filters change
-  $: if (filters.month || filters.category !== undefined || filters.type !== undefined) {
+  $: if (
+    filters.month ||
+    filters.category !== undefined ||
+    filters.type !== undefined
+  ) {
     if (user) loadTransactions();
   }
 </script>
@@ -128,7 +132,7 @@
 <div class="space-y-6">
   <div class="flex justify-between items-center">
     <h1 class="text-3xl font-bold">Transactions</h1>
-    <button 
+    <button
       on:click={openAddForm}
       class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
     >
@@ -141,18 +145,22 @@
     <h2 class="text-lg font-semibold mb-3">Filters</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
-        <label for="filter-month" class="block text-sm font-medium mb-1">Month</label>
-        <input 
+        <label for="filter-month" class="block text-sm font-medium mb-1"
+          >Month</label
+        >
+        <input
           id="filter-month"
-          type="month" 
+          type="month"
           bind:value={filters.month}
           class="w-full p-2 border border-border rounded bg-background"
         />
       </div>
-      
+
       <div>
-        <label for="filter-category" class="block text-sm font-medium mb-1">Category</label>
-        <select 
+        <label for="filter-category" class="block text-sm font-medium mb-1"
+          >Category</label
+        >
+        <select
           id="filter-category"
           bind:value={filters.category}
           class="w-full p-2 border border-border rounded bg-background"
@@ -163,10 +171,12 @@
           {/each}
         </select>
       </div>
-      
+
       <div>
-        <label for="filter-type" class="block text-sm font-medium mb-1">Type</label>
-        <select 
+        <label for="filter-type" class="block text-sm font-medium mb-1"
+          >Type</label
+        >
+        <select
           id="filter-type"
           bind:value={filters.type}
           class="w-full p-2 border border-border rounded bg-background"
@@ -188,7 +198,7 @@
     {:else if transactions.length === 0}
       <div class="p-8 text-center">
         <p class="text-muted-foreground mb-4">No transactions found</p>
-        <button 
+        <button
           on:click={openAddForm}
           class="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
         >
@@ -201,32 +211,48 @@
           <div class="p-4 flex justify-between items-center hover:bg-accent/50">
             <div class="flex-1">
               <div class="flex items-center gap-3">
-                <div class="w-3 h-3 rounded-full {transaction.type === 'income' ? 'bg-green-500' : 'bg-red-500'}"></div>
+                <div
+                  class="w-3 h-3 rounded-full {transaction.type === 'income'
+                    ? 'bg-green-500'
+                    : 'bg-red-500'}"
+                ></div>
                 <div>
-                  <p class="font-medium">{transaction.description || 'No description'}</p>
+                  <p class="font-medium">
+                    {transaction.description || "No description"}
+                  </p>
                   <p class="text-sm text-muted-foreground">
-                    {getCategoryName(transaction.category_id)} • {new Date(transaction.txn_date).toLocaleDateString()}
+                    {getCategoryName(transaction.category_id)} • {new Date(
+                      transaction.txn_date
+                    ).toLocaleDateString()}
                   </p>
                 </div>
               </div>
             </div>
-            
+
             <div class="flex items-center gap-4">
               <div class="text-right">
-                <p class="font-semibold {transaction.type === 'income' ? 'text-green-500' : 'text-red-500'}">
-                  {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                <p
+                  class="font-semibold {transaction.type === 'income'
+                    ? 'text-green-500'
+                    : 'text-red-500'}"
+                >
+                  {transaction.type === "income" ? "+" : "-"}{formatCurrency(
+                    transaction.amount
+                  )}
                 </p>
-                <p class="text-sm text-muted-foreground capitalize">{transaction.type}</p>
+                <p class="text-sm text-muted-foreground capitalize">
+                  {transaction.type}
+                </p>
               </div>
-              
+
               <div class="flex gap-2">
-                <button 
+                <button
                   on:click={() => openEditForm(transaction)}
                   class="px-3 py-1 text-sm border border-border rounded hover:bg-accent"
                 >
                   Edit
                 </button>
-                <button 
+                <button
                   on:click={() => deleteTransaction(transaction.id)}
                   class="px-3 py-1 text-sm text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
                 >
@@ -242,9 +268,12 @@
 </div>
 
 <!-- Transaction Form Modal -->
-<TransactionForm 
-  bind:isOpen={showForm} 
+<TransactionForm
+  bind:isOpen={showForm}
   transaction={editingTransaction}
   on:success={handleFormSuccess}
-  on:close={() => { showForm = false; editingTransaction = null; }}
+  on:close={() => {
+    showForm = false;
+    editingTransaction = null;
+  }}
 />
