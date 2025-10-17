@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from '$env/dynamic/private';
+import { createClient } from "@supabase/supabase-js";
+import { env } from "$env/dynamic/private";
 
 export async function handle({ event, resolve }) {
   if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('Missing Supabase environment variables');
+    console.error("Missing Supabase environment variables");
     return resolve(event);
   }
 
@@ -11,12 +11,14 @@ export async function handle({ event, resolve }) {
     env.VITE_SUPABASE_URL,
     env.SUPABASE_SERVICE_ROLE_KEY
   );
-  
-  const token = event.cookies.get('sb-access-token');
+
+  const token = event.cookies.get("sb-access-token");
   if (token) {
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser(token);
     event.locals.user = user;
   }
-  
+
   return resolve(event);
 }
