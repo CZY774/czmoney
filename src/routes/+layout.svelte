@@ -60,9 +60,6 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span class="text-primary-foreground font-bold text-sm">CZ</span>
-            </div>
             <span class="font-semibold text-lg">CZmoneY</span>
           </div>
 
