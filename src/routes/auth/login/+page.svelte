@@ -19,7 +19,7 @@
     if (authError) {
       error = authError.message;
     } else {
-      goto("/dashboard");
+      goto("/");
     }
     
     loading = false;
