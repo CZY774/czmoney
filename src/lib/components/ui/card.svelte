@@ -1,5 +1,5 @@
 <script>
-  export let className = '';
+  export let className = "";
 </script>
 
 <div class="bg-card border border-border rounded-lg {className}">
