@@ -15,12 +15,10 @@
     const { data } = await supabase.auth.getSession();
     user = data.session?.user;
     
-    if (!user) {
-      goto('/auth/login');
-      return;
+    if (user) {
+      await loadDashboardData();
     }
-
-    await loadDashboardData();
+    
     loading = false;
   });
 
