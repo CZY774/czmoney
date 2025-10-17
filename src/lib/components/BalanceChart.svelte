@@ -1,21 +1,29 @@
 <script>
   import { onMount } from 'svelte';
-  import ApexCharts from 'apexcharts';
+  import { browser } from '$app/environment';
 
   export let income = 0;
   export let expense = 0;
 
   let chartContainer;
   let chart;
-  let mounted = false;
+  let ApexCharts;
 
-  onMount(() => {
-    mounted = true;
-    setTimeout(() => {
-      if (chartContainer && mounted) {
-        renderChart();
-      }
-    }, 100);
+  onMount(async () => {
+    if (!browser) return;
+    
+    try {
+      const module = await import('apexcharts');
+      ApexCharts = module.default;
+      
+      setTimeout(() => {
+        if (chartContainer && ApexCharts) {
+          renderChart();
+        }
+      }, 100);
+    } catch (error) {
+      console.warn('Failed to load ApexCharts:', error);
+    }
     
     return () => {
       if (chart) {
@@ -24,12 +32,12 @@
     };
   });
 
-  $: if (mounted && chartContainer && (income >= 0 || expense >= 0)) {
+  $: if (browser && ApexCharts && chartContainer && (income >= 0 || expense >= 0)) {
     setTimeout(renderChart, 100);
   }
 
   function renderChart() {
-    if (!chartContainer || !mounted) return;
+    if (!chartContainer || !ApexCharts || !browser) return;
     
     try {
       const options = {
