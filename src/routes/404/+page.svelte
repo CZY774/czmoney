@@ -1,5 +1,5 @@
 <script>
-  import { goto } from '$app/navigation';
+  import { goto } from "$app/navigation";
 </script>
 
 <svelte:head>
@@ -15,20 +15,20 @@
     </div>
 
     <p class="text-muted-foreground">
-      Looks like this page went on a spending spree and disappeared! 
-      Let's get you back to managing your finances.
+      Looks like this page went on a spending spree and disappeared! Let's get
+      you back to managing your finances.
     </p>
 
     <div class="flex flex-col sm:flex-row gap-3 justify-center">
-      <button 
+      <button
         on:click={() => history.back()}
         class="px-6 py-3 border border-border rounded-lg hover:bg-accent transition-colors"
       >
         ← Go Back
       </button>
-      
-      <button 
-        on:click={() => goto('/')}
+
+      <button
+        on:click={() => goto("/")}
         class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
       >
         🏠 Dashboard
