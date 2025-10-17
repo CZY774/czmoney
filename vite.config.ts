@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig, loadEnv } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -7,6 +8,7 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [
+      tailwindcss(),
       sveltekit(),
       VitePWA({
         registerType: "autoUpdate",
