@@ -1,9 +1,9 @@
-import { build, files, version } from '$service-worker';
+import { build, files, version } from "$service-worker";
 
 const CACHE = `cache-${version}`;
 const ASSETS = [...build, ...files];
 
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   async function addFilesToCache() {
     const cache = await caches.open(CACHE);
     await cache.addAll(ASSETS);
@@ -12,7 +12,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(addFilesToCache());
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   async function deleteOldCaches() {
     for (const key of await caches.keys()) {
       if (key !== CACHE) await caches.delete(key);
@@ -22,8 +22,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(deleteOldCaches());
 });
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
 
   async function respond() {
     const url = new URL(event.request.url);
@@ -35,15 +35,15 @@ self.addEventListener('fetch', (event) => {
     }
 
     // Try network first for API calls
-    if (url.pathname.startsWith('/api/')) {
+    if (url.pathname.startsWith("/api/")) {
       try {
         const response = await fetch(event.request);
         return response;
       } catch {
         // Return offline response for API calls
-        return new Response(JSON.stringify({ error: 'Offline' }), {
+        return new Response(JSON.stringify({ error: "Offline" }), {
           status: 503,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { "Content-Type": "application/json" },
         });
       }
     }
@@ -64,7 +64,7 @@ self.addEventListener('fetch', (event) => {
       return response;
     } catch {
       // Return cached index.html for navigation requests
-      return cache.match('/');
+      return cache.match("/");
     }
   }
 
@@ -72,8 +72,8 @@ self.addEventListener('fetch', (event) => {
 });
 
 // Background sync for offline transactions
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'background-sync') {
+self.addEventListener("sync", (event) => {
+  if (event.tag === "background-sync") {
     event.waitUntil(syncTransactions());
   }
 });
@@ -81,5 +81,5 @@ self.addEventListener('sync', (event) => {
 async function syncTransactions() {
   // This would integrate with your sync service
   // For now, just log that sync was attempted
-  console.log('Background sync triggered');
+  console.log("Background sync triggered");
 }
