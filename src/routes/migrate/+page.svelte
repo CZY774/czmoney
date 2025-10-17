@@ -138,7 +138,7 @@
           <p>✅ Total transactions: {results.total}</p>
         </div>
         <div class="mt-4">
-          <a href="/dashboard" class="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">
+          <a href="/" class="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90">
             View Dashboard
           </a>
         </div>
