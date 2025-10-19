@@ -5,10 +5,10 @@
   import BalanceChart from "$lib/components/BalanceChart.svelte";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
 
-  let user = null;
+  let user: any = null;
   let balance = { income: 0, expense: 0, total: 0 };
-  let recentTransactions = [];
-  let categoryData = [];
+  let recentTransactions: any[] = [];
+  let categoryData: any[] = [];
   let profile = { monthly_income: 0, savings_target: 0 };
   let loading = true;
 
@@ -58,7 +58,7 @@
 
       balance.total = balance.income - balance.expense;
 
-      const categoryTotals = {};
+      const categoryTotals: { [key: string]: number } = {};
       transactions
         .filter((t) => t.type === "expense")
         .forEach((t) => {
@@ -73,7 +73,7 @@
     }
   }
 
-  function formatCurrency(amount) {
+  function formatCurrency(amount: number) {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
