@@ -69,7 +69,7 @@
     loading = true;
 
     try {
-      const transactionData = {
+      const transactionData: any = {
         ...form,
         amount: parseFloat(form.amount),
         user_id: user.id,
