@@ -39,7 +39,7 @@ export async function syncPendingTransactions() {
 
   for (const key of pendingIds) {
     try {
-      const pending: PendingTransaction = await get(key);
+      const pending: PendingTransaction | undefined = await get(key);
       if (!pending) continue;
 
       let success = false;
