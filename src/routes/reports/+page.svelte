@@ -28,7 +28,7 @@
   async function loadMonthlyData() {
     const [year, month] = selectedMonth.split("-");
     const startDate = `${year}-${month}-01`;
-    const endDate = new Date(year, parseInt(month), 0).toISOString().split("T")[0];
+    const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
 
     const { data: transactions } = await supabase
       .from("transactions")
