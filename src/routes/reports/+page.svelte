@@ -4,10 +4,10 @@
   import { goto } from "$app/navigation";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
 
-  let user = null;
+  let user: any = null;
   let selectedMonth = new Date().toISOString().slice(0, 7);
-  let monthlyData = { income: 0, expense: 0, balance: 0, transactions: [] };
-  let categoryData = [];
+  let monthlyData: any = { income: 0, expense: 0, balance: 0, transactions: [] };
+  let categoryData: any[] = [];
   let aiSummary = "";
   let loading = true;
   let generatingAI = false;
@@ -28,7 +28,7 @@
   async function loadMonthlyData() {
     const [year, month] = selectedMonth.split("-");
     const startDate = `${year}-${month}-01`;
-    const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+    const endDate = new Date(year, parseInt(month), 0).toISOString().split("T")[0];
 
     const { data: transactions } = await supabase
       .from("transactions")
