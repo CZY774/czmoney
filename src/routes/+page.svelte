@@ -9,6 +9,7 @@
   let balance = { income: 0, expense: 0, total: 0 };
   let recentTransactions = [];
   let categoryData = [];
+  let profile = { monthly_income: 0, savings_target: 0 };
   let loading = true;
 
   onMount(async () => {
@@ -25,6 +26,17 @@
   async function loadDashboardData() {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
+
+    // Load profile data
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("monthly_income, savings_target")
+      .eq("id", user.id)
+      .single();
+
+    if (profileData) {
+      profile = profileData;
+    }
 
     const { data: transactions } = await supabase
       .from("transactions")
@@ -141,6 +153,67 @@
         </p>
       </div>
     </div>
+
+    <!-- Savings & Spending Progress -->
+    {#if profile.savings_target > 0 || profile.monthly_income > 0}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {#if profile.savings_target > 0}
+          <div class="bg-card p-6 rounded-lg border border-border">
+            <h3 class="text-sm font-medium text-muted-foreground mb-2">
+              Savings Progress
+            </h3>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-2xl font-bold text-blue-400">
+                {formatCurrency(balance.total)}
+              </span>
+              <span class="text-sm text-muted-foreground">
+                / {formatCurrency(profile.savings_target)}
+              </span>
+            </div>
+            <div class="w-full bg-muted rounded-full h-2">
+              <div
+                class="bg-blue-400 h-2 rounded-full transition-all"
+                style="width: {Math.min(
+                  100,
+                  Math.max(0, (balance.total / profile.savings_target) * 100)
+                )}%"
+              ></div>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+              {Math.round((balance.total / profile.savings_target) * 100)}% of target
+            </p>
+          </div>
+        {/if}
+
+        {#if profile.monthly_income > 0}
+          <div class="bg-card p-6 rounded-lg border border-border">
+            <h3 class="text-sm font-medium text-muted-foreground mb-2">
+              Spending Ratio
+            </h3>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-2xl font-bold text-orange-400">
+                {Math.round((balance.expense / profile.monthly_income) * 100)}%
+              </span>
+              <span class="text-sm text-muted-foreground">
+                of income spent
+              </span>
+            </div>
+            <div class="w-full bg-muted rounded-full h-2">
+              <div
+                class="bg-orange-400 h-2 rounded-full transition-all"
+                style="width: {Math.min(
+                  100,
+                  (balance.expense / profile.monthly_income) * 100
+                )}%"
+              ></div>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+              {formatCurrency(balance.expense)} / {formatCurrency(profile.monthly_income)}
+            </p>
+          </div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Quick Actions -->
     <div class="flex gap-4">
