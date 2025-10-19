@@ -1,13 +1,13 @@
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
 
   export let income = 0;
   export let expense = 0;
 
-  let chartContainer;
-  let chart;
-  let ApexCharts;
+  let chartContainer: HTMLElement;
+  let chart: any;
+  let ApexCharts: any;
 
   onMount(async () => {
     if (!browser) return;
@@ -80,7 +80,7 @@
       }
 
       chart = new ApexCharts(chartContainer, options);
-      chart.render().catch((err) => console.warn("Chart render failed:", err));
+      chart.render().catch((err: any) => console.warn("Chart render failed:", err));
     } catch (error) {
       console.warn("Chart render error:", error);
     }
