@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   export let type: "button" | "submit" | "reset" = "button";
   export let disabled = false;
   export let className = "";
