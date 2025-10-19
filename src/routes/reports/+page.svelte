@@ -50,7 +50,7 @@
 
       monthlyData.balance = monthlyData.income - monthlyData.expense;
 
-      const categoryTotals = {};
+      const categoryTotals: { [key: string]: number } = {};
       transactions
         .filter((t) => t.type === "expense")
         .forEach((t) => {
@@ -130,7 +130,7 @@
     URL.revokeObjectURL(url);
   }
 
-  function formatCurrency(amount) {
+  function formatCurrency(amount: number) {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
