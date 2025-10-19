@@ -4,7 +4,7 @@
   import { goto } from "$app/navigation";
   import { syncPendingTransactions, getSyncStatus } from "$lib/services/sync";
 
-  let user = null;
+  let user: any = null;
   let profile = {
     full_name: "",
     monthly_income: "",
