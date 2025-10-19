@@ -1,10 +1,10 @@
-<script>
+<script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { queueTransaction } from "$lib/services/sync";
 
   export let isOpen = false;
-  export let transaction = null; // For editing
+  export let transaction: any = null; // For editing
 
   const dispatch = createEventDispatcher();
 
@@ -16,9 +16,9 @@
     description: "",
   };
 
-  let categories = [];
+  let categories: any[] = [];
   let loading = false;
-  let user = null;
+  let user: any = null;
   let isOffline = false;
 
   onMount(async () => {
