@@ -109,7 +109,7 @@
     }
 
     const headers = ["Date", "Type", "Category", "Amount", "Description"];
-    const rows = monthlyData.transactions.map((t) => [
+    const rows = monthlyData.transactions.map((t: any) => [
       t.txn_date,
       t.type,
       t.categories?.name || "No Category",
@@ -118,7 +118,7 @@
     ]);
 
     const csvContent = [headers, ...rows]
-      .map((row) => row.map((field) => `"${field}"`).join(","))
+      .map((row) => row.map((field: any) => `"${field}"`).join(","))
       .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
