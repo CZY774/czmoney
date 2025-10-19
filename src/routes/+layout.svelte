@@ -6,7 +6,7 @@
   import { goto } from "$app/navigation";
   import { getSyncStatus } from "$lib/services/sync";
 
-  let user = null;
+  let user: any = null;
   let loading = true;
   let syncStatus = { pending: 0, lastSync: null };
   let isOffline = false;
@@ -45,7 +45,7 @@
     goto("/");
   }
 
-  function isActive(path) {
+  function isActive(path: string) {
     return $page.url.pathname === path;
   }
 </script>
