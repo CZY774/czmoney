@@ -177,7 +177,7 @@ export async function POST({ request }) {
           const amount = parts[3];
 
           if (day && description && amount && currentMonth) {
-            const date = parseDate(day, currentMonth, year);
+            const date = parseDate(day, currentMonth, parseInt(year));
             const amountNum = parseAmount(amount);
 
             if (date && amountNum > 0) {
