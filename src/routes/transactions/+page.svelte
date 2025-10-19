@@ -4,12 +4,12 @@
   import { goto } from "$app/navigation";
   import TransactionForm from "$lib/components/TransactionForm.svelte";
 
-  let user = null;
-  let transactions = [];
-  let categories = [];
+  let user: any = null;
+  let transactions: any[] = [];
+  let categories: any[] = [];
   let loading = true;
   let showForm = false;
-  let editingTransaction = null;
+  let editingTransaction: any = null;
 
   // Filters
   let filters = {
