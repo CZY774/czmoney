@@ -94,7 +94,7 @@
     showForm = true;
   }
 
-  function openEditForm(transaction) {
+  function openEditForm(transaction: any) {
     editingTransaction = transaction;
     showForm = true;
   }
@@ -103,7 +103,7 @@
     loadTransactions();
   }
 
-  function formatCurrency(amount) {
+  function formatCurrency(amount: number) {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
