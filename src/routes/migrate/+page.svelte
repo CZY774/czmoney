@@ -6,7 +6,7 @@
   let user = null;
   let migrating = false;
   let progress = "";
-  let results = { expenses: 0, income: 0, total: 0 };
+  let results: any = { expenses: 0, income: 0, total: 0 };
 
   // Sample data from your CSV files
   const sampleTransactions = [
