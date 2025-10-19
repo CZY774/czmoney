@@ -17,7 +17,7 @@ export async function handle({ event, resolve }) {
     const {
       data: { user },
     } = await supabase.auth.getUser(token);
-    event.locals.user = user;
+    event.locals.user = user || undefined;
   }
 
   return resolve(event);
