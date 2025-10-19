@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
