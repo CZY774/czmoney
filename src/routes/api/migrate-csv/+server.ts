@@ -59,7 +59,7 @@ const categoryKeywords = {
   Other: ["persembahan", "babi"],
 };
 
-function parseAmount(amountStr) {
+function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
 
   let cleanAmount = amountStr.replace(/[Rp,\s]/g, "");
@@ -74,13 +74,13 @@ function parseAmount(amountStr) {
   return parseInt(cleanAmount.replace(/\./g, "")) || 0;
 }
 
-function parseDate(dayStr, month, year) {
+function parseDate(dayStr: string, month: string, year: number): string | null {
   if (!dayStr || !month) return null;
 
   const day = parseInt(dayStr.replace(/[^\d]/g, ""));
   if (isNaN(day)) return null;
 
-  const monthNum = monthMap[month];
+  const monthNum = monthMap[month as keyof typeof monthMap];
   if (!monthNum) return null;
 
   return `${year}-${monthNum.toString().padStart(2, "0")}-${day
@@ -88,7 +88,7 @@ function parseDate(dayStr, month, year) {
     .padStart(2, "0")}`;
 }
 
-function categorizeItem(description) {
+function categorizeItem(description: string): string {
   const desc = description.toLowerCase();
 
   for (const [category, keywords] of Object.entries(categoryKeywords)) {
@@ -100,7 +100,7 @@ function categorizeItem(description) {
   return "Other";
 }
 
-function parseIncomeFromHeader(headerLine) {
+function parseIncomeFromHeader(headerLine: string): { month: string; amount: number } | null {
   const match = headerLine.match(/([A-Z]+)\s*-\s*([0-9.,]+)([kjtKJT]+)?/);
   if (!match) return null;
 
@@ -145,13 +145,13 @@ export async function POST({ request }) {
       for (const line of lines) {
         // Check for month header
         const monthMatch = line.match(/^([A-Z]+)/);
-        if (monthMatch && monthMap[monthMatch[1]]) {
+        if (monthMatch && monthMap[monthMatch[1] as keyof typeof monthMap]) {
           currentMonth = monthMatch[1];
 
           // Check for income in header
           const income = parseIncomeFromHeader(line);
           if (income) {
-            const incomeDate = `${year}-${monthMap[income.month]
+            const incomeDate = `${year}-${monthMap[income.month as keyof typeof monthMap]
               .toString()
               .padStart(2, "0")}-01`;
             allIncomeEntries.push({
@@ -241,7 +241,7 @@ export async function POST({ request }) {
         allTransactions[allTransactions.length - 1]?.txn_date
       }`,
     });
-  } catch (error) {
+  } catch (error: any) {
     return json({ error: error.message }, { status: 500 });
   }
 }
