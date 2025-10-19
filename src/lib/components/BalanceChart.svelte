@@ -9,21 +9,25 @@
   let chart: any;
   let ApexCharts: any;
 
-  onMount(async () => {
+  onMount(() => {
     if (!browser) return;
 
-    try {
-      const module = await import("apexcharts");
-      ApexCharts = module.default;
+    const loadChart = async () => {
+      try {
+        const module = await import("apexcharts");
+        ApexCharts = module.default;
 
-      setTimeout(() => {
-        if (chartContainer && ApexCharts) {
-          renderChart();
-        }
-      }, 100);
-    } catch (error) {
-      console.warn("Failed to load ApexCharts:", error);
-    }
+        setTimeout(() => {
+          if (chartContainer && ApexCharts) {
+            renderChart();
+          }
+        }, 100);
+      } catch (error) {
+        console.warn("Failed to load ApexCharts:", error);
+      }
+    };
+
+    loadChart();
 
     return () => {
       if (chart) {
