@@ -1,5 +1,5 @@
 <script>
-  export let type = "button";
+  export let type: "button" | "submit" | "reset" = "button";
   export let disabled = false;
   export let className = "";
 </script>
