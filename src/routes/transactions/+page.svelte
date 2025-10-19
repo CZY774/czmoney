@@ -65,7 +65,7 @@
     }
   }
 
-  async function deleteTransaction(id) {
+  async function deleteTransaction(id: string) {
     if (!confirm("Are you sure you want to delete this transaction?")) {
       return;
     }
