@@ -153,6 +153,7 @@
           type="month"
           bind:value={filters.month}
           class="w-full p-2 border border-border rounded bg-background"
+          style="color-scheme: dark;"
         />
       </div>
 
