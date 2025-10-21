@@ -1,11 +1,13 @@
 <script>
   import { goto } from "$app/navigation";
   import { supabase } from "$lib/services/supabase";
+  import { Eye, EyeOff } from "lucide-svelte";
 
   let email = "";
   let password = "";
   let loading = false;
   let error = "";
+  let showPassword = false;
 
   async function handleLogin() {
     loading = true;
@@ -57,14 +59,27 @@
         <label for="password" class="block text-sm font-medium mb-2"
           >Password</label
         >
-        <input
-          id="password"
-          type="password"
-          bind:value={password}
-          required
-          class="w-full p-2 border border-border rounded bg-background"
-          placeholder="Enter your password"
-        />
+        <div class="relative">
+          <input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            bind:value={password}
+            required
+            class="w-full p-2 pr-10 border border-border rounded bg-background"
+            placeholder="Enter your password"
+          />
+          <button
+            type="button"
+            on:click={() => (showPassword = !showPassword)}
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {#if showPassword}
+              <EyeOff size={20} />
+            {:else}
+              <Eye size={20} />
+            {/if}
+          </button>
+        </div>
       </div>
 
       <button
