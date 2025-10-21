@@ -168,6 +168,7 @@
       type="month"
       bind:value={selectedMonth}
       class="p-3 border border-border rounded-lg bg-background text-foreground"
+      style="color-scheme: dark;"
     />
   </div>
 
