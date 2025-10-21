@@ -171,6 +171,7 @@
             placeholder="0"
             min="0"
             step="100000"
+            style="color-scheme: dark;"
           />
         </div>
 
@@ -186,6 +187,7 @@
             placeholder="0"
             min="0"
             step="50000"
+            style="color-scheme: dark;"
           />
         </div>
 
