@@ -157,6 +157,8 @@
             bind:value={form.txn_date}
             class="w-full p-2 border border-border rounded bg-background"
             required
+            style="color-scheme: dark;"
+            
           />
         </div>
 
@@ -205,6 +207,7 @@
             class="w-full p-2 border border-border rounded bg-background"
             placeholder="0"
             required
+            style="color-scheme: dark;"
           />
         </div>
 
