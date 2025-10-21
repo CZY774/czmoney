@@ -166,7 +166,7 @@ czmoney/
 - App works completely offline
 - Transactions are queued locally
 - Auto-syncs when connection is restored
-- Check sync status in Settings
+- Check sync status in Settings 
 
 ## Features in Detail
 
@@ -174,7 +174,7 @@ czmoney/
 
 Default categories are automatically created:
 - **Income**: Salary, Freelance, Investment
-- **Expense**: Food & Drink, Transport, Shopping, Entertainment, Bills & Utilities, Healthcare, Other
+- **Expense**: Food & Drink, Transport, Shopping, Entertainment, Bills & Utilities, Healthcare, Other, Apart
 
 You can add custom categories in the database directly.
 
