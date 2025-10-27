@@ -83,6 +83,12 @@
     });
 
     if (response.ok) {
+      // Clear IndexedDB cache to force refresh
+      if (typeof window !== "undefined") {
+        const { del } = await import("idb-keyval");
+        await del("cached_transactions");
+      }
+      
       await loadTransactions();
     } else {
       alert("Failed to delete transaction");
