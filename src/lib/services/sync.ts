@@ -109,9 +109,14 @@ export async function getCachedTransactions() {
   const cached = await get("cached_transactions");
   if (!cached) return [];
 
-  // Return cached data if less than 1 hour old
-  const isRecent = Date.now() - cached.timestamp < 3600000;
+  // Return cached data if less than 5 minutes old
+  const isRecent = Date.now() - cached.timestamp < 300000; // 5 minutes instead of 1 hour
   return isRecent ? cached.data : [];
+}
+
+// Clear cached transactions (called after mutations)
+export async function clearTransactionCache() {
+  await del("cached_transactions");
 }
 
 // Auto-sync when online
@@ -119,6 +124,8 @@ if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
     syncPendingTransactions().then(() => {
       set("lastSync", Date.now());
+      // Clear cache to force fresh data fetch
+      clearTransactionCache();
     });
   });
 }
