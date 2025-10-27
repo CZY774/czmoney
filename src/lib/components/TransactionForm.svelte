@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
-  import { queueTransaction } from "$lib/services/sync";
+  import { queueTransaction, clearTransactionCache } from "$lib/services/sync";
 
   export let isOpen = false;
   export let transaction: any = null; // For editing
@@ -107,6 +107,9 @@
         const result = await response.json();
 
         if (response.ok) {
+          // Clear cache to force fresh data
+          await clearTransactionCache();
+          
           dispatch("success", result.data);
           closeModal();
         } else {
