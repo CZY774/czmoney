@@ -3,6 +3,7 @@
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import TransactionForm from "$lib/components/TransactionForm.svelte";
+  import { clearTransactionCache } from "$lib/services/sync";
 
   let user: any = null;
   let transactions: any[] = [];
@@ -83,11 +84,8 @@
     });
 
     if (response.ok) {
-      // Clear IndexedDB cache to force refresh
-      if (typeof window !== "undefined") {
-        const { del } = await import("idb-keyval");
-        await del("cached_transactions");
-      }
+      // Clear cache to force fresh data
+      await clearTransactionCache();
       
       await loadTransactions();
     } else {
