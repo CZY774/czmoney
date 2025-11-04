@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import BalanceChart from "$lib/components/BalanceChart.svelte";
@@ -18,10 +18,33 @@
 
     if (user) {
       await loadDashboardData();
+      
+      // Listen for storage events (when data changes in other tabs/components)
+      window.addEventListener('storage', handleStorageChange);
+      
+      // Listen for focus events to refresh when returning to dashboard
+      window.addEventListener('focus', handleWindowFocus);
     }
 
     loading = false;
   });
+
+  onDestroy(() => {
+    window.removeEventListener('storage', handleStorageChange);
+    window.removeEventListener('focus', handleWindowFocus);
+  });
+
+  function handleStorageChange(e: StorageEvent) {
+    if (e.key === 'transaction_updated' && user) {
+      loadDashboardData();
+    }
+  }
+
+  function handleWindowFocus() {
+    if (user) {
+      loadDashboardData();
+    }
+  }
 
   async function loadDashboardData() {
     const startOfMonth = new Date();
