@@ -87,9 +87,6 @@
       // Clear cache to force fresh data
       await clearTransactionCache();
       
-      // Notify dashboard to refresh
-      localStorage.setItem('transaction_updated', Date.now().toString());
-      
       await loadTransactions();
     } else {
       alert("Failed to delete transaction");
