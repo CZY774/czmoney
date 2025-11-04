@@ -117,6 +117,8 @@ export async function getCachedTransactions() {
 // Clear cached transactions (called after mutations)
 export async function clearTransactionCache() {
   await del("cached_transactions");
+  // Trigger dashboard refresh
+  window.dispatchEvent(new CustomEvent('transactionUpdated'));
 }
 
 // Auto-sync when online
