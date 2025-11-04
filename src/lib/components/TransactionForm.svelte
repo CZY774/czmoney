@@ -84,9 +84,6 @@
         const action = transaction ? "update" : "create";
         await queueTransaction(action, transactionData);
 
-        // Notify dashboard to refresh
-        localStorage.setItem('transaction_updated', Date.now().toString());
-
         dispatch("success", { ...transactionData, _pending: true });
         alert("Transaction saved offline. Will sync when online.");
         closeModal();
@@ -112,9 +109,6 @@
         if (response.ok) {
           // Clear cache to force fresh data
           await clearTransactionCache();
-          
-          // Notify dashboard to refresh
-          localStorage.setItem('transaction_updated', Date.now().toString());
           
           dispatch("success", result.data);
           closeModal();
