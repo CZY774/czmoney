@@ -2,6 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "$env/dynamic/private";
 
 export async function handle({ event, resolve }) {
+  // Skip auth for static files
+  if (event.url.pathname.startsWith('/icon-') || event.url.pathname.endsWith('.png') || event.url.pathname.endsWith('.ico')) {
+    return resolve(event);
+  }
+
   if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error("Missing Supabase environment variables");
     return resolve(event);
