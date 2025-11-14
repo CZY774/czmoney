@@ -45,6 +45,7 @@
       profile = profileData;
     }
 
+    // Force fresh data with timestamp to bypass cache
     const { data: transactions } = await supabase
       .from("transactions")
       .select("*, categories(name)")
