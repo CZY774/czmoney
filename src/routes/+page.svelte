@@ -33,6 +33,7 @@
 
   async function loadDashboardData() {
     if (!user) return;
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
 
