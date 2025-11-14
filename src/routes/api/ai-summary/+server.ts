@@ -17,7 +17,7 @@ async function handleRequest(request: Request, url: URL) {
           error: "AI service temporarily unavailable",
           details: "Missing configuration",
         },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
@@ -48,7 +48,7 @@ async function handleRequest(request: Request, url: URL) {
     if (!month) {
       return json(
         { error: "Month parameter required (YYYY-MM)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -180,7 +180,7 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
             error: "AI service unavailable",
             details: "Gemini API error - check API key and quota",
           },
-          { status: 503 }
+          { status: 503 },
         );
       }
       if (
@@ -192,7 +192,7 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
             error: "Database error",
             details: "Unable to fetch transaction data",
           },
-          { status: 503 }
+          { status: 503 },
         );
       }
     }
@@ -202,7 +202,7 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
         error: "Failed to generate summary",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
