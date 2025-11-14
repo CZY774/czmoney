@@ -54,7 +54,9 @@ self.addEventListener("fetch", (event) => {
       if (response) {
         return response;
       }
-    } catch {}
+    } catch {
+      // Ignore cache errors
+    }
 
     try {
       const response = await fetch(event.request);
