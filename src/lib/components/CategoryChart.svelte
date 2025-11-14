@@ -2,11 +2,11 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
 
-  export let categories: any[] = [];
+  export let categories: Array<{ name: string; amount: number }> = [];
 
   let chartContainer: HTMLElement;
-  let chart: any;
-  let ApexCharts: any;
+  let chart: ApexCharts | null = null;
+  let ApexCharts: typeof import('apexcharts').default | null = null;
 
   onMount(() => {
     if (!browser) return;
@@ -72,7 +72,7 @@
       }
 
       chart = new ApexCharts(chartContainer, options);
-      chart.render().catch((err: any) => console.warn("Chart render failed:", err));
+      chart.render().catch((err: Error) => console.warn("Chart render failed:", err));
     } catch (error) {
       console.warn("Chart render error:", error);
     }
