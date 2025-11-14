@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
 
   $: status = $page.status;
   $: message = $page.error?.message;
@@ -169,7 +170,7 @@
       </button>
 
       <button
-        on:click={() => goto("/")}
+        on:click={() => goto(resolve("/"))}
         class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
       >
         🏠 Go Home
@@ -180,16 +181,16 @@
     <div class="pt-8 border-t border-border">
       <p class="text-sm text-muted-foreground">
         {#if status === 401}
-          Try <a href="/auth/login" class="text-primary hover:underline"
+          Try <a href={resolve("/auth/login")} class="text-primary hover:underline"
             >signing in</a
           >
           or
-          <a href="/auth/register" class="text-primary hover:underline"
+          <a href={resolve("/auth/register")} class="text-primary hover:underline"
             >creating an account</a
           >
         {:else if status === 404}
           Check the URL or browse from the <a
-            href="/"
+            href={resolve("/")}
             class="text-primary hover:underline">home page</a
           >
         {:else if status >= 500}
