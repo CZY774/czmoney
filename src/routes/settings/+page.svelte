@@ -20,7 +20,7 @@
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
-    user = data.session?.user;
+    user = data.session?.user || null;
 
     if (!user) {
       goto(resolve("/auth/login"));
@@ -41,6 +41,7 @@
   });
 
   async function loadProfile() {
+    if (!user) return;
     const { data } = await supabase
       .from("profiles")
       .select("*")
@@ -62,6 +63,7 @@
   }
 
   async function saveProfile() {
+    if (!user) return;
     saving = true;
 
     try {
