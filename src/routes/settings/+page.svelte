@@ -2,9 +2,10 @@
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { syncPendingTransactions, getSyncStatus } from "$lib/services/sync";
 
-  let user: any = null;
+  let user: { id: string; email?: string } | null = null;
   let profile = {
     full_name: "",
     monthly_income: "",
@@ -22,7 +23,7 @@
     user = data.session?.user;
 
     if (!user) {
-      goto("/auth/login");
+      goto(resolve("/auth/login"));
       return;
     }
 
@@ -119,14 +120,7 @@
 
   async function signOut() {
     await supabase.auth.signOut();
-    goto("/");
-  }
-
-  function formatCurrency(amount: number) {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-    }).format(amount);
+    goto(resolve("/"));
   }
 </script>
 
