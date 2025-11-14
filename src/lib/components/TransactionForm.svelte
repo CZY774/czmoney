@@ -4,7 +4,7 @@
   import { queueTransaction, clearTransactionCache } from "$lib/services/sync";
 
   export let isOpen = false;
-  export let transaction: any = null; // For editing
+  export let transaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -16,9 +16,9 @@
     description: "",
   };
 
-  let categories: any[] = [];
+  let categories: Array<{ id: string; name: string; type: string; user_id: string }> = [];
   let loading = false;
-  let user: any = null;
+  let user: { id: string } | null = null;
   let isOffline = false;
 
   onMount(async () => {
@@ -69,7 +69,7 @@
     loading = true;
 
     try {
-      const transactionData: any = {
+      const transactionData: Record<string, string | number> = {
         ...form,
         amount: parseFloat(form.amount),
         user_id: user.id,
@@ -190,7 +190,7 @@
             class="w-full p-2 border border-border rounded bg-background"
           >
             <option value="">No Category</option>
-            {#each filteredCategories as category}
+            {#each filteredCategories as category (category.id)}
               <option value={category.id}>{category.name}</option>
             {/each}
           </select>
