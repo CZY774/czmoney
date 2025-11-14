@@ -7,7 +7,7 @@
   export let height: number = 350;
 
   let chartContainer: HTMLDivElement;
-  let ApexCharts: any;
+  let ApexCharts: typeof import('apexcharts').default | null = null;
 
   onMount(async () => {
     // Dynamically import ApexCharts to avoid SSR issues
