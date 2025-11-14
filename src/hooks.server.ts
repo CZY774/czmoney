@@ -3,7 +3,11 @@ import { env } from "$env/dynamic/private";
 
 export async function handle({ event, resolve }) {
   // Skip auth for static files
-  if (event.url.pathname.startsWith('/icon-') || event.url.pathname.endsWith('.png') || event.url.pathname.endsWith('.ico')) {
+  if (
+    event.url.pathname.startsWith("/icon-") ||
+    event.url.pathname.endsWith(".png") ||
+    event.url.pathname.endsWith(".ico")
+  ) {
     return resolve(event);
   }
 
@@ -14,7 +18,7 @@ export async function handle({ event, resolve }) {
 
   const supabase = createClient(
     env.VITE_SUPABASE_URL,
-    env.SUPABASE_SERVICE_ROLE_KEY
+    env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
   const token = event.cookies.get("sb-access-token");
