@@ -7,7 +7,8 @@
   export let height: number = 350;
 
   let chartContainer: HTMLDivElement;
-  let ApexCharts: typeof import('apexcharts').default | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let ApexCharts: any = null;
 
   onMount(async () => {
     // Dynamically import ApexCharts to avoid SSR issues
