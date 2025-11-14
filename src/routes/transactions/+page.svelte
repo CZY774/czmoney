@@ -22,7 +22,7 @@
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
-    user = data.session?.user;
+    user = data.session?.user || null;
 
     if (!user) {
       goto(resolve("/auth/login"));
@@ -35,6 +35,7 @@
   });
 
   async function loadCategories() {
+    if (!user) return;
     const { data } = await supabase
       .from("categories")
       .select("*")
@@ -238,8 +239,8 @@
                     {transaction.description || "No description"}
                   </p>
                   <p class="text-sm text-muted-foreground">
-                    {getCategoryName(transaction.category_id)} • {new Date(
-                      transaction.txn_date
+                    {getCategoryName(transaction.category_id as string)} • {new Date(
+                      transaction.txn_date as string
                     ).toLocaleDateString()}
                   </p>
                 </div>
@@ -254,7 +255,7 @@
                     : 'text-red-500'}"
                 >
                   {transaction.type === "income" ? "+" : "-"}{formatCurrency(
-                    transaction.amount
+                    transaction.amount as number
                   )}
                 </p>
                 <p class="text-sm text-muted-foreground capitalize">
@@ -270,7 +271,7 @@
                   Edit
                 </button>
                 <button
-                  on:click={() => deleteTransaction(transaction.id)}
+                  on:click={() => deleteTransaction(transaction.id as string)}
                   class="px-3 py-1 text-sm text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
                 >
                   Delete
