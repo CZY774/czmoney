@@ -54,9 +54,11 @@
     if (filters.category) params.append("category", filters.category);
     if (filters.type) params.append("type", filters.type);
 
-    const response = await fetch(`/api/transactions?${params}`, {
+    const response = await fetch(`/api/transactions?${params}&_t=${Date.now()}`, {
       headers: {
         Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
       },
     });
 
@@ -74,11 +76,13 @@
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token;
 
-    const response = await fetch("/api/transactions", {
+    const response = await fetch(`/api/transactions?_t=${Date.now()}`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
       },
       body: JSON.stringify({ id }),
     });
@@ -88,6 +92,9 @@
       await clearTransactionCache();
       
       await loadTransactions();
+      
+      // Notify dashboard
+      window.dispatchEvent(new CustomEvent('transactionUpdated'));
     } else {
       alert("Failed to delete transaction");
     }
@@ -103,8 +110,12 @@
     showForm = true;
   }
 
-  function handleFormSuccess() {
-    loadTransactions();
+  async function handleFormSuccess() {
+    // Force immediate reload
+    await clearTransactionCache();
+    await loadTransactions();
+    // Notify dashboard
+    window.dispatchEvent(new CustomEvent('transactionUpdated'));
   }
 
   function formatCurrency(amount: number) {
