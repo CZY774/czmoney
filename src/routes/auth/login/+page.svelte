@@ -1,5 +1,6 @@
 <script>
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { supabase } from "$lib/services/supabase";
   import { Eye, EyeOff } from "lucide-svelte";
 
@@ -21,7 +22,7 @@
     if (authError) {
       error = authError.message;
     } else {
-      goto("/");
+      goto(resolve("/"));
     }
 
     loading = false;
@@ -93,7 +94,7 @@
 
     <p class="text-center mt-4 text-sm">
       Don't have an account?
-      <a href="/auth/register" class="text-primary hover:underline">Register</a>
+      <a href={resolve("/auth/register")} class="text-primary hover:underline">Register</a>
     </p>
   </div>
 </div>
