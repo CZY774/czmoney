@@ -109,7 +109,8 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("transactions")
     .insert([
       {
@@ -171,7 +172,8 @@ export const PUT: RequestHandler = async ({ request }) => {
     return json({ error: "Transaction ID required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("transactions")
     .update({
       txn_date,
