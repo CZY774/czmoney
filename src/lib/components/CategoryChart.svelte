@@ -5,8 +5,10 @@
   export let categories: Array<{ name: string; amount: number }> = [];
 
   let chartContainer: HTMLElement;
-  let chart: ApexCharts | null = null;
-  let ApexCharts: typeof import('apexcharts').default | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let chart: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let ApexCharts: any = null;
 
   onMount(() => {
     if (!browser) return;
@@ -72,7 +74,8 @@
       }
 
       chart = new ApexCharts(chartContainer, options);
-      chart.render().catch((err: Error) => console.warn("Chart render failed:", err));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      chart.render().catch((err: any) => console.warn("Chart render failed:", err));
     } catch (error) {
       console.warn("Chart render error:", error);
     }
