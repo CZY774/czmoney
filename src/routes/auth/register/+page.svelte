@@ -1,5 +1,6 @@
 <script>
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { supabase } from "$lib/services/supabase";
   import { Eye, EyeOff } from "lucide-svelte";
 
@@ -36,7 +37,7 @@
       alert(
         "Registration successful! Please check your email to verify your account."
       );
-      goto("/auth/login");
+      goto(resolve("/auth/login"));
     }
 
     loading = false;
@@ -137,7 +138,7 @@
 
     <p class="text-center mt-4 text-sm">
       Already have an account?
-      <a href="/auth/login" class="text-primary hover:underline">Login</a>
+      <a href={resolve("/auth/login")} class="text-primary hover:underline">Login</a>
     </p>
   </div>
 </div>
