@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 
 interface PendingTransaction {
   id: string;
-  data: any;
+  data: Record<string, unknown>;
   action: "create" | "update" | "delete";
   timestamp: number;
 }
@@ -11,7 +11,7 @@ interface PendingTransaction {
 // Queue transaction for offline sync
 export async function queueTransaction(
   action: "create" | "update" | "delete",
-  data: any
+  data: Record<string, unknown>,
 ) {
   const id = `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const pending: PendingTransaction = {
@@ -31,7 +31,7 @@ export async function syncPendingTransactions() {
 
   const pendingKeys = await keys();
   const pendingIds = pendingKeys.filter((key) =>
-    key.toString().startsWith("pending_")
+    key.toString().startsWith("pending_"),
   );
 
   let synced = 0;
@@ -45,28 +45,31 @@ export async function syncPendingTransactions() {
       let success = false;
 
       switch (pending.action) {
-        case "create":
+        case "create": {
           const { error: createError } = await supabase
             .from("transactions")
             .insert([pending.data]);
           success = !createError;
           break;
+        }
 
-        case "update":
+        case "update": {
           const { error: updateError } = await supabase
             .from("transactions")
             .update(pending.data)
             .eq("id", pending.data.id);
           success = !updateError;
           break;
+        }
 
-        case "delete":
+        case "delete": {
           const { error: deleteError } = await supabase
             .from("transactions")
             .delete()
             .eq("id", pending.data.id);
           success = !deleteError;
           break;
+        }
       }
 
       if (success) {
@@ -75,7 +78,7 @@ export async function syncPendingTransactions() {
       } else {
         failed++;
       }
-    } catch (error) {
+    } catch {
       failed++;
     }
   }
@@ -87,7 +90,7 @@ export async function syncPendingTransactions() {
 export async function getSyncStatus() {
   const pendingKeys = await keys();
   const pendingCount = pendingKeys.filter((key) =>
-    key.toString().startsWith("pending_")
+    key.toString().startsWith("pending_"),
   ).length;
 
   return {
@@ -97,7 +100,7 @@ export async function getSyncStatus() {
 }
 
 // Cache transactions for offline viewing
-export async function cacheTransactions(transactions: any[]) {
+export async function cacheTransactions(transactions: Array<Record<string, unknown>>) {
   await set("cached_transactions", {
     data: transactions,
     timestamp: Date.now(),
@@ -118,7 +121,7 @@ export async function getCachedTransactions() {
 export async function clearTransactionCache() {
   await del("cached_transactions");
   // Trigger dashboard refresh
-  window.dispatchEvent(new CustomEvent('transactionUpdated'));
+  window.dispatchEvent(new CustomEvent("transactionUpdated"));
 }
 
 // Auto-sync when online
