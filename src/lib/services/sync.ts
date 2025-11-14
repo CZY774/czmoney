@@ -100,7 +100,9 @@ export async function getSyncStatus() {
 }
 
 // Cache transactions for offline viewing
-export async function cacheTransactions(transactions: Array<Record<string, unknown>>) {
+export async function cacheTransactions(
+  transactions: Array<Record<string, unknown>>,
+) {
   await set("cached_transactions", {
     data: transactions,
     timestamp: Date.now(),
