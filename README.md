@@ -67,7 +67,8 @@ PUBLIC_APP_NAME=CZmoneY
 PUBLIC_PWA_THEME_COLOR=#0b1221
 ```
 
-**Important**: 
+**Important**:
+
 - `VITE_*` variables are exposed to the client
 - `SUPABASE_SERVICE_ROLE_KEY` and `GEMINI_API_KEY` are server-only (never expose to client)
 
@@ -166,13 +167,14 @@ czmoney/
 - App works completely offline
 - Transactions are queued locally
 - Auto-syncs when connection is restored
-- Check sync status in Settings 
+- Check sync status in Settings
 
 ## Features in Detail
 
 ### Categories
 
 Default categories are automatically created:
+
 - **Income**: Salary, Freelance, Investment
 - **Expense**: Food & Drink, Transport, Shopping, Entertainment, Bills & Utilities, Healthcare, Other, Apart
 
@@ -186,6 +188,7 @@ You can add custom categories in the database directly.
 ### CSV Export
 
 Export your transaction history:
+
 1. Go to Reports
 2. Select month
 3. Click "Export CSV"
@@ -194,11 +197,13 @@ Export your transaction history:
 ### PWA Installation
 
 **Mobile (Chrome/Safari)**:
+
 - Visit the app
 - Tap "Add to Home Screen" from browser menu
 - App installs like a native app
 
 **Desktop (Chrome/Edge)**:
+
 - Visit the app
 - Click install icon in address bar
 - App opens in standalone window
@@ -206,12 +211,14 @@ Export your transaction history:
 ## Security Best Practices
 
 ✅ **Implemented**:
+
 - Row Level Security (RLS) on all tables
 - Server-only API keys (never exposed to client)
 - Supabase Auth with secure session management
 - HTTPS required for PWA features
 
 ⚠️ **Important**:
+
 - Never commit `.env` file to version control
 - Use environment secrets in Vercel
 - Rotate API keys if exposed
@@ -317,6 +324,7 @@ MIT License - feel free to use for personal or commercial projects.
 ## Support
 
 For issues or questions:
+
 - Check existing GitHub issues
 - Create a new issue with details
 - Include error logs and steps to reproduce
