@@ -4,9 +4,10 @@
   import { page } from "$app/stores";
   import { supabase, getSession } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { getSyncStatus } from "$lib/services/sync";
 
-  let user: any = null;
+  let user: { id: string; email?: string } | null = null;
   let loading = true;
   let syncStatus = { pending: 0, lastSync: null };
   let isOffline = false;
@@ -66,7 +67,7 @@
 
   async function signOut() {
     await supabase.auth.signOut();
-    goto("/");
+    goto(resolve("/"));
   }
 
   function isActive(path: string) {
@@ -90,7 +91,7 @@
           <!-- Desktop Menu -->
           <div class="hidden md:flex items-center space-x-8">
             <a
-              href="/"
+              href={resolve("/")}
               class="text-sm font-medium transition-colors {isActive('/')
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'}"
@@ -98,7 +99,7 @@
               Dashboard
             </a>
             <a
-              href="/transactions"
+              href={resolve("/transactions")}
               class="text-sm font-medium transition-colors {isActive(
                 '/transactions'
               )
@@ -108,7 +109,7 @@
               Transactions
             </a>
             <a
-              href="/reports"
+              href={resolve("/reports")}
               class="text-sm font-medium transition-colors {isActive('/reports')
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'}"
@@ -116,7 +117,7 @@
               Reports
             </a>
             <a
-              href="/settings"
+              href={resolve("/settings")}
               class="text-sm font-medium transition-colors {isActive(
                 '/settings'
               )
@@ -186,7 +187,7 @@
           <div id="mobile-menu" class="md:hidden py-4 border-t border-border">
             <div class="flex flex-col space-y-3">
               <a
-                href="/"
+                href={resolve("/")}
                 class="py-2 text-sm font-medium {isActive('/')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
@@ -194,7 +195,7 @@
                 Dashboard
               </a>
               <a
-                href="/transactions"
+                href={resolve("/transactions")}
                 class="py-2 text-sm font-medium {isActive('/transactions')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
@@ -202,7 +203,7 @@
                 Transactions
               </a>
               <a
-                href="/reports"
+                href={resolve("/reports")}
                 class="py-2 text-sm font-medium {isActive('/reports')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
@@ -210,7 +211,7 @@
                 Reports
               </a>
               <a
-                href="/settings"
+                href={resolve("/settings")}
                 class="py-2 text-sm font-medium {isActive('/settings')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
