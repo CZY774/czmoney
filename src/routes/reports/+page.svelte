@@ -2,12 +2,13 @@
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
 
-  let user: any = null;
+  let user: { id: string } | null = null;
   let selectedMonth = new Date().toISOString().slice(0, 7);
-  let monthlyData: any = { income: 0, expense: 0, balance: 0, transactions: [] };
-  let categoryData: any[] = [];
+  let monthlyData: { income: number; expense: number; balance: number; transactions: Array<Record<string, unknown>> } = { income: 0, expense: 0, balance: 0, transactions: [] };
+  let categoryData: Array<{ name: string; amount: number }> = [];
   let aiSummary = "";
   let loading = true;
   let generatingAI = false;
@@ -17,7 +18,7 @@
     user = data.session?.user;
 
     if (!user) {
-      goto("/auth/login");
+      goto(resolve("/auth/login"));
       return;
     }
 
@@ -109,16 +110,16 @@
     }
 
     const headers = ["Date", "Type", "Category", "Amount", "Description"];
-    const rows = monthlyData.transactions.map((t: any) => [
+    const rows = monthlyData.transactions.map((t: Record<string, unknown>) => [
       t.txn_date,
       t.type,
-      t.categories?.name || "No Category",
+      (t.categories as { name?: string })?.name || "No Category",
       t.amount,
       t.description || "",
     ]);
 
     const csvContent = [headers, ...rows]
-      .map((row) => row.map((field: any) => `"${field}"`).join(","))
+      .map((row) => row.map((field: unknown) => `"${field}"`).join(","))
       .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -256,7 +257,7 @@
           <h2 class="text-xl font-semibold">Category Breakdown</h2>
         </div>
         <div class="divide-y divide-border">
-          {#each categoryData as category}
+          {#each categoryData as category (category.name)}
             <div class="p-4 flex justify-between items-center">
               <span class="font-medium">{category.name}</span>
               <span class="font-semibold text-red-400"
