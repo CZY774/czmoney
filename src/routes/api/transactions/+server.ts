@@ -7,7 +7,7 @@ import type { Transaction } from "$lib/types";
 const supabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-let supabase: any = null;
+let supabase: ReturnType<typeof createClient> | null = null;
 
 if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
@@ -65,13 +65,16 @@ export const GET: RequestHandler = async ({ url, request }) => {
     return json({ error: error.message }, { status: 500 });
   }
 
-  return json({ data }, {
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    }
-  });
+  return json(
+    { data },
+    {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    },
+  );
 };
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -125,11 +128,14 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: error.message }, { status: 500 });
   }
 
-  return json({ data }, {
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
-    }
-  });
+  return json(
+    { data },
+    {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      },
+    },
+  );
 };
 
 export const PUT: RequestHandler = async ({ request }) => {
@@ -183,11 +189,14 @@ export const PUT: RequestHandler = async ({ request }) => {
     return json({ error: error.message }, { status: 500 });
   }
 
-  return json({ data }, {
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
-    }
-  });
+  return json(
+    { data },
+    {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      },
+    },
+  );
 };
 
 export const DELETE: RequestHandler = async ({ request }) => {
@@ -226,9 +235,12 @@ export const DELETE: RequestHandler = async ({ request }) => {
     return json({ error: error.message }, { status: 500 });
   }
 
-  return json({ success: true }, {
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate'
-    }
-  });
+  return json(
+    { success: true },
+    {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      },
+    },
+  );
 };
