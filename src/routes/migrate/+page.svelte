@@ -2,11 +2,12 @@
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
 
-  let user = null;
+  let user: { id: string } | null = null;
   let migrating = false;
   let progress = "";
-  let results: any = { expenses: 0, income: 0, total: 0 };
+  let results: { expenses: number; income: number; total: number; dateRange?: string } = { expenses: 0, income: 0, total: 0 };
 
   // Sample data from your CSV files
   const sampleTransactions = [
@@ -69,7 +70,7 @@
     user = data.session?.user;
 
     if (!user) {
-      goto("/auth/login");
+      goto(resolve("/auth/login"));
       return;
     }
   });
@@ -119,11 +120,11 @@
         income: incomeCount,
         total: imported,
         dateRange: "2024-01-01 to 2025-01-13",
-      } as any;
+      };
 
       progress = "Migration completed!";
-    } catch (error: any) {
-      progress = `Error: ${error.message}`;
+    } catch (error: unknown) {
+      progress = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
     } finally {
       migrating = false;
     }
@@ -180,7 +181,7 @@
         </div>
         <div class="mt-4">
           <a
-            href="/"
+            href={resolve("/")}
             class="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
           >
             View Dashboard
