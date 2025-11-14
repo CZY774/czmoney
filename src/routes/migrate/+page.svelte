@@ -67,7 +67,7 @@
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
-    user = data.session?.user;
+    user = data.session?.user || null;
 
     if (!user) {
       goto(resolve("/auth/login"));
