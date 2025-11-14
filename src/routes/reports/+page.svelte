@@ -15,7 +15,7 @@
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
-    user = data.session?.user;
+    user = data.session?.user || null;
 
     if (!user) {
       goto(resolve("/auth/login"));
@@ -27,6 +27,7 @@
   });
 
   async function loadMonthlyData() {
+    if (!user) return;
     const [year, month] = selectedMonth.split("-");
     const startDate = `${year}-${month}-01`;
     const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
