@@ -109,9 +109,9 @@ export async function getCachedTransactions() {
   const cached = await get("cached_transactions");
   if (!cached) return [];
 
-  // Return cached data if less than 5 minutes old
-  const isRecent = Date.now() - cached.timestamp < 300000; // 5 minutes instead of 1 hour
-  return isRecent ? cached.data : [];
+  // No cache for mutations - always return empty to force fresh fetch
+  // Cache only useful for offline mode
+  return [];
 }
 
 // Clear cached transactions (called after mutations)
