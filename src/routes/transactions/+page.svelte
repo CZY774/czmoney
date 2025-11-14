@@ -51,6 +51,7 @@
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token;
 
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const params = new URLSearchParams();
     if (filters.month) params.append("month", filters.month);
     if (filters.category) params.append("category", filters.category);
