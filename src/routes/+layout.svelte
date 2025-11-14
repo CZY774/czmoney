@@ -13,6 +13,30 @@
   let mobileMenuOpen = false;
 
   onMount(async () => {
+    // Check for service worker updates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New service worker available, prompt user to reload
+                if (confirm('New version available! Reload to update?')) {
+                  window.location.reload();
+                }
+              }
+            });
+          }
+        });
+        
+        // Check for updates every hour
+        setInterval(() => {
+          reg.update();
+        }, 3600000);
+      });
+    }
+
     const { data } = await getSession();
     user = data.session?.user || null;
     loading = false;
