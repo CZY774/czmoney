@@ -2,15 +2,16 @@
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import TransactionForm from "$lib/components/TransactionForm.svelte";
   import { clearTransactionCache } from "$lib/services/sync";
 
-  let user: any = null;
-  let transactions: any[] = [];
-  let categories: any[] = [];
+  let user: { id: string } | null = null;
+  let transactions: Array<Record<string, unknown>> = [];
+  let categories: Array<{ id: string; name: string; type: string }> = [];
   let loading = true;
   let showForm = false;
-  let editingTransaction: any = null;
+  let editingTransaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
 
   // Filters
   let filters = {
@@ -24,7 +25,7 @@
     user = data.session?.user;
 
     if (!user) {
-      goto("/auth/login");
+      goto(resolve("/auth/login"));
       return;
     }
 
@@ -105,8 +106,8 @@
     showForm = true;
   }
 
-  function openEditForm(transaction: any) {
-    editingTransaction = transaction;
+  function openEditForm(transaction: Record<string, unknown>) {
+    editingTransaction = transaction as { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string };
     showForm = true;
   }
 
@@ -182,7 +183,7 @@
           class="w-full p-2 border border-border rounded bg-background"
         >
           <option value="">All Categories</option>
-          {#each categories as category}
+          {#each categories as category (category.id)}
             <option value={category.id}>{category.name}</option>
           {/each}
         </select>
@@ -223,7 +224,7 @@
       </div>
     {:else}
       <div class="divide-y divide-border">
-        {#each transactions as transaction}
+        {#each transactions as transaction (transaction.id)}
           <div class="p-4 flex justify-between items-center hover:bg-accent/50">
             <div class="flex-1">
               <div class="flex items-center gap-3">
