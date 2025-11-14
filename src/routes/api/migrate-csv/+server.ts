@@ -4,7 +4,7 @@ import { env } from "$env/dynamic/private";
 
 const supabase = createClient(
   env.VITE_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY
+  env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
 // Sample CSV data for testing (replace with actual file reading)
@@ -62,7 +62,7 @@ const categoryKeywords = {
 function parseAmount(amountStr: string): number {
   if (!amountStr) return 0;
 
-  let cleanAmount = amountStr.replace(/[Rp,\s]/g, "");
+  const cleanAmount = amountStr.replace(/[Rp,\s]/g, "");
 
   if (cleanAmount.includes("k")) {
     return Math.round(parseFloat(cleanAmount.replace("k", "")) * 1000);
@@ -100,7 +100,9 @@ function categorizeItem(description: string): string {
   return "Other";
 }
 
-function parseIncomeFromHeader(headerLine: string): { month: string; amount: number } | null {
+function parseIncomeFromHeader(
+  headerLine: string,
+): { month: string; amount: number } | null {
   const match = headerLine.match(/([A-Z]+)\s*-\s*([0-9.,]+)([kjtKJT]+)?/);
   if (!match) return null;
 
@@ -135,8 +137,8 @@ export async function POST({ request }) {
   }
 
   try {
-    let allTransactions = [];
-    let allIncomeEntries = [];
+    const allTransactions = [];
+    const allIncomeEntries = [];
 
     // Process sample data (in real implementation, read from CSV files)
     for (const [year, lines] of Object.entries(sampleData)) {
@@ -151,7 +153,9 @@ export async function POST({ request }) {
           // Check for income in header
           const income = parseIncomeFromHeader(line);
           if (income) {
-            const incomeDate = `${year}-${monthMap[income.month as keyof typeof monthMap]
+            const incomeDate = `${year}-${monthMap[
+              income.month as keyof typeof monthMap
+            ]
               .toString()
               .padStart(2, "0")}-01`;
             allIncomeEntries.push({
@@ -181,7 +185,7 @@ export async function POST({ request }) {
             const amountNum = parseAmount(amount);
 
             if (date && amountNum > 0) {
-              const category = categorizeItem(description);
+              categorizeItem(description);
               const fullDescription = `${description}${
                 quantity ? ` (${quantity})` : ""
               }`;
@@ -211,7 +215,7 @@ export async function POST({ request }) {
       if (incomeError) {
         return json(
           { error: `Income import failed: ${incomeError.message}` },
-          { status: 500 }
+          { status: 500 },
         );
       }
       totalImported += allIncomeEntries.length;
@@ -226,7 +230,7 @@ export async function POST({ request }) {
       if (expenseError) {
         return json(
           { error: `Expense import failed: ${expenseError.message}` },
-          { status: 500 }
+          { status: 500 },
         );
       }
       totalImported += allTransactions.length;
@@ -241,7 +245,7 @@ export async function POST({ request }) {
         allTransactions[allTransactions.length - 1]?.txn_date
       }`,
     });
-  } catch (error: any) {
-    return json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
