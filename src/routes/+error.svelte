@@ -5,8 +5,15 @@
   $: status = $page.status;
   $: message = $page.error?.message;
 
-  function getErrorInfo(status) {
-    const errors = {
+  interface ErrorInfo {
+    title: string;
+    description: string;
+    emoji: string;
+    color: string;
+  }
+
+  function getErrorInfo(status: number): ErrorInfo {
+    const errors: Record<number, ErrorInfo> = {
       400: {
         title: "Bad Request",
         description:
