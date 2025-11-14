@@ -15,7 +15,7 @@
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
-    user = data.session?.user;
+    user = data.session?.user || null;
 
     if (user) {
       await loadDashboardData();
@@ -32,6 +32,7 @@
   });
 
   async function loadDashboardData() {
+    if (!user) return;
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
 
@@ -275,7 +276,7 @@
                   {transaction.description || "No description"}
                 </p>
                 <p class="text-sm text-muted-foreground">
-                  {new Date(transaction.txn_date).toLocaleDateString()}
+                  {new Date(transaction.txn_date as string).toLocaleDateString()}
                 </p>
               </div>
               <div class="text-right">
@@ -285,7 +286,7 @@
                     : 'text-red-400'}"
                 >
                   {transaction.type === "income" ? "+" : "-"}{formatCurrency(
-                    transaction.amount
+                    transaction.amount as number
                   )}
                 </p>
                 <p class="text-sm text-muted-foreground capitalize">
