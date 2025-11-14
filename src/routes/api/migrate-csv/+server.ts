@@ -246,6 +246,9 @@ export async function POST({ request }) {
       }`,
     });
   } catch (error: unknown) {
-    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    return json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    );
   }
 }
