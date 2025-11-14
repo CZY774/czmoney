@@ -2,13 +2,14 @@
   import { onMount, onDestroy } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import BalanceChart from "$lib/components/BalanceChart.svelte";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
 
-  let user: any = null;
+  let user: { id: string; email?: string } | null = null;
   let balance = { income: 0, expense: 0, total: 0 };
-  let recentTransactions: any[] = [];
-  let categoryData: any[] = [];
+  let recentTransactions: Array<Record<string, unknown>> = [];
+  let categoryData: Array<{ name: string; amount: number }> = [];
   let profile = { monthly_income: 0, savings_target: 0 };
   let loading = true;
 
@@ -110,13 +111,13 @@
 
         <div class="space-y-3">
           <a
-            href="/auth/register"
+            href={resolve("/auth/register")}
             class="block w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
           >
             Get Started
           </a>
           <a
-            href="/auth/login"
+            href={resolve("/auth/login")}
             class="block w-full px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium"
           >
             Sign In
@@ -226,13 +227,13 @@
     <!-- Quick Actions -->
     <div class="flex gap-4">
       <button
-        on:click={() => goto("/transactions")}
+        on:click={() => goto(resolve("/transactions"))}
         class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
       >
         Add Transaction
       </button>
       <button
-        on:click={() => goto("/reports")}
+        on:click={() => goto(resolve("/reports"))}
         class="px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium"
       >
         View Reports
@@ -259,13 +260,13 @@
       {#if recentTransactions.length === 0}
         <p class="text-muted-foreground text-center py-8">
           No transactions yet.
-          <a href="/transactions" class="text-primary hover:underline"
+          <a href={resolve("/transactions")} class="text-primary hover:underline"
             >Add your first transaction</a
           >
         </p>
       {:else}
         <div class="space-y-4">
-          {#each recentTransactions as transaction}
+          {#each recentTransactions as transaction (transaction.id)}
             <div
               class="flex justify-between items-center py-3 border-b border-border last:border-b-0"
             >
