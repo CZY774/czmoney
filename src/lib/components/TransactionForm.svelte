@@ -23,7 +23,7 @@
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
-    user = data.session?.user;
+    user = data.session?.user || null;
 
     if (user) {
       await loadCategories();
@@ -49,6 +49,7 @@
   }
 
   async function loadCategories() {
+    if (!user) return;
     const { data } = await supabase
       .from("categories")
       .select("*")
@@ -66,16 +67,18 @@
       return;
     }
 
+    if (!user) return;
+
     loading = true;
 
     try {
-      const transactionData: Record<string, string | number> = {
+      const transactionData: Record<string, string | number | undefined> = {
         ...form,
         amount: parseFloat(form.amount),
         user_id: user.id,
       };
 
-      if (transaction) {
+      if (transaction?.id) {
         transactionData.id = transaction.id;
       }
 
