@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
@@ -24,6 +24,12 @@
 
     await loadMonthlyData();
     loading = false;
+
+    window.addEventListener('transactionUpdated', loadMonthlyData);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('transactionUpdated', loadMonthlyData);
   });
 
   async function loadMonthlyData() {
