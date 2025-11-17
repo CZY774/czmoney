@@ -29,23 +29,14 @@ self.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
     const cache = await caches.open(CACHE);
 
+    // NEVER cache API calls - always fetch fresh
+    if (url.pathname.startsWith("/api/")) {
+      return fetch(event.request);
+    }
+
     // Serve build files from cache
     if (ASSETS.includes(url.pathname)) {
       return cache.match(event.request);
-    }
-
-    // Try network first for API calls
-    if (url.pathname.startsWith("/api/")) {
-      try {
-        const response = await fetch(event.request);
-        return response;
-      } catch {
-        // Return offline response for API calls
-        return new Response(JSON.stringify({ error: "Offline" }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
     }
 
     // For pages, try cache first, then network
