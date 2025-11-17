@@ -2,8 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
 import type { Transaction } from "$lib/types";
+import { checkRateLimit } from "$lib/security/ratelimit";
+import { validateAndSanitize, transactionSchema } from "$lib/security/sanitize";
 
-// Initialize client only if environment variables exist
 const supabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -13,33 +14,44 @@ if (supabaseUrl && supabaseKey) {
   supabase = createClient(supabaseUrl, supabaseKey);
 }
 
-export const GET: RequestHandler = async ({ url, request }) => {
+async function authenticate(request: Request) {
   if (!supabase) {
-    return json({ error: "Service unavailable" }, { status: 503 });
+    return { error: json({ error: "Service unavailable" }, { status: 503 }), user: null };
   }
 
   const authHeader = request.headers.get("authorization");
   if (!authHeader) {
-    return json({ error: "Unauthorized" }, { status: 401 });
+    return { error: json({ error: "Unauthorized" }, { status: 401 }), user: null };
   }
 
   const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(token);
+  const { data: { user } } = await supabase.auth.getUser(token);
 
   if (!user) {
-    return json({ error: "Invalid token" }, { status: 401 });
+    return { error: json({ error: "Invalid token" }, { status: 401 }), user: null };
+  }
+
+  return { error: null, user };
+}
+
+export const GET: RequestHandler = async ({ url, request }) => {
+  const { error, user } = await authenticate(request);
+  if (error) return error;
+
+  // Rate limit
+  const { success } = await checkRateLimit(user!.id);
+  if (!success) {
+    return json({ error: "Too many requests" }, { status: 429 });
   }
 
   const month = url.searchParams.get("month");
   const category = url.searchParams.get("category");
   const type = url.searchParams.get("type") as "income" | "expense" | null;
 
-  let query = supabase
+  let query = supabase!
     .from("transactions")
     .select("*, categories(name)")
-    .eq("user_id", user.id)
+    .eq("user_id", user!.id)
     .order("txn_date", { ascending: false });
 
   if (month) {
@@ -59,10 +71,10 @@ export const GET: RequestHandler = async ({ url, request }) => {
     query = query.eq("type", type);
   }
 
-  const { data, error } = await query;
+  const { data, error: dbError } = await query;
 
-  if (error) {
-    return json({ error: error.message }, { status: 500 });
+  if (dbError) {
+    return json({ error: dbError.message }, { status: 500 });
   }
 
   return json(
@@ -78,146 +90,104 @@ export const GET: RequestHandler = async ({ url, request }) => {
 };
 
 export const POST: RequestHandler = async ({ request }) => {
-  if (!supabase) {
-    return json({ error: "Service unavailable" }, { status: 503 });
+  const { error, user } = await authenticate(request);
+  if (error) return error;
+
+  // Rate limit
+  const { success } = await checkRateLimit(user!.id);
+  if (!success) {
+    return json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const body = await request.json();
+    const validated = validateAndSanitize(transactionSchema, body);
 
-  const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(token);
+    const { data, error: dbError } = await supabase!
+      .from("transactions")
+      .insert([
+        {
+          user_id: user!.id,
+          ...validated,
+          amount: parseInt(validated.amount.toString()),
+        },
+      ])
+      .select()
+      .single();
 
-  if (!user) {
-    return json({ error: "Invalid token" }, { status: 401 });
-  }
+    if (dbError) {
+      return json({ error: dbError.message }, { status: 500 });
+    }
 
-  const body = await request.json();
-  const {
-    txn_date,
-    category_id,
-    type,
-    amount,
-    description,
-  }: Partial<Transaction> = body;
-
-  if (!txn_date || !type || !amount || amount <= 0) {
-    return json({ error: "Missing required fields" }, { status: 400 });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("transactions")
-    .insert([
+    return json(
+      { data },
       {
-        user_id: user.id,
-        txn_date,
-        category_id,
-        type,
-        amount: parseInt(amount.toString()),
-        description,
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
       },
-    ])
-    .select()
-    .single();
-
-  if (error) {
-    return json({ error: error.message }, { status: 500 });
+    );
+  } catch (err) {
+    return json({ error: "Invalid input" }, { status: 400 });
   }
-
-  return json(
-    { data },
-    {
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-      },
-    },
-  );
 };
 
 export const PUT: RequestHandler = async ({ request }) => {
-  if (!supabase) {
-    return json({ error: "Service unavailable" }, { status: 503 });
+  const { error, user } = await authenticate(request);
+  if (error) return error;
+
+  // Rate limit
+  const { success } = await checkRateLimit(user!.id);
+  if (!success) {
+    return json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
+  try {
+    const body = await request.json();
+    const { id, ...rest } = body;
 
-  const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(token);
+    if (!id) {
+      return json({ error: "Transaction ID required" }, { status: 400 });
+    }
 
-  if (!user) {
-    return json({ error: "Invalid token" }, { status: 401 });
-  }
+    const validated = validateAndSanitize(transactionSchema.partial(), rest);
 
-  const body = await request.json();
-  const {
-    id,
-    txn_date,
-    category_id,
-    type,
-    amount,
-    description,
-  }: Partial<Transaction> & { id: string } = body;
+    const { data, error: dbError } = await supabase!
+      .from("transactions")
+      .update({
+        ...validated,
+        amount: validated.amount ? parseInt(validated.amount.toString()) : undefined,
+      })
+      .eq("id", id)
+      .eq("user_id", user!.id)
+      .select()
+      .single();
 
-  if (!id) {
-    return json({ error: "Transaction ID required" }, { status: 400 });
-  }
+    if (dbError) {
+      return json({ error: dbError.message }, { status: 500 });
+    }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
-    .from("transactions")
-    .update({
-      txn_date,
-      category_id,
-      type,
-      amount: amount ? parseInt(amount.toString()) : undefined,
-      description,
-    })
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select()
-    .single();
-
-  if (error) {
-    return json({ error: error.message }, { status: 500 });
-  }
-
-  return json(
-    { data },
-    {
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+    return json(
+      { data },
+      {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
       },
-    },
-  );
+    );
+  } catch (err) {
+    return json({ error: "Invalid input" }, { status: 400 });
+  }
 };
 
 export const DELETE: RequestHandler = async ({ request }) => {
-  if (!supabase) {
-    return json({ error: "Service unavailable" }, { status: 503 });
-  }
+  const { error, user } = await authenticate(request);
+  if (error) return error;
 
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    return json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(token);
-
-  if (!user) {
-    return json({ error: "Invalid token" }, { status: 401 });
+  // Rate limit
+  const { success } = await checkRateLimit(user!.id);
+  if (!success) {
+    return json({ error: "Too many requests" }, { status: 429 });
   }
 
   const body = await request.json();
@@ -227,14 +197,14 @@ export const DELETE: RequestHandler = async ({ request }) => {
     return json({ error: "Transaction ID required" }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { error: dbError } = await supabase!
     .from("transactions")
     .delete()
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user!.id);
 
-  if (error) {
-    return json({ error: error.message }, { status: 500 });
+  if (dbError) {
+    return json({ error: dbError.message }, { status: 500 });
   }
 
   return json(
