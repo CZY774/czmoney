@@ -216,12 +216,19 @@ Export your transaction history:
 - Server-only API keys (never exposed to client)
 - Supabase Auth with secure session management
 - HTTPS required for PWA features
+- **Rate limiting** on all API endpoints (10 req/10s, AI: 3 req/min)
+- **Input validation & sanitization** (Zod + DOMPurify)
+- **Security headers** (XSS, clickjacking, CSP protection)
+- **CSRF protection** (SvelteKit built-in)
 
 ⚠️ **Important**:
 
 - Never commit `.env` file to version control
 - Use environment secrets in Vercel
 - Rotate API keys if exposed
+- Set up Upstash Redis for production rate limiting (optional, falls back to in-memory)
+
+See [SECURITY.md](./SECURITY.md) for detailed security documentation.
 
 ## Troubleshooting
 
