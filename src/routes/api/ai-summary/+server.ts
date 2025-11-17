@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "$env/dynamic/private";
+import { checkAIRateLimit } from "$lib/security/ratelimit";
+import { validateAndSanitize, aiSummarySchema } from "$lib/security/sanitize";
 
 async function handleRequest(request: Request, url: URL) {
   try {
@@ -38,6 +40,15 @@ async function handleRequest(request: Request, url: URL) {
       return json({ error: "Invalid token" }, { status: 401 });
     }
 
+    // Strict rate limit for AI (expensive)
+    const { success, remaining } = await checkAIRateLimit(user.id);
+    if (!success) {
+      return json(
+        { error: "Rate limit exceeded. Try again later.", remaining: 0 },
+        { status: 429 }
+      );
+    }
+
     // Get month from URL params (GET) or request body (POST)
     let month = url.searchParams.get("month");
     if (!month && request.method === "POST") {
@@ -48,6 +59,16 @@ async function handleRequest(request: Request, url: URL) {
     if (!month) {
       return json(
         { error: "Month parameter required (YYYY-MM)" },
+        { status: 400 },
+      );
+    }
+
+    // Validate month format
+    try {
+      validateAndSanitize(aiSummarySchema, { month });
+    } catch {
+      return json(
+        { error: "Invalid month format (use YYYY-MM)" },
         { status: 400 },
       );
     }
