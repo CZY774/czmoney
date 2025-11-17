@@ -6,6 +6,7 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { getSyncStatus } from "$lib/services/sync";
+  import Toast from "$lib/components/Toast.svelte";
 
   let user: { id: string; email?: string } | null = null;
   let loading = true;
@@ -248,3 +249,7 @@
     <slot />
   {/if}
 </div>
+
+
+<!-- Toast Notifications -->
+<Toast />
