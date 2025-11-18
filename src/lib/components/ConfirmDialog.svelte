@@ -71,6 +71,7 @@
       <div class="p-6 space-y-4">
         <!-- Icon -->
         <div class="flex items-center justify-center w-12 h-12 rounded-full {variants[variant].bgColor} {variants[variant].color} mx-auto">
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html variants[variant].icon}
         </div>
 
