@@ -116,13 +116,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
     const { data, error: dbError } = await supabase!
       .from("transactions")
-      .insert([
-        {
-          user_id: user!.id,
-          ...validated,
-          amount: parseInt(validated.amount.toString()),
-        },
-      ])
+      .insert({
+        user_id: user!.id,
+        txn_date: validated.txn_date,
+        type: validated.type,
+        amount: parseInt(validated.amount.toString()),
+        category_id: validated.category_id,
+        description: validated.description,
+      })
       .select()
       .single();
 
@@ -166,10 +167,13 @@ export const PUT: RequestHandler = async ({ request }) => {
     const { data, error: dbError } = await supabase!
       .from("transactions")
       .update({
-        ...validated,
+        txn_date: validated.txn_date,
+        type: validated.type,
         amount: validated.amount
           ? parseInt(validated.amount.toString())
           : undefined,
+        category_id: validated.category_id,
+        description: validated.description,
       })
       .eq("id", id)
       .eq("user_id", user!.id)
