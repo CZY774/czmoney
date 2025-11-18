@@ -27,9 +27,12 @@ export const profileSchema = z.object({
   savings_target: z.number().int().nonnegative().max(999999999999).optional(),
 });
 
-export function validateAndSanitize<T>(schema: z.ZodSchema<T>, data: unknown): T {
+export function validateAndSanitize<T>(
+  schema: z.ZodSchema<T>,
+  data: unknown,
+): T {
   const validated = schema.parse(data);
-  
+
   // Sanitize string fields
   if (typeof validated === "object" && validated !== null) {
     for (const [key, value] of Object.entries(validated)) {
@@ -38,6 +41,6 @@ export function validateAndSanitize<T>(schema: z.ZodSchema<T>, data: unknown): T
       }
     }
   }
-  
+
   return validated;
 }
