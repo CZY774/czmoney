@@ -63,6 +63,7 @@
     on:keydown={(e) => e.key === "Escape" && !loading && handleCancel()}
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
   >
     <div
       class="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
