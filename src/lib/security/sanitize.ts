@@ -1,15 +1,18 @@
-import DOMPurify from "isomorphic-dompurify";
 import { z } from "zod";
 
-// Sanitize HTML/XSS
+// Simple HTML/XSS sanitization for serverless
 export function sanitizeHTML(input: string): string {
-  return DOMPurify.sanitize(input, { ALLOWED_TAGS: [] });
+  return input
+    .replace(/[<>]/g, '') // Remove < and >
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+=/gi, '')
+    .trim();
 }
 
 // Transaction validation schema
 export const transactionSchema = z.object({
   txn_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  category_id: z.string().uuid().optional(),
+  category_id: z.string().uuid().or(z.literal("")).optional(),
   type: z.enum(["income", "expense"]),
   amount: z.number().positive().int().max(999999999999),
   description: z.string().max(500).optional(),
