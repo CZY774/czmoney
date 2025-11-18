@@ -189,6 +189,7 @@ Custom error page is automatically shown for HTTP errors (404, 500, etc.).
 Located at: `src/routes/+error.svelte`
 
 Features:
+
 - Beautiful error messages for common HTTP status codes
 - Animated emoji icons
 - Helpful action buttons (Go Back, Reload, Go Home)
