@@ -110,10 +110,17 @@
         const result = await response.json();
 
         if (response.ok) {
-          // Clear cache to force fresh data
           await clearTransactionCache();
-          
           dispatch("success", result.data);
+          
+          // Show success message
+          const msg = transaction ? "Transaction updated!" : "Transaction added!";
+          const toast = document.createElement("div");
+          toast.className = "fixed top-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50";
+          toast.textContent = msg;
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 3000);
+          
           closeModal();
         } else {
           alert(result.error || "Failed to save transaction");
