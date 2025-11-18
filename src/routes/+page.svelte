@@ -33,8 +33,6 @@
 
   async function loadDashboardData() {
     if (!user) return;
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
 
     // Load profile data
     const { data: profileData } = await supabase
@@ -52,6 +50,7 @@
     const token = session.session?.access_token;
 
     // Use API endpoint with cache-busting
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const month = new Date().toISOString().slice(0, 7);
     const response = await fetch(`/api/transactions?month=${month}&_t=${Date.now()}`, {
       headers: {
