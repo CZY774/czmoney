@@ -44,7 +44,7 @@ export async function checkRateLimit(identifier: string) {
     const { success, remaining } = await ratelimit.limit(identifier);
     return { success, remaining };
   }
-  
+
   // Fallback to in-memory for development
   return memoryRateLimit(identifier);
 }
@@ -62,6 +62,6 @@ export async function checkAIRateLimit(identifier: string) {
     const { success, remaining } = await aiLimiter.limit(`ai:${identifier}`);
     return { success, remaining };
   }
-  
+
   return memoryRateLimit(`ai:${identifier}`, 3, 60000);
 }
