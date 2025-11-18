@@ -61,7 +61,11 @@
 
     if (response.ok) {
       const result = await response.json();
-      const transactions = result.data || [];
+      const transactions: Array<{
+        type: string;
+        amount: number;
+        categories?: { name: string };
+      }> = result.data || [];
 
       recentTransactions = transactions.slice(0, 5);
 
