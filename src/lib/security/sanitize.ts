@@ -37,7 +37,7 @@ export function validateAndSanitize<T>(
   if (typeof validated === "object" && validated !== null) {
     for (const [key, value] of Object.entries(validated)) {
       if (typeof value === "string") {
-        (validated as any)[key] = sanitizeHTML(value);
+        (validated as Record<string, unknown>)[key] = sanitizeHTML(value);
       }
     }
   }
