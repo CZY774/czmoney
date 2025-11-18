@@ -16,19 +16,30 @@ if (supabaseUrl && supabaseKey) {
 
 async function authenticate(request: Request) {
   if (!supabase) {
-    return { error: json({ error: "Service unavailable" }, { status: 503 }), user: null };
+    return {
+      error: json({ error: "Service unavailable" }, { status: 503 }),
+      user: null,
+    };
   }
 
   const authHeader = request.headers.get("authorization");
   if (!authHeader) {
-    return { error: json({ error: "Unauthorized" }, { status: 401 }), user: null };
+    return {
+      error: json({ error: "Unauthorized" }, { status: 401 }),
+      user: null,
+    };
   }
 
   const token = authHeader.replace("Bearer ", "");
-  const { data: { user } } = await supabase.auth.getUser(token);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
 
   if (!user) {
-    return { error: json({ error: "Invalid token" }, { status: 401 }), user: null };
+    return {
+      error: json({ error: "Invalid token" }, { status: 401 }),
+      user: null,
+    };
   }
 
   return { error: null, user };
@@ -156,7 +167,9 @@ export const PUT: RequestHandler = async ({ request }) => {
       .from("transactions")
       .update({
         ...validated,
-        amount: validated.amount ? parseInt(validated.amount.toString()) : undefined,
+        amount: validated.amount
+          ? parseInt(validated.amount.toString())
+          : undefined,
       })
       .eq("id", id)
       .eq("user_id", user!.id)
