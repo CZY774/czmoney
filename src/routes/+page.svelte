@@ -33,7 +33,6 @@
 
   async function loadDashboardData() {
     if (!user) return;
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
 
@@ -48,15 +47,24 @@
       profile = profileData;
     }
 
-    // Force fresh data with timestamp to bypass cache
-    const { data: transactions } = await supabase
-      .from("transactions")
-      .select("*, categories(name)")
-      .eq("user_id", user.id)
-      .gte("txn_date", startOfMonth.toISOString().split("T")[0])
-      .order("txn_date", { ascending: false });
+    // Get session token for API call
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
 
-    if (transactions) {
+    // Use API endpoint with cache-busting
+    const month = new Date().toISOString().slice(0, 7);
+    const response = await fetch(`/api/transactions?month=${month}&_t=${Date.now()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const transactions = result.data || [];
+
       recentTransactions = transactions.slice(0, 5);
 
       balance.income = transactions
