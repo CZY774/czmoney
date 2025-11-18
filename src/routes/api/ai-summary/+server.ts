@@ -41,7 +41,7 @@ async function handleRequest(request: Request, url: URL) {
     }
 
     // Strict rate limit for AI (expensive)
-    const { success, remaining } = await checkAIRateLimit(user.id);
+    const { success } = await checkAIRateLimit(user.id);
     if (!success) {
       return json(
         { error: "Rate limit exceeded. Try again later.", remaining: 0 },
