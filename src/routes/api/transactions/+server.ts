@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
-import type { Transaction } from "$lib/types";
 import { checkRateLimit } from "$lib/security/ratelimit";
 import { validateAndSanitize, transactionSchema } from "$lib/security/sanitize";
 
@@ -138,7 +137,7 @@ export const POST: RequestHandler = async ({ request }) => {
         },
       },
     );
-  } catch (err) {
+  } catch {
     return json({ error: "Invalid input" }, { status: 400 });
   }
 };
@@ -188,7 +187,7 @@ export const PUT: RequestHandler = async ({ request }) => {
         },
       },
     );
-  } catch (err) {
+  } catch {
     return json({ error: "Invalid input" }, { status: 400 });
   }
 };
