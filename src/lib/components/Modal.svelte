@@ -36,6 +36,7 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="modal-title"
+    tabindex="-1"
   >
     <div
       class="bg-card border border-border rounded-xl shadow-2xl w-full {sizes[
