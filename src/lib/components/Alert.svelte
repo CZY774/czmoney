@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fade, fly } from "svelte/transition";
+  import { fly } from "svelte/transition";
   import { createEventDispatcher } from "svelte";
 
   export let type: "success" | "error" | "warning" | "info" = "info";
@@ -53,6 +53,7 @@
   >
     <div class="flex items-start gap-3">
       <div class="flex-shrink-0 mt-0.5">
+        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html icons[type]}
       </div>
       <div class="flex-1 min-w-0">
