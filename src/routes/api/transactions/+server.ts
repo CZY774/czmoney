@@ -3,14 +3,15 @@ import { json, type RequestHandler } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
 import { checkRateLimit } from "$lib/security/ratelimit";
 import { validateAndSanitize, transactionSchema } from "$lib/security/sanitize";
+import type { Database } from "$lib/types/database";
 
 const supabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-let supabase: ReturnType<typeof createClient> | null = null;
+let supabase: ReturnType<typeof createClient<Database>> | null = null;
 
 if (supabaseUrl && supabaseKey) {
-  supabase = createClient(supabaseUrl, supabaseKey);
+  supabase = createClient<Database>(supabaseUrl, supabaseKey);
 }
 
 async function authenticate(request: Request) {
