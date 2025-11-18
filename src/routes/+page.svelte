@@ -50,7 +50,6 @@
     const token = session.session?.access_token;
 
     // Use API endpoint with cache-busting
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const month = new Date().toISOString().slice(0, 7);
     const response = await fetch(`/api/transactions?month=${month}&_t=${Date.now()}`, {
       headers: {
