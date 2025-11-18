@@ -3,9 +3,9 @@ import { z } from "zod";
 // Simple HTML/XSS sanitization for serverless
 export function sanitizeHTML(input: string): string {
   return input
-    .replace(/[<>]/g, '') // Remove < and >
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+=/gi, '')
+    .replace(/[<>]/g, "") // Remove < and >
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+=/gi, "")
     .trim();
 }
 
