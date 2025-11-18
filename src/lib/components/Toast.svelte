@@ -35,6 +35,7 @@
     >
       <div class="flex items-start gap-3">
         <div class="flex-shrink-0">
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html icons[toast.type]}
         </div>
         <div class="flex-1 min-w-0">
