@@ -121,7 +121,7 @@ export const POST: RequestHandler = async ({ request }) => {
         txn_date: validated.txn_date,
         type: validated.type,
         amount: parseInt(validated.amount.toString()),
-        category_id: validated.category_id,
+        category_id: validated.category_id || null,
         description: validated.description,
       })
       .select()
@@ -172,7 +172,7 @@ export const PUT: RequestHandler = async ({ request }) => {
         amount: validated.amount
           ? parseInt(validated.amount.toString())
           : undefined,
-        category_id: validated.category_id,
+        category_id: validated.category_id || null,
         description: validated.description,
       })
       .eq("id", id)
