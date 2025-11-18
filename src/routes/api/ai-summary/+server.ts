@@ -45,7 +45,7 @@ async function handleRequest(request: Request, url: URL) {
     if (!success) {
       return json(
         { error: "Rate limit exceeded. Try again later.", remaining: 0 },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
