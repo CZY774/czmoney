@@ -155,62 +155,62 @@
   <title>Reports - CZmoneY</title>
 </svelte:head>
 
-<div class="space-y-8">
-  <div class="flex justify-between items-center">
-    <h1 class="text-4xl font-bold">Reports</h1>
+<div class="space-y-6 sm:space-y-8">
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+    <h1 class="text-3xl sm:text-4xl font-bold">Reports</h1>
     <button
       on:click={exportCSV}
-      class="px-4 py-2 border border-border rounded-lg hover:bg-accent font-medium"
+      class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base border border-border rounded-lg hover:bg-accent font-medium"
     >
       Export CSV
     </button>
   </div>
 
   <!-- Month Selector -->
-  <div class="bg-card p-6 rounded-lg border border-border">
-    <label for="month-select" class="block text-sm font-medium mb-3"
+  <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+    <label for="month-select" class="block text-xs sm:text-sm font-medium mb-2 sm:mb-3"
       >Select Month</label
     >
     <input
       id="month-select"
       type="month"
       bind:value={selectedMonth}
-      class="p-3 border border-border rounded-lg bg-background text-foreground"
+      class="w-full p-2 sm:p-3 text-sm sm:text-base border border-border rounded-lg bg-background text-foreground"
       style="color-scheme: dark;"
     />
   </div>
 
   {#if loading}
     <div class="flex items-center justify-center min-h-64">
-      <div class="text-lg text-muted-foreground">Loading reports...</div>
+      <div class="text-base sm:text-lg text-muted-foreground">Loading reports...</div>
     </div>
   {:else}
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h3 class="text-sm font-medium text-muted-foreground mb-2">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
           Total Income
         </h3>
-        <p class="text-3xl font-bold text-green-400">
+        <p class="text-2xl sm:text-3xl font-bold text-green-400 break-all">
           {formatCurrency(monthlyData.income)}
         </p>
       </div>
 
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h3 class="text-sm font-medium text-muted-foreground mb-2">
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
           Total Expense
         </h3>
-        <p class="text-3xl font-bold text-red-400">
+        <p class="text-2xl sm:text-3xl font-bold text-red-400 break-all">
           {formatCurrency(monthlyData.expense)}
         </p>
       </div>
 
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h3 class="text-sm font-medium text-muted-foreground mb-2">
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1">
+        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
           Net Balance
         </h3>
         <p
-          class="text-3xl font-bold {monthlyData.balance >= 0
+          class="text-2xl sm:text-3xl font-bold break-all {monthlyData.balance >= 0
             ? 'text-green-400'
             : 'text-red-400'}"
         >
@@ -220,29 +220,29 @@
     </div>
 
     <!-- AI Summary -->
-    <div class="bg-card p-6 rounded-lg border border-border">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-semibold">AI Insights</h2>
+    <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <h2 class="text-lg sm:text-xl font-semibold">AI Insights</h2>
         <button
           on:click={generateAISummary}
           disabled={generatingAI || !monthlyData.transactions.length}
-          class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
+          class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
         >
           {generatingAI ? "Generating..." : "Generate Summary"}
         </button>
       </div>
 
       {#if aiSummary}
-        <div class="p-4 bg-accent/20 rounded-lg border-l-4 border-primary">
-          <p class="text-sm leading-relaxed">{aiSummary}</p>
+        <div class="p-3 sm:p-4 bg-accent/20 rounded-lg border-l-4 border-primary">
+          <p class="text-xs sm:text-sm leading-relaxed">{aiSummary}</p>
         </div>
       {:else if !monthlyData.transactions.length}
-        <p class="text-muted-foreground">
+        <p class="text-muted-foreground text-xs sm:text-sm">
           No transactions found for this month. Add some transactions to get AI
           insights.
         </p>
       {:else}
-        <p class="text-muted-foreground">
+        <p class="text-muted-foreground text-xs sm:text-sm">
           Click "Generate Summary" to get AI-powered insights about your
           spending patterns.
         </p>
@@ -251,8 +251,8 @@
 
     <!-- Category Chart -->
     {#if categoryData.length > 0}
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h2 class="text-xl font-semibold mb-4">Expense Categories</h2>
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h2 class="text-lg sm:text-xl font-semibold mb-4">Expense Categories</h2>
         <CategoryChart categories={categoryData} />
       </div>
     {/if}
@@ -260,14 +260,14 @@
     <!-- Category Breakdown Table -->
     {#if categoryData.length > 0}
       <div class="bg-card rounded-lg border border-border">
-        <div class="p-6 border-b border-border">
-          <h2 class="text-xl font-semibold">Category Breakdown</h2>
+        <div class="p-4 sm:p-6 border-b border-border">
+          <h2 class="text-lg sm:text-xl font-semibold">Category Breakdown</h2>
         </div>
         <div class="divide-y divide-border">
           {#each categoryData as category (category.name)}
-            <div class="p-4 flex justify-between items-center">
-              <span class="font-medium">{category.name}</span>
-              <span class="font-semibold text-red-400"
+            <div class="p-3 sm:p-4 flex justify-between items-center gap-3">
+              <span class="font-medium text-sm sm:text-base truncate">{category.name}</span>
+              <span class="font-semibold text-red-400 text-sm sm:text-base whitespace-nowrap"
                 >{formatCurrency(category.amount)}</span
               >
             </div>
@@ -275,8 +275,8 @@
         </div>
       </div>
     {:else}
-      <div class="bg-card p-8 rounded-lg border border-border text-center">
-        <p class="text-muted-foreground">
+      <div class="bg-card p-6 sm:p-8 rounded-lg border border-border text-center">
+        <p class="text-muted-foreground text-sm sm:text-base">
           No expense data available for this month.
         </p>
       </div>
