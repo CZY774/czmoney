@@ -113,24 +113,23 @@
 {:else if !user}
   <!-- Landing Page -->
   <div class="min-h-screen flex flex-col">
-    <!-- Main -->
-    <main class="flex-1 flex items-center justify-center px-6">
-      <div class="max-w-md mx-auto text-center">
-        <h1 class="text-3xl font-bold mb-4">CZmoneY</h1>
-        <p class="text-muted-foreground mb-8">
+    <main class="flex-1 flex items-center justify-center px-4">
+      <div class="max-w-md mx-auto text-center w-full">
+        <h1 class="text-3xl sm:text-4xl font-bold mb-4">CZmoneY</h1>
+        <p class="text-muted-foreground mb-8 text-sm sm:text-base">
           Track expenses, view reports, get insights.
         </p>
 
         <div class="space-y-3">
           <a
             href={resolve("/auth/register")}
-            class="block w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
+            class="block w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm sm:text-base"
           >
             Get Started
           </a>
           <a
             href={resolve("/auth/login")}
-            class="block w-full px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium"
+            class="block w-full px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium text-sm sm:text-base"
           >
             Sign In
           </a>
@@ -140,33 +139,33 @@
   </div>
 {:else}
   <!-- Dashboard for authenticated users -->
-  <div class="space-y-8">
-    <h1 class="text-4xl font-bold">Dashboard</h1>
+  <div class="space-y-6 sm:space-y-8">
+    <h1 class="text-3xl sm:text-4xl font-bold">Dashboard</h1>
 
     <!-- Balance Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h3 class="text-sm font-medium text-muted-foreground mb-2">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
           Total Income
         </h3>
-        <p class="text-3xl font-bold text-green-400">
+        <p class="text-2xl sm:text-3xl font-bold text-green-400 break-all">
           {formatCurrency(balance.income)}
         </p>
       </div>
 
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h3 class="text-sm font-medium text-muted-foreground mb-2">
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
           Total Expense
         </h3>
-        <p class="text-3xl font-bold text-red-400">
+        <p class="text-2xl sm:text-3xl font-bold text-red-400 break-all">
           {formatCurrency(balance.expense)}
         </p>
       </div>
 
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h3 class="text-sm font-medium text-muted-foreground mb-2">Balance</h3>
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1">
+        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">Balance</h3>
         <p
-          class="text-3xl font-bold {balance.total >= 0
+          class="text-2xl sm:text-3xl font-bold break-all {balance.total >= 0
             ? 'text-green-400'
             : 'text-red-400'}"
         >
@@ -177,17 +176,17 @@
 
     <!-- Savings & Spending Progress -->
     {#if profile.savings_target > 0 || profile.monthly_income > 0}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {#if profile.savings_target > 0}
-          <div class="bg-card p-6 rounded-lg border border-border">
-            <h3 class="text-sm font-medium text-muted-foreground mb-2">
+          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+            <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
               Savings Progress
             </h3>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-2xl font-bold text-blue-400">
+            <div class="flex items-center justify-between mb-2 gap-2">
+              <span class="text-xl sm:text-2xl font-bold text-blue-400 break-all">
                 {formatCurrency(balance.total)}
               </span>
-              <span class="text-sm text-muted-foreground">
+              <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                 / {formatCurrency(profile.savings_target)}
               </span>
             </div>
@@ -207,15 +206,15 @@
         {/if}
 
         {#if profile.monthly_income > 0}
-          <div class="bg-card p-6 rounded-lg border border-border">
-            <h3 class="text-sm font-medium text-muted-foreground mb-2">
+          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+            <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
               Spending Ratio
             </h3>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-2xl font-bold text-orange-400">
+            <div class="flex items-center justify-between mb-2 gap-2">
+              <span class="text-xl sm:text-2xl font-bold text-orange-400">
                 {Math.round((balance.expense / profile.monthly_income) * 100)}%
               </span>
-              <span class="text-sm text-muted-foreground">
+              <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                 of income spent
               </span>
             </div>
@@ -228,7 +227,7 @@
                 )}%"
               ></div>
             </div>
-            <p class="text-xs text-muted-foreground mt-1">
+            <p class="text-xs text-muted-foreground mt-1 break-all">
               {formatCurrency(balance.expense)} / {formatCurrency(profile.monthly_income)}
             </p>
           </div>
@@ -237,62 +236,62 @@
     {/if}
 
     <!-- Quick Actions -->
-    <div class="flex gap-4">
+    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
       <button
         on:click={() => goto(resolve("/transactions"))}
-        class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium"
+        class="w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm sm:text-base"
       >
         Add Transaction
       </button>
       <button
         on:click={() => goto(resolve("/reports"))}
-        class="px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium"
+        class="w-full sm:w-auto px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium text-sm sm:text-base"
       >
         View Reports
       </button>
     </div>
 
     <!-- Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h2 class="text-xl font-semibold mb-4">Income vs Expense</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h2 class="text-lg sm:text-xl font-semibold mb-4">Income vs Expense</h2>
         <BalanceChart income={balance.income} expense={balance.expense} />
       </div>
 
-      <div class="bg-card p-6 rounded-lg border border-border">
-        <h2 class="text-xl font-semibold mb-4">Expense Categories</h2>
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h2 class="text-lg sm:text-xl font-semibold mb-4">Expense Categories</h2>
         <CategoryChart categories={categoryData} />
       </div>
     </div>
 
     <!-- Recent Transactions -->
-    <div class="bg-card p-6 rounded-lg border border-border">
-      <h2 class="text-xl font-semibold mb-6">Recent Transactions</h2>
+    <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+      <h2 class="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Recent Transactions</h2>
 
       {#if recentTransactions.length === 0}
-        <p class="text-muted-foreground text-center py-8">
+        <p class="text-muted-foreground text-center py-8 text-sm sm:text-base">
           No transactions yet.
           <a href={resolve("/transactions")} class="text-primary hover:underline"
             >Add your first transaction</a
           >
         </p>
       {:else}
-        <div class="space-y-4">
+        <div class="space-y-3 sm:space-y-4">
           {#each recentTransactions as transaction (transaction.id)}
             <div
-              class="flex justify-between items-center py-3 border-b border-border last:border-b-0"
+              class="flex justify-between items-start sm:items-center py-3 border-b border-border last:border-b-0 gap-3"
             >
-              <div>
-                <p class="font-medium">
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-sm sm:text-base truncate">
                   {transaction.description || "No description"}
                 </p>
-                <p class="text-sm text-muted-foreground">
+                <p class="text-xs sm:text-sm text-muted-foreground">
                   {new Date(transaction.txn_date as string).toLocaleDateString()}
                 </p>
               </div>
-              <div class="text-right">
+              <div class="text-right flex-shrink-0">
                 <p
-                  class="font-semibold {transaction.type === 'income'
+                  class="font-semibold text-sm sm:text-base {transaction.type === 'income'
                     ? 'text-green-400'
                     : 'text-red-400'}"
                 >
@@ -300,7 +299,7 @@
                     transaction.amount as number
                   )}
                 </p>
-                <p class="text-sm text-muted-foreground capitalize">
+                <p class="text-xs sm:text-sm text-muted-foreground capitalize">
                   {transaction.type}
                 </p>
               </div>
