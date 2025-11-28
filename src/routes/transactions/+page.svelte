@@ -147,42 +147,42 @@
   <title>Transactions - CZmoneY</title>
 </svelte:head>
 
-<div class="space-y-6">
-  <div class="flex justify-between items-center">
-    <h1 class="text-3xl font-bold">Transactions</h1>
+<div class="space-y-4 sm:space-y-6">
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <h1 class="text-2xl sm:text-3xl font-bold">Transactions</h1>
     <button
       on:click={openAddForm}
-      class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+      class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
     >
       Add Transaction
     </button>
   </div>
 
   <!-- Filters -->
-  <div class="bg-card p-4 rounded-lg border">
-    <h2 class="text-lg font-semibold mb-3">Filters</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="bg-card p-3 sm:p-4 rounded-lg border">
+    <h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Filters</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
       <div>
-        <label for="filter-month" class="block text-sm font-medium mb-1"
+        <label for="filter-month" class="block text-xs sm:text-sm font-medium mb-1"
           >Month</label
         >
         <input
           id="filter-month"
           type="month"
           bind:value={filters.month}
-          class="w-full p-2 border border-border rounded bg-background"
+          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
           style="color-scheme: dark;"
         />
       </div>
 
       <div>
-        <label for="filter-category" class="block text-sm font-medium mb-1"
+        <label for="filter-category" class="block text-xs sm:text-sm font-medium mb-1"
           >Category</label
         >
         <select
           id="filter-category"
           bind:value={filters.category}
-          class="w-full p-2 border border-border rounded bg-background"
+          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
         >
           <option value="">All Categories</option>
           {#each categories as category (category.id)}
@@ -192,13 +192,13 @@
       </div>
 
       <div>
-        <label for="filter-type" class="block text-sm font-medium mb-1"
+        <label for="filter-type" class="block text-xs sm:text-sm font-medium mb-1"
           >Type</label
         >
         <select
           id="filter-type"
           bind:value={filters.type}
-          class="w-full p-2 border border-border rounded bg-background"
+          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
         >
           <option value="">All Types</option>
           <option value="income">Income</option>
@@ -211,15 +211,15 @@
   <!-- Transactions List -->
   <div class="bg-card rounded-lg border">
     {#if loading}
-      <div class="p-8 text-center">
-        <div class="text-lg">Loading transactions...</div>
+      <div class="p-6 sm:p-8 text-center">
+        <div class="text-base sm:text-lg">Loading transactions...</div>
       </div>
     {:else if transactions.length === 0}
-      <div class="p-8 text-center">
-        <p class="text-muted-foreground mb-4">No transactions found</p>
+      <div class="p-6 sm:p-8 text-center">
+        <p class="text-muted-foreground mb-4 text-sm sm:text-base">No transactions found</p>
         <button
           on:click={openAddForm}
-          class="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+          class="px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded hover:bg-primary/90"
         >
           Add Your First Transaction
         </button>
@@ -227,56 +227,50 @@
     {:else}
       <div class="divide-y divide-border">
         {#each transactions as transaction (transaction.id)}
-          <div class="p-4 flex justify-between items-center hover:bg-accent/50">
-            <div class="flex-1">
-              <div class="flex items-center gap-3">
-                <div
-                  class="w-3 h-3 rounded-full {transaction.type === 'income'
-                    ? 'bg-green-500'
-                    : 'bg-red-500'}"
-                ></div>
-                <div>
-                  <p class="font-medium">
-                    {transaction.description || "No description"}
+          <div class="p-3 sm:p-4 hover:bg-accent/50">
+            <div class="flex gap-2 sm:gap-3">
+              <div
+                class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full mt-1 flex-shrink-0 {transaction.type === 'income'
+                  ? 'bg-green-500'
+                  : 'bg-red-500'}"
+              ></div>
+              
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-sm sm:text-base break-words">
+                  {transaction.description || "No description"}
+                </p>
+                <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                  {getCategoryName(transaction.category_id as string)} • {new Date(
+                    transaction.txn_date as string
+                  ).toLocaleDateString()}
+                </p>
+                
+                <div class="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <p
+                    class="font-semibold text-sm sm:text-base {transaction.type === 'income'
+                      ? 'text-green-500'
+                      : 'text-red-500'}"
+                  >
+                    {transaction.type === "income" ? "+" : "-"}{formatCurrency(
+                      transaction.amount as number
+                    )}
                   </p>
-                  <p class="text-sm text-muted-foreground">
-                    {getCategoryName(transaction.category_id as string)} • {new Date(
-                      transaction.txn_date as string
-                    ).toLocaleDateString()}
-                  </p>
+                  
+                  <div class="flex gap-2">
+                    <button
+                      on:click={() => openEditForm(transaction)}
+                      class="px-2.5 py-1 text-xs sm:text-sm border border-border rounded hover:bg-accent"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      on:click={() => deleteTransaction(transaction.id as string)}
+                      class="px-2.5 py-1 text-xs sm:text-sm text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-4">
-              <div class="text-right">
-                <p
-                  class="font-semibold {transaction.type === 'income'
-                    ? 'text-green-500'
-                    : 'text-red-500'}"
-                >
-                  {transaction.type === "income" ? "+" : "-"}{formatCurrency(
-                    transaction.amount as number
-                  )}
-                </p>
-                <p class="text-sm text-muted-foreground capitalize">
-                  {transaction.type}
-                </p>
-              </div>
-
-              <div class="flex gap-2">
-                <button
-                  on:click={() => openEditForm(transaction)}
-                  class="px-3 py-1 text-sm border border-border rounded hover:bg-accent"
-                >
-                  Edit
-                </button>
-                <button
-                  on:click={() => deleteTransaction(transaction.id as string)}
-                  class="px-3 py-1 text-sm text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  Delete
-                </button>
               </div>
             </div>
           </div>
