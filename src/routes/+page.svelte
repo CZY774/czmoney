@@ -182,11 +182,11 @@
             <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
               Savings Progress
             </h3>
-            <div class="flex items-center justify-between mb-2 gap-2">
-              <span class="text-xl sm:text-2xl font-bold text-blue-400 break-all">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1">
+              <span class="text-lg sm:text-2xl font-bold text-blue-400 truncate">
                 {formatCurrency(balance.total)}
               </span>
-              <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+              <span class="text-xs sm:text-sm text-muted-foreground">
                 / {formatCurrency(profile.savings_target)}
               </span>
             </div>
@@ -210,11 +210,11 @@
             <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
               Spending Ratio
             </h3>
-            <div class="flex items-center justify-between mb-2 gap-2">
-              <span class="text-xl sm:text-2xl font-bold text-orange-400">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1">
+              <span class="text-lg sm:text-2xl font-bold text-orange-400">
                 {Math.round((balance.expense / profile.monthly_income) * 100)}%
               </span>
-              <span class="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+              <span class="text-xs sm:text-sm text-muted-foreground">
                 of income spent
               </span>
             </div>
@@ -227,7 +227,7 @@
                 )}%"
               ></div>
             </div>
-            <p class="text-xs text-muted-foreground mt-1 break-all">
+            <p class="text-xs text-muted-foreground mt-1 truncate">
               {formatCurrency(balance.expense)} / {formatCurrency(profile.monthly_income)}
             </p>
           </div>
