@@ -49,20 +49,48 @@
       const options = {
         series: categories.map((d) => d.amount),
         chart: {
-          type: "pie",
-          height: 250,
+          type: "donut",
+          height: 320,
           width: "100%",
           background: "transparent",
           toolbar: { show: false },
         },
         labels: categories.map((d) => d.name),
         theme: { mode: "dark" },
+        legend: {
+          position: "bottom",
+          fontSize: "12px",
+        },
+        dataLabels: {
+          enabled: true,
+          style: {
+            fontSize: "11px",
+          },
+        },
+        plotOptions: {
+          pie: {
+            donut: {
+              size: "65%",
+            },
+          },
+        },
         responsive: [
           {
-            breakpoint: 768,
+            breakpoint: 640,
             options: {
-              chart: { height: 200 },
-              legend: { position: "bottom" },
+              chart: { height: 300 },
+              legend: {
+                fontSize: "11px",
+                itemMargin: {
+                  horizontal: 5,
+                  vertical: 3,
+                },
+              },
+              dataLabels: {
+                style: {
+                  fontSize: "10px",
+                },
+              },
             },
           },
         ],
@@ -85,11 +113,11 @@
 {#if categories.length > 0}
   <div
     bind:this={chartContainer}
-    class="w-full min-h-[250px] md:min-h-[300px]"
+    class="w-full min-h-[300px] sm:min-h-[320px]"
   ></div>
 {:else}
   <div
-    class="min-h-[250px] flex items-center justify-center text-muted-foreground"
+    class="min-h-[300px] flex items-center justify-center text-muted-foreground"
   >
     No data
   </div>
