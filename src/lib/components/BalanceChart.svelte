@@ -54,7 +54,7 @@
       const options = {
         chart: {
           type: "bar",
-          height: 250,
+          height: 300,
           width: "100%",
           background: "transparent",
           toolbar: { show: false },
@@ -67,14 +67,40 @@
         ],
         xaxis: {
           categories: ["Income", "Expense"],
+          labels: {
+            style: {
+              fontSize: "12px",
+            },
+          },
+        },
+        yaxis: {
+          labels: {
+            style: {
+              fontSize: "11px",
+            },
+          },
         },
         colors: ["#10b981", "#ef4444"],
         theme: { mode: "dark" },
+        plotOptions: {
+          bar: {
+            borderRadius: 4,
+            columnWidth: "60%",
+          },
+        },
+        dataLabels: {
+          enabled: false,
+        },
         responsive: [
           {
-            breakpoint: 768,
+            breakpoint: 640,
             options: {
-              chart: { height: 200 },
+              chart: { height: 280 },
+              plotOptions: {
+                bar: {
+                  columnWidth: "70%",
+                },
+              },
             },
           },
         ],
@@ -96,5 +122,5 @@
 
 <div
   bind:this={chartContainer}
-  class="w-full min-h-[250px] md:min-h-[300px]"
+  class="w-full min-h-[280px] sm:min-h-[300px]"
 ></div>
