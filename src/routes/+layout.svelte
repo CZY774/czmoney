@@ -15,7 +15,6 @@
   let mobileMenuOpen = false;
 
   onMount(async () => {
-    // Check for service worker updates
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/service-worker.js').then(reg => {
         reg.addEventListener('updatefound', () => {
@@ -23,7 +22,6 @@
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // New service worker available, prompt user to reload
                 if (confirm('New version available! Reload to update?')) {
                   window.location.reload();
                 }
@@ -32,7 +30,6 @@
           }
         });
         
-        // Check for updates every hour
         setInterval(() => {
           reg.update();
         }, 3600000);
@@ -83,11 +80,9 @@
     </div>
   {:else if user}
     <nav class="border-b border-border bg-card/50 backdrop-blur">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center space-x-3">
-            <span class="font-semibold text-lg">CZmoneY</span>
-          </div>
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-14 sm:h-16">
+          <span class="font-semibold text-base sm:text-lg">CZmoneY</span>
 
           <!-- Desktop Menu -->
           <div class="hidden md:flex items-center space-x-8">
@@ -158,14 +153,14 @@
           <!-- Mobile Menu Button -->
           <button
             type="button"
-            class="md:hidden p-2 rounded-md hover:bg-accent"
+            class="md:hidden p-1.5 rounded-md hover:bg-accent"
             aria-label="Toggle mobile menu"
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"
             on:click={() => (mobileMenuOpen = !mobileMenuOpen)}
           >
             <svg
-              class="w-6 h-6"
+              class="w-5 h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -185,10 +180,11 @@
 
         <!-- Mobile Menu -->
         {#if mobileMenuOpen}
-          <div id="mobile-menu" class="md:hidden py-4 border-t border-border">
-            <div class="flex flex-col space-y-3">
+          <div id="mobile-menu" class="md:hidden py-3 border-t border-border">
+            <div class="flex flex-col space-y-2">
               <a
                 href={resolve("/")}
+                on:click={() => (mobileMenuOpen = false)}
                 class="py-2 text-sm font-medium {isActive('/')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
@@ -197,6 +193,7 @@
               </a>
               <a
                 href={resolve("/transactions")}
+                on:click={() => (mobileMenuOpen = false)}
                 class="py-2 text-sm font-medium {isActive('/transactions')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
@@ -205,6 +202,7 @@
               </a>
               <a
                 href={resolve("/reports")}
+                on:click={() => (mobileMenuOpen = false)}
                 class="py-2 text-sm font-medium {isActive('/reports')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
@@ -213,13 +211,14 @@
               </a>
               <a
                 href={resolve("/settings")}
+                on:click={() => (mobileMenuOpen = false)}
                 class="py-2 text-sm font-medium {isActive('/settings')
                   ? 'text-primary'
                   : 'text-muted-foreground'}"
               >
                 Settings
               </a>
-              <div class="flex items-center justify-between py-2">
+              <div class="flex items-center justify-between py-2 border-t border-border mt-2 pt-3">
                 <button
                   on:click={signOut}
                   class="text-sm font-medium text-muted-foreground"
@@ -242,7 +241,7 @@
       </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
       <slot />
     </main>
   {:else}
@@ -250,6 +249,4 @@
   {/if}
 </div>
 
-
-<!-- Toast Notifications -->
 <Toast />
