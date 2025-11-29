@@ -14,26 +14,16 @@
   onMount(() => {
     if (!browser) return;
 
-    const loadChart = async () => {
+    (async () => {
       try {
         const module = await import("apexcharts");
         ApexCharts = module.default;
-
-        setTimeout(() => {
-          if (chartContainer && ApexCharts) {
-            if (categories.length > 0) {
-              renderChart();
-            }
-            loading = false;
-          }
-        }, 100);
+        loading = false;
       } catch (error) {
         console.warn("Failed to load ApexCharts:", error);
         loading = false;
       }
-    };
-
-    loadChart();
+    })();
 
     return () => {
       if (chart) {
@@ -42,8 +32,8 @@
     };
   });
 
-  $: if (browser && ApexCharts && chartContainer && categories.length > 0) {
-    setTimeout(renderChart, 100);
+  $: if (browser && ApexCharts && chartContainer && !loading && categories.length > 0) {
+    renderChart();
   }
 
   function renderChart() {
