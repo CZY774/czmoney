@@ -37,6 +37,13 @@
     renderChart();
   }
 
+  $: if (browser && ApexCharts && chartContainer && chart && (income >= 0 || expense >= 0)) {
+    chart.updateSeries([{
+      name: "Amount",
+      data: [income || 0, expense || 0],
+    }]);
+  }
+
   function renderChart() {
     if (!chartContainer || !ApexCharts || !browser) return;
 
