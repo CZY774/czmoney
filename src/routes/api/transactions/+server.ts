@@ -3,6 +3,7 @@ import { json, type RequestHandler } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
 import { checkRateLimit } from "$lib/security/ratelimit";
 import { validateAndSanitize, transactionSchema } from "$lib/security/sanitize";
+import { checkIdempotency, storeIdempotency } from "$lib/utils/idempotency";
 import type { Database } from "$lib/types/database";
 
 const supabaseUrl = env.VITE_SUPABASE_URL;
@@ -104,6 +105,20 @@ export const POST: RequestHandler = async ({ request }) => {
   const { error, user } = await authenticate(request);
   if (error) return error;
 
+  // Check idempotency key
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (idempotencyKey) {
+    const cached = await checkIdempotency(idempotencyKey);
+    if (cached) {
+      return json(cached, {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "X-Idempotent-Replay": "true",
+        },
+      });
+    }
+  }
+
   // Rate limit
   const { success } = await checkRateLimit(user!.id);
   if (!success) {
@@ -131,14 +146,18 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: dbError.message }, { status: 500 });
     }
 
-    return json(
-      { data },
-      {
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-        },
+    const response = { data };
+
+    // Store for idempotency
+    if (idempotencyKey) {
+      await storeIdempotency(idempotencyKey, response);
+    }
+
+    return json(response, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
-    );
+    });
   } catch {
     return json({ error: "Invalid input" }, { status: 400 });
   }
@@ -147,6 +166,20 @@ export const POST: RequestHandler = async ({ request }) => {
 export const PUT: RequestHandler = async ({ request }) => {
   const { error, user } = await authenticate(request);
   if (error) return error;
+
+  // Check idempotency key
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (idempotencyKey) {
+    const cached = await checkIdempotency(idempotencyKey);
+    if (cached) {
+      return json(cached, {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "X-Idempotent-Replay": "true",
+        },
+      });
+    }
+  }
 
   // Rate limit
   const { success } = await checkRateLimit(user!.id);
@@ -184,14 +217,18 @@ export const PUT: RequestHandler = async ({ request }) => {
       return json({ error: dbError.message }, { status: 500 });
     }
 
-    return json(
-      { data },
-      {
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-        },
+    const response = { data };
+
+    // Store for idempotency
+    if (idempotencyKey) {
+      await storeIdempotency(idempotencyKey, response);
+    }
+
+    return json(response, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
-    );
+    });
   } catch {
     return json({ error: "Invalid input" }, { status: 400 });
   }
