@@ -36,6 +36,13 @@
     renderChart();
   }
 
+  $: if (browser && ApexCharts && chart && categories.length > 0) {
+    chart.updateOptions({
+      series: categories.map((d) => d.amount),
+      labels: categories.map((d) => d.name),
+    });
+  }
+
   function renderChart() {
     if (!chartContainer || !ApexCharts || !browser || categories.length === 0)
       return;
