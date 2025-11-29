@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { queueTransaction, clearTransactionCache } from "$lib/services/sync";
+  import { generateIdempotencyKey } from "$lib/utils/idempotency";
 
   export let isOpen = false;
   export let transaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
@@ -91,18 +92,25 @@
         alert("Transaction saved offline. Will sync when online.");
         closeModal();
       } else {
-        // Online - use API
+        // Online - use API with optimistic update
         const { data: session } = await supabase.auth.getSession();
         const token = session.session?.access_token;
 
         const method = transaction ? "PUT" : "POST";
         const body = transaction ? transactionData : transactionData;
 
+        // Optimistic UI: dispatch immediately
+        const optimisticData = { ...transactionData, id: transaction?.id || `temp_${Date.now()}` };
+        dispatch("success", optimisticData);
+        closeModal();
+
+        // Then sync in background
         const response = await fetch("/api/transactions", {
           method,
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "Idempotency-Key": generateIdempotencyKey(),
           },
           body: JSON.stringify(body),
         });
@@ -111,7 +119,6 @@
 
         if (response.ok) {
           await clearTransactionCache();
-          dispatch("success", result.data);
           
           // Show success message
           const msg = transaction ? "Transaction updated!" : "Transaction added!";
@@ -120,10 +127,10 @@
           toast.textContent = msg;
           document.body.appendChild(toast);
           setTimeout(() => toast.remove(), 3000);
-          
-          closeModal();
         } else {
+          // Rollback on error
           alert(result.error || "Failed to save transaction");
+          window.location.reload();
         }
       }
     } catch (error) {
@@ -240,14 +247,14 @@
           <button
             type="submit"
             disabled={loading}
-            class="w-full sm:flex-1 px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+            class="w-full sm:flex-1 px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 transition-transform active:scale-95"
           >
             {loading ? "Saving..." : transaction ? "Update" : "Add"}
           </button>
           <button
             type="button"
             on:click={closeModal}
-            class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base border border-border rounded hover:bg-accent"
+            class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base border border-border rounded hover:bg-accent transition-colors"
           >
             Cancel
           </button>
