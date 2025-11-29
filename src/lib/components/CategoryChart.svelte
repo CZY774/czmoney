@@ -20,8 +20,10 @@
         ApexCharts = module.default;
 
         setTimeout(() => {
-          if (chartContainer && ApexCharts && categories.length > 0) {
-            renderChart();
+          if (chartContainer && ApexCharts) {
+            if (categories.length > 0) {
+              renderChart();
+            }
             loading = false;
           }
         }, 100);
