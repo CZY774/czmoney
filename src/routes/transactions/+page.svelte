@@ -52,27 +52,30 @@
 
   async function loadTransactions() {
     dataLoading = true;
-    const { data: session } = await supabase.auth.getSession();
-    const token = session.session?.access_token;
+    if (!user) return;
 
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity
-    const params = new URLSearchParams();
-    if (filters.month) params.append("month", filters.month);
-    if (filters.category) params.append("category", filters.category);
-    if (filters.type) params.append("type", filters.type);
+    const [year, month] = filters.month.split("-");
+    const startDate = `${year}-${month}-01`;
+    const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
 
-    const response = await fetch(`/api/transactions?${params}&_t=${Date.now()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      },
-    });
+    let query = supabase
+      .from("transactions")
+      .select("*, categories(name)")
+      .eq("user_id", user.id)
+      .gte("txn_date", startDate)
+      .lte("txn_date", endDate);
 
-    if (response.ok) {
-      const result = await response.json();
-      transactions = result.data || [];
+    if (filters.category) {
+      query = query.eq("category_id", filters.category);
     }
+
+    if (filters.type) {
+      query = query.eq("type", filters.type);
+    }
+
+    const { data } = await query.order("txn_date", { ascending: false });
+
+    transactions = data || [];
     dataLoading = false;
   }
 
