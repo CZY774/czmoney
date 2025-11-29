@@ -1,8 +1,10 @@
 import { get, set, del, keys } from "idb-keyval";
 import { supabase } from "./supabase";
+import { generateIdempotencyKey } from "$lib/utils/idempotency";
 
 interface PendingTransaction {
   id: string;
+  idempotencyKey: string;
   data: Record<string, unknown>;
   action: "create" | "update" | "delete";
   timestamp: number;
@@ -14,8 +16,11 @@ export async function queueTransaction(
   data: Record<string, unknown>,
 ) {
   const id = `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const idempotencyKey = generateIdempotencyKey();
+
   const pending: PendingTransaction = {
     id,
+    idempotencyKey,
     data,
     action,
     timestamp: Date.now(),
@@ -42,32 +47,56 @@ export async function syncPendingTransactions() {
       const pending: PendingTransaction | undefined = await get(key);
       if (!pending) continue;
 
+      // Get auth token
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+
+      if (!token) {
+        failed++;
+        continue;
+      }
+
       let success = false;
 
       switch (pending.action) {
         case "create": {
-          const { error: createError } = await supabase
-            .from("transactions")
-            .insert([pending.data]);
-          success = !createError;
+          const response = await fetch("/api/transactions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              "Idempotency-Key": pending.idempotencyKey,
+            },
+            body: JSON.stringify(pending.data),
+          });
+          success = response.ok;
           break;
         }
 
         case "update": {
-          const { error: updateError } = await supabase
-            .from("transactions")
-            .update(pending.data)
-            .eq("id", pending.data.id);
-          success = !updateError;
+          const response = await fetch("/api/transactions", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              "Idempotency-Key": pending.idempotencyKey,
+            },
+            body: JSON.stringify(pending.data),
+          });
+          success = response.ok;
           break;
         }
 
         case "delete": {
-          const { error: deleteError } = await supabase
-            .from("transactions")
-            .delete()
-            .eq("id", pending.data.id);
-          success = !deleteError;
+          const response = await fetch("/api/transactions", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ id: pending.data.id }),
+          });
+          success = response.ok;
           break;
         }
       }
