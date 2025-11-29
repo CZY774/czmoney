@@ -5,6 +5,8 @@
   import { resolve } from "$app/paths";
   import TransactionForm from "$lib/components/TransactionForm.svelte";
   import { clearTransactionCache } from "$lib/services/sync";
+  import { debounce } from "$lib/utils/perf";
+  import Skeleton from "$lib/components/Skeleton.svelte";
 
   let user: { id: string } | null = null;
   let transactions: Array<Record<string, unknown>> = [];
@@ -19,6 +21,8 @@
     category: "",
     type: "",
   };
+
+  const debouncedLoadTransactions = debounce(loadTransactions, 300);
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -139,7 +143,7 @@
     filters.category !== undefined ||
     filters.type !== undefined
   ) {
-    if (user) loadTransactions();
+    if (user) debouncedLoadTransactions();
   }
 </script>
 
@@ -211,8 +215,8 @@
   <!-- Transactions List -->
   <div class="bg-card rounded-lg border">
     {#if loading}
-      <div class="p-6 sm:p-8 text-center">
-        <div class="text-base sm:text-lg">Loading transactions...</div>
+      <div class="p-4">
+        <Skeleton type="list" count={5} />
       </div>
     {:else if transactions.length === 0}
       <div class="p-6 sm:p-8 text-center">
