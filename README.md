@@ -13,6 +13,9 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 - 📥 **CSV Export**: Download transaction history
 - 🔔 **Reminders**: Optional notifications for expense tracking
 - 🌙 **Dark Theme**: Sleek, modern dark UI optimized for mobile
+- 🔒 **Idempotency**: Prevents duplicate transactions on network retries
+- ⚡ **Performance Optimized**: Debounced filters, skeleton loaders, optimistic UI updates
+- 🚀 **Perceived Speed**: Instant feedback, prefetch navigation, lazy-loaded charts
 
 ## Tech Stack
 
@@ -121,9 +124,12 @@ Add these in your Vercel project settings:
 czmoney/
 ├── src/
 │   ├── lib/
+│   │   ├── actions/          # Svelte actions (clickOutside)
 │   │   ├── components/       # Reusable Svelte components
+│   │   ├── security/         # Rate limiting, sanitization
 │   │   ├── services/         # Supabase, sync, utils
-│   │   └── utils.js          # Helper functions
+│   │   ├── utils/            # Performance utilities, idempotency
+│   │   └── utils.ts          # Helper functions
 │   ├── routes/
 │   │   ├── +layout.svelte    # Main layout with nav
 │   │   ├── +page.svelte      # Dashboard
@@ -265,6 +271,61 @@ npm run build
 2. **Code Splitting**: SvelteKit handles this automatically
 3. **Caching**: Service worker caches static assets
 4. **Database**: Indexes created for common queries
+5. **Debounced Filters**: Transaction filters debounced (300ms) to reduce API calls
+6. **Idempotency**: Prevents duplicate transactions on network retries/double-clicks
+7. **Skeleton Loaders**: Content placeholders instead of spinners for better perceived speed
+8. **Optimistic UI**: Updates UI immediately, syncs in background
+9. **Prefetch Navigation**: Preloads page data on hover for instant navigation
+10. **Lazy-loaded Charts**: ApexCharts loaded on-demand to reduce initial bundle size
+
+## Idempotency
+
+The app implements idempotency to prevent duplicate transactions:
+
+- **Client-side**: Generates unique `Idempotency-Key` for each create/update request
+- **Server-side**: Caches successful responses for 24 hours
+- **Offline queue**: Stores idempotency keys with pending transactions
+- **Duplicate detection**: Returns cached response if same key is used
+
+This prevents duplicates from:
+
+- Double-clicking submit button
+- Network retries
+- Offline sync running multiple times
+
+## Perceived Speed Optimizations
+
+The app feels faster through strategic UX improvements:
+
+**Skeleton Loaders**:
+
+- Content placeholders instead of blank screens
+- Shows structure while data loads
+- Used on dashboard, transactions, and charts
+
+**Optimistic UI Updates**:
+
+- Transaction form closes immediately
+- UI updates before API responds
+- Background sync with rollback on error
+
+**Instant Feedback**:
+
+- Button press animations (`active:scale-95`)
+- Smooth transitions on all interactions
+- Loading states with clear messaging
+
+**Prefetch Navigation**:
+
+- Hover/focus preloads next page data
+- Near-instant page transitions
+- Applied to all navigation links
+
+**Lazy-loaded Charts**:
+
+- ApexCharts imported on-demand
+- Reduces initial bundle size
+- Shows loading skeleton while importing
 
 ## Customization
 
