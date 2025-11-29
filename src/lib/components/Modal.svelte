@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { fade, scale } from "svelte/transition";
+  import { clickOutside } from "$lib/actions/clickOutside";
 
   export let open = false;
   export let title = "";
@@ -19,19 +20,12 @@
     open = false;
     dispatch("close");
   }
-
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  }
 </script>
 
 {#if open}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
     transition:fade={{ duration: 200 }}
-    on:click={handleBackdropClick}
     on:keydown={(e) => e.key === "Escape" && handleClose()}
     role="dialog"
     aria-modal="true"
@@ -39,6 +33,7 @@
     tabindex="-1"
   >
     <div
+      use:clickOutside={handleClose}
       class="bg-card border border-border rounded-xl shadow-2xl w-full {sizes[
         size
       ]} max-h-[90vh] overflow-hidden flex flex-col"
