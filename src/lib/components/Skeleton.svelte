@@ -5,11 +5,11 @@
 
 <div class="animate-pulse space-y-3">
   {#if type === 'card'}
-    {#each Array(count) as _, i (i)}
+    {#each Array(count) as i (i)}
       <div class="h-24 bg-card/50 rounded-lg border border-border"></div>
     {/each}
   {:else if type === 'list'}
-    {#each Array(count) as _, i (i)}
+    {#each Array(count) as i (i)}
       <div class="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-border">
         <div class="w-12 h-12 bg-accent/20 rounded"></div>
         <div class="flex-1 space-y-2">
