@@ -6,6 +6,7 @@
   export let expense = 0;
 
   let chartContainer: HTMLElement;
+  let loading = true;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chart: any = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,10 +23,12 @@
         setTimeout(() => {
           if (chartContainer && ApexCharts) {
             renderChart();
+            loading = false;
           }
         }, 100);
       } catch (error) {
         console.warn("Failed to load ApexCharts:", error);
+        loading = false;
       }
     };
 
@@ -120,7 +123,13 @@
   }
 </script>
 
-<div
-  bind:this={chartContainer}
-  class="w-full min-h-[280px] sm:min-h-[300px]"
-></div>
+{#if loading}
+  <div class="w-full min-h-[280px] sm:min-h-[300px] bg-card/50 rounded-lg animate-pulse flex items-center justify-center">
+    <div class="text-muted-foreground text-sm">Loading chart...</div>
+  </div>
+{:else}
+  <div
+    bind:this={chartContainer}
+    class="w-full min-h-[280px] sm:min-h-[300px]"
+  ></div>
+{/if}
