@@ -5,6 +5,7 @@
   export let categories: Array<{ name: string; amount: number }> = [];
 
   let chartContainer: HTMLElement;
+  let loading = true;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chart: any = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,10 +22,12 @@
         setTimeout(() => {
           if (chartContainer && ApexCharts && categories.length > 0) {
             renderChart();
+            loading = false;
           }
         }, 100);
       } catch (error) {
         console.warn("Failed to load ApexCharts:", error);
+        loading = false;
       }
     };
 
@@ -110,7 +113,11 @@
   }
 </script>
 
-{#if categories.length > 0}
+{#if loading}
+  <div class="w-full min-h-[300px] sm:min-h-[320px] bg-card/50 rounded-lg animate-pulse flex items-center justify-center">
+    <div class="text-muted-foreground text-sm">Loading chart...</div>
+  </div>
+{:else if categories.length > 0}
   <div
     bind:this={chartContainer}
     class="w-full min-h-[300px] sm:min-h-[320px]"
