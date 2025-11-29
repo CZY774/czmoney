@@ -5,6 +5,7 @@
   import { resolve } from "$app/paths";
   import BalanceChart from "$lib/components/BalanceChart.svelte";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
+  import Skeleton from "$lib/components/Skeleton.svelte";
 
   let user: { id: string; email?: string } | null = null;
   let balance = { income: 0, expense: 0, total: 0 };
@@ -107,8 +108,10 @@
 </svelte:head>
 
 {#if loading}
-  <div class="flex items-center justify-center min-h-64">
-    <div class="text-lg text-muted-foreground">Loading...</div>
+  <div class="space-y-6">
+    <div class="h-10 bg-card/50 rounded w-48 animate-pulse"></div>
+    <Skeleton type="card" count={3} />
+    <Skeleton type="chart" />
   </div>
 {:else if !user}
   <!-- Landing Page -->
