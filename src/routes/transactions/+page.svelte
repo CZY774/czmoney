@@ -11,7 +11,6 @@
   let user: { id: string } | null = null;
   let transactions: Array<Record<string, unknown>> = [];
   let categories: Array<{ id: string; name: string; type: string }> = [];
-  let loading = true;
   let dataLoading = true;
   let showForm = false;
   let editingTransaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
@@ -28,7 +27,6 @@
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
     user = data.session?.user || null;
-    loading = false;
 
     if (!user) {
       goto(resolve("/auth/login"));
