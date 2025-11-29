@@ -13,19 +13,19 @@
   let categoryData: Array<{ name: string; amount: number }> = [];
   let profile = { monthly_income: 0, savings_target: 0 };
   let loading = true;
+  let dataLoading = true;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
     user = data.session?.user || null;
+    loading = false;
 
     if (user) {
-      await loadDashboardData();
+      loadDashboardData();
       
       // Listen for transaction updates
       window.addEventListener('transactionUpdated', loadDashboardData);
     }
-
-    loading = false;
   });
 
   onDestroy(() => {
@@ -34,6 +34,7 @@
 
   async function loadDashboardData() {
     if (!user) return;
+    dataLoading = true;
 
     // Load profile data
     const { data: profileData } = await supabase
@@ -93,6 +94,7 @@
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
     }
+    dataLoading = false;
   }
 
   function formatCurrency(amount: number) {
@@ -107,11 +109,10 @@
   <title>{user ? "Dashboard" : "Welcome"} - CZmoneY</title>
 </svelte:head>
 
-{#if loading}
+{#if !user && loading}
   <div class="space-y-6">
     <div class="h-10 bg-card/50 rounded w-48 animate-pulse"></div>
     <Skeleton type="card" count={3} />
-    <Skeleton type="chart" />
   </div>
 {:else if !user}
   <!-- Landing Page -->
@@ -146,6 +147,9 @@
     <h1 class="text-3xl sm:text-4xl font-bold">Dashboard</h1>
 
     <!-- Balance Cards -->
+    {#if dataLoading}
+      <Skeleton type="card" count={3} />
+    {:else}
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
       <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
         <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
@@ -176,6 +180,7 @@
         </p>
       </div>
     </div>
+    {/if}
 
     <!-- Savings & Spending Progress -->
     {#if profile.savings_target > 0 || profile.monthly_income > 0}
