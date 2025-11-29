@@ -12,6 +12,7 @@
   let transactions: Array<Record<string, unknown>> = [];
   let categories: Array<{ id: string; name: string; type: string }> = [];
   let loading = true;
+  let dataLoading = true;
   let showForm = false;
   let editingTransaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
 
@@ -27,15 +28,15 @@
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
     user = data.session?.user || null;
+    loading = false;
 
     if (!user) {
       goto(resolve("/auth/login"));
       return;
     }
 
-    await loadCategories();
-    await loadTransactions();
-    loading = false;
+    loadCategories();
+    loadTransactions();
   });
 
   async function loadCategories() {
@@ -52,6 +53,7 @@
   }
 
   async function loadTransactions() {
+    dataLoading = true;
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token;
 
@@ -73,6 +75,7 @@
       const result = await response.json();
       transactions = result.data || [];
     }
+    dataLoading = false;
   }
 
   async function deleteTransaction(id: string) {
@@ -214,7 +217,7 @@
 
   <!-- Transactions List -->
   <div class="bg-card rounded-lg border">
-    {#if loading}
+    {#if dataLoading}
       <div class="p-4">
         <Skeleton type="list" count={5} />
       </div>
