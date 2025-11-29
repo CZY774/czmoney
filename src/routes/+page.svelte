@@ -47,28 +47,21 @@
       profile = profileData;
     }
 
-    // Get session token for API call
-    const { data: session } = await supabase.auth.getSession();
-    const token = session.session?.access_token;
-
-    // Use API endpoint with cache-busting
+    // Load transactions directly from Supabase
     const month = new Date().toISOString().slice(0, 7);
-    const response = await fetch(`/api/transactions?month=${month}&_t=${Date.now()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      },
-    });
+    const [year, monthNum] = month.split("-");
+    const startDate = `${year}-${monthNum}-01`;
+    const endDate = new Date(parseInt(year), parseInt(monthNum), 0).toISOString().split("T")[0];
 
-    if (response.ok) {
-      const result = await response.json();
-      const transactions: Array<{
-        type: string;
-        amount: number;
-        categories?: { name: string };
-      }> = result.data || [];
+    const { data: transactions } = await supabase
+      .from("transactions")
+      .select("*, categories(name)")
+      .eq("user_id", user.id)
+      .gte("txn_date", startDate)
+      .lte("txn_date", endDate)
+      .order("txn_date", { ascending: false });
 
+    if (transactions) {
       recentTransactions = transactions.slice(0, 5);
 
       balance.income = transactions
