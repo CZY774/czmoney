@@ -96,6 +96,7 @@
             </a>
             <a
               href={resolve("/transactions")}
+              data-sveltekit-preload-data
               class="text-sm font-medium transition-colors {isActive(
                 '/transactions'
               )
@@ -106,6 +107,7 @@
             </a>
             <a
               href={resolve("/reports")}
+              data-sveltekit-preload-data
               class="text-sm font-medium transition-colors {isActive('/reports')
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'}"
@@ -114,6 +116,7 @@
             </a>
             <a
               href={resolve("/settings")}
+              data-sveltekit-preload-data
               class="text-sm font-medium transition-colors {isActive(
                 '/settings'
               )
@@ -193,6 +196,7 @@
               </a>
               <a
                 href={resolve("/transactions")}
+                data-sveltekit-preload-data
                 on:click={() => (mobileMenuOpen = false)}
                 class="py-2 text-sm font-medium {isActive('/transactions')
                   ? 'text-primary'
@@ -202,6 +206,7 @@
               </a>
               <a
                 href={resolve("/reports")}
+                data-sveltekit-preload-data
                 on:click={() => (mobileMenuOpen = false)}
                 class="py-2 text-sm font-medium {isActive('/reports')
                   ? 'text-primary'
@@ -211,6 +216,7 @@
               </a>
               <a
                 href={resolve("/settings")}
+                data-sveltekit-preload-data
                 on:click={() => (mobileMenuOpen = false)}
                 class="py-2 text-sm font-medium {isActive('/settings')
                   ? 'text-primary'
