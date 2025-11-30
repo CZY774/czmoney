@@ -56,7 +56,7 @@
 
     const [year, month] = filters.month.split("-");
     const startDate = `${year}-${month}-01`;
-    const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
+    const endDate = new Date(parseInt(year), parseInt(month) + 1, 0).toISOString().split("T")[0];
 
     let query = supabase
       .from("transactions")
