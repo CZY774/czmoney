@@ -51,7 +51,7 @@
     const month = new Date().toISOString().slice(0, 7);
     const [year, monthNum] = month.split("-");
     const startDate = `${year}-${monthNum}-01`;
-    const endDate = new Date(parseInt(year), parseInt(monthNum), 0).toISOString().split("T")[0];
+    const endDate = new Date(parseInt(year), parseInt(monthNum) + 1, 0).toISOString().split("T")[0];
 
     const { data: transactions } = await supabase
       .from("transactions")
