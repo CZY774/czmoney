@@ -1,5 +1,3 @@
-import { get, set, del } from "idb-keyval";
-
 const IDEMPOTENCY_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 interface IdempotencyRecord {
@@ -7,15 +5,18 @@ interface IdempotencyRecord {
   timestamp: number;
 }
 
+// In-memory store for server-side idempotency
+const store = new Map<string, IdempotencyRecord>();
+
 // Server-side: Check if request was already processed
 export async function checkIdempotency(key: string): Promise<unknown | null> {
-  const record: IdempotencyRecord | undefined = await get(`idem_${key}`);
+  const record = store.get(`idem_${key}`);
 
   if (!record) return null;
 
   // Expired?
   if (Date.now() - record.timestamp > IDEMPOTENCY_TTL) {
-    await del(`idem_${key}`);
+    store.delete(`idem_${key}`);
     return null;
   }
 
@@ -27,7 +28,7 @@ export async function storeIdempotency(
   key: string,
   response: unknown,
 ): Promise<void> {
-  await set(`idem_${key}`, {
+  store.set(`idem_${key}`, {
     response,
     timestamp: Date.now(),
   });
