@@ -5,17 +5,19 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 ## Features
 
 - 💰 **Transaction Management**: Track income and expenses with categories
+- 🔍 **Smart Search**: Filter by month, category, type, and description
 - 📊 **Visual Reports**: Interactive charts and monthly breakdowns
 - 🤖 **AI Insights**: Get personalized financial advice powered by Google Gemini
 - 📱 **PWA Support**: Install as mobile/desktop app with offline capability
 - 🔄 **Offline Sync**: Work offline, sync automatically when online
+- ⚡ **Realtime Updates**: Instant data refresh across all tabs using Supabase Realtime
 - 📈 **Savings Tracker**: Set and monitor monthly savings targets
 - 📥 **CSV Export**: Download transaction history
 - 🔔 **Reminders**: Optional notifications for expense tracking
 - 🌙 **Dark Theme**: Sleek, modern dark UI optimized for mobile
 - 🔒 **Idempotency**: Prevents duplicate transactions on network retries
-- ⚡ **Performance Optimized**: Debounced filters, skeleton loaders, optimistic UI updates
-- 🚀 **Perceived Speed**: Instant feedback, prefetch navigation, lazy-loaded charts
+- 🚀 **Performance Optimized**: Debounced filters, skeleton loaders, direct queries
+- ✨ **Perceived Speed**: Instant feedback, prefetch navigation, lazy-loaded charts
 
 ## Tech Stack
 
@@ -160,6 +162,14 @@ czmoney/
 - Or go to Transactions → Add Transaction
 - Select category, type (income/expense), amount, and optional description
 - Works offline - syncs automatically when online
+- Realtime updates across all open tabs
+
+### Searching Transactions
+
+- **Month**: Select any month to view transactions
+- **Category**: Filter by specific category
+- **Type**: Filter by income or expense
+- **Description**: Search by transaction description (debounced for performance)
 
 ### Generating AI Insights
 
@@ -274,9 +284,10 @@ npm run build
 5. **Debounced Filters**: Transaction filters debounced (300ms) to reduce API calls
 6. **Idempotency**: Prevents duplicate transactions on network retries/double-clicks
 7. **Skeleton Loaders**: Content placeholders instead of spinners for better perceived speed
-8. **Optimistic UI**: Updates UI immediately, syncs in background
+8. **Realtime Sync**: Supabase Realtime subscriptions for instant updates across tabs
 9. **Prefetch Navigation**: Preloads page data on hover for instant navigation
 10. **Lazy-loaded Charts**: ApexCharts loaded on-demand to reduce initial bundle size
+11. **Direct Queries**: Fast Supabase client queries with proper cache invalidation
 
 ## Idempotency
 
@@ -303,11 +314,11 @@ The app feels faster through strategic UX improvements:
 - Shows structure while data loads
 - Used on dashboard, transactions, and charts
 
-**Optimistic UI Updates**:
+**Realtime Updates**:
 
-- Transaction form closes immediately
-- UI updates before API responds
-- Background sync with rollback on error
+- Supabase Realtime subscriptions
+- Instant data refresh across all tabs
+- No manual refresh needed
 
 **Instant Feedback**:
 
