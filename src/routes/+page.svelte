@@ -25,6 +25,13 @@
       
       // Listen for transaction updates
       window.addEventListener('transactionUpdated', loadDashboardData);
+      
+      // Reload when page becomes visible
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && user) {
+          loadDashboardData();
+        }
+      });
     }
   });
 
@@ -41,13 +48,13 @@
       .from("profiles")
       .select("monthly_income, savings_target")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (profileData) {
       profile = profileData;
     }
 
-    // Load transactions directly from Supabase
+    // Load transactions
     const month = new Date().toISOString().slice(0, 7);
     const [year, monthNum] = month.split("-");
     const startDate = `${year}-${monthNum}-01`;
