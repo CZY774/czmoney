@@ -26,6 +26,19 @@
     loading = false;
 
     window.addEventListener('transactionUpdated', loadMonthlyData);
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('reports-transactions')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
+        () => loadMonthlyData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   });
 
   onDestroy(() => {
