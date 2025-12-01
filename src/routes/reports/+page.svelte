@@ -12,7 +12,7 @@
   let aiSummary = "";
   let loading = true;
   let generatingAI = false;
-  let realtimeChannel: any;
+  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
