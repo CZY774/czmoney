@@ -98,6 +98,12 @@
 
         const method = transaction ? "PUT" : "POST";
 
+        // Optimistic update - notify immediately
+        const optimisticData = { ...transactionData, id: transaction?.id || crypto.randomUUID() };
+        dispatch("success", optimisticData);
+        window.dispatchEvent(new CustomEvent('transactionUpdated', { detail: optimisticData }));
+        closeModal();
+
         const response = await fetch("/api/transactions", {
           method,
           headers: {
@@ -112,14 +118,9 @@
 
         if (response.ok) {
           await clearTransactionCache();
+          // Sync with real data
+          window.dispatchEvent(new CustomEvent('transactionUpdated', { detail: result.data }));
           
-          // Notify all listeners
-          dispatch("success", result.data);
-          window.dispatchEvent(new CustomEvent('transactionUpdated'));
-          
-          closeModal();
-          
-          // Show success message
           const msg = transaction ? "Transaction updated!" : "Transaction added!";
           const toast = document.createElement("div");
           toast.className = "fixed top-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50";
@@ -127,7 +128,9 @@
           document.body.appendChild(toast);
           setTimeout(() => toast.remove(), 3000);
         } else {
+          // Rollback on error
           alert(result.error || "Failed to save transaction");
+          window.dispatchEvent(new CustomEvent('transactionUpdated'));
         }
       }
     } catch (error) {
