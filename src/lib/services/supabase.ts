@@ -12,6 +12,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase: SupabaseClient = createClient(
   supabaseUrl,
   supabaseAnonKey,
+  {
+    global: {
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    },
+  },
 );
 
 export async function getSession() {
