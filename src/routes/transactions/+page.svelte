@@ -21,6 +21,7 @@
     month: new Date().toISOString().slice(0, 7), // YYYY-MM
     category: "",
     type: "",
+    search: "",
   };
 
   const debouncedLoadTransactions = debounce(loadTransactions, 300);
@@ -84,6 +85,10 @@
 
     if (filters.type) {
       query = query.eq("type", filters.type);
+    }
+
+    if (filters.search) {
+      query = query.ilike("description", `%${filters.search}%`);
     }
 
     const { data } = await query.order("txn_date", { ascending: false });
@@ -158,7 +163,8 @@
   $: if (
     filters.month ||
     filters.category !== undefined ||
-    filters.type !== undefined
+    filters.type !== undefined ||
+    filters.search !== undefined
   ) {
     if (user) debouncedLoadTransactions();
   }
@@ -182,7 +188,7 @@
   <!-- Filters -->
   <div class="bg-card p-3 sm:p-4 rounded-lg border">
     <h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Filters</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
       <div>
         <label for="filter-month" class="block text-xs sm:text-sm font-medium mb-1"
           >Month</label
@@ -225,6 +231,19 @@
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
+      </div>
+
+      <div>
+        <label for="filter-search" class="block text-xs sm:text-sm font-medium mb-1"
+          >Search</label
+        >
+        <input
+          id="filter-search"
+          type="text"
+          bind:value={filters.search}
+          placeholder="Search description..."
+          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
+        />
       </div>
     </div>
   </div>
