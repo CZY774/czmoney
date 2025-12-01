@@ -12,6 +12,7 @@
   let aiSummary = "";
   let loading = true;
   let generatingAI = false;
+  let realtimeChannel: any;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -27,22 +28,18 @@
 
     window.addEventListener('transactionUpdated', loadMonthlyData);
 
-    // Subscribe to realtime changes
-    const channel = supabase
+    realtimeChannel = supabase
       .channel('reports-transactions')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
         () => loadMonthlyData()
       )
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   });
 
   onDestroy(() => {
     window.removeEventListener('transactionUpdated', loadMonthlyData);
+    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
   });
 
   async function loadMonthlyData() {
