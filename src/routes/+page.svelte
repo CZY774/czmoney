@@ -14,6 +14,7 @@
   let profile = { monthly_income: 0, savings_target: 0 };
   let loading = true;
   let dataLoading = true;
+  let realtimeChannel: any;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -23,11 +24,9 @@
     if (user) {
       loadDashboardData();
       
-      // Listen for transaction updates
       window.addEventListener('transactionUpdated', loadDashboardData);
       
-      // Subscribe to realtime changes
-      const channel = supabase
+      realtimeChannel = supabase
         .channel('dashboard-transactions')
         .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
@@ -35,21 +34,17 @@
         )
         .subscribe();
       
-      // Reload when page becomes visible
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && user) {
           loadDashboardData();
         }
       });
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   });
 
   onDestroy(() => {
     window.removeEventListener('transactionUpdated', loadDashboardData);
+    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
   });
 
   async function loadDashboardData() {
