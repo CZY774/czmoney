@@ -92,19 +92,12 @@
         alert("Transaction saved offline. Will sync when online.");
         closeModal();
       } else {
-        // Online - use API with optimistic update
+        // Online - save to API
         const { data: session } = await supabase.auth.getSession();
         const token = session.session?.access_token;
 
         const method = transaction ? "PUT" : "POST";
-        const body = transaction ? transactionData : transactionData;
 
-        // Optimistic UI: dispatch immediately
-        const optimisticData = { ...transactionData, id: transaction?.id || `temp_${Date.now()}` };
-        dispatch("success", optimisticData);
-        closeModal();
-
-        // Then sync in background
         const response = await fetch("/api/transactions", {
           method,
           headers: {
@@ -112,13 +105,19 @@
             Authorization: `Bearer ${token}`,
             "Idempotency-Key": generateIdempotencyKey(),
           },
-          body: JSON.stringify(body),
+          body: JSON.stringify(transactionData),
         });
 
         const result = await response.json();
 
         if (response.ok) {
           await clearTransactionCache();
+          
+          // Notify all listeners
+          dispatch("success", result.data);
+          window.dispatchEvent(new CustomEvent('transactionUpdated'));
+          
+          closeModal();
           
           // Show success message
           const msg = transaction ? "Transaction updated!" : "Transaction added!";
@@ -128,9 +127,7 @@
           document.body.appendChild(toast);
           setTimeout(() => toast.remove(), 3000);
         } else {
-          // Rollback on error
           alert(result.error || "Failed to save transaction");
-          window.location.reload();
         }
       }
     } catch (error) {
