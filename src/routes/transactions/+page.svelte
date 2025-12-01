@@ -102,6 +102,11 @@
       return;
     }
 
+    // Optimistic delete
+    const backup = transactions;
+    transactions = transactions.filter(t => t.id !== id);
+    window.dispatchEvent(new CustomEvent('transactionUpdated'));
+
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token;
 
@@ -117,14 +122,10 @@
     });
 
     if (response.ok) {
-      // Clear cache to force fresh data
       await clearTransactionCache();
-      
-      await loadTransactions();
-      
-      // Notify dashboard
-      window.dispatchEvent(new CustomEvent('transactionUpdated'));
     } else {
+      // Rollback on error
+      transactions = backup;
       alert("Failed to delete transaction");
     }
   }
@@ -139,12 +140,15 @@
     showForm = true;
   }
 
-  async function handleFormSuccess() {
-    // Force immediate reload
-    await clearTransactionCache();
-    await loadTransactions();
-    // Notify dashboard
-    window.dispatchEvent(new CustomEvent('transactionUpdated'));
+  async function handleFormSuccess(event: CustomEvent) {
+    const txn = event.detail;
+    
+    // Optimistic update - add/update immediately
+    if (editingTransaction?.id) {
+      transactions = transactions.map(t => t.id === txn.id ? { ...t, ...txn } : t);
+    } else {
+      transactions = [txn, ...transactions];
+    }
   }
 
   function formatCurrency(amount: number) {
