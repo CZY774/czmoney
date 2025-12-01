@@ -14,7 +14,7 @@
   let dataLoading = true;
   let showForm = false;
   let editingTransaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
-  let realtimeChannel: any;
+  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   // Filters
   let filters = {
