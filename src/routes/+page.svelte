@@ -26,12 +26,25 @@
       // Listen for transaction updates
       window.addEventListener('transactionUpdated', loadDashboardData);
       
+      // Subscribe to realtime changes
+      const channel = supabase
+        .channel('dashboard-transactions')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
+          () => loadDashboardData()
+        )
+        .subscribe();
+      
       // Reload when page becomes visible
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && user) {
           loadDashboardData();
         }
       });
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   });
 
@@ -43,7 +56,6 @@
     if (!user) return;
     dataLoading = true;
 
-    // Load profile data
     const { data: profileData } = await supabase
       .from("profiles")
       .select("monthly_income, savings_target")
@@ -54,7 +66,6 @@
       profile = profileData;
     }
 
-    // Load transactions
     const month = new Date().toISOString().slice(0, 7);
     const [year, monthNum] = month.split("-");
     const startDate = `${year}-${monthNum}-01`;
