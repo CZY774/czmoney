@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
@@ -14,6 +14,7 @@
   let dataLoading = true;
   let showForm = false;
   let editingTransaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
+  let realtimeChannel: any;
 
   // Filters
   let filters = {
@@ -35,6 +36,18 @@
 
     loadCategories();
     loadTransactions();
+
+    realtimeChannel = supabase
+      .channel('transactions-list')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
+        () => loadTransactions()
+      )
+      .subscribe();
+  });
+
+  onDestroy(() => {
+    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
   });
 
   async function loadCategories() {
