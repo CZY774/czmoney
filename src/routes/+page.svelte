@@ -14,7 +14,7 @@
   let profile = { monthly_income: 0, savings_target: 0 };
   let loading = true;
   let dataLoading = true;
-  let realtimeChannel: any;
+  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
