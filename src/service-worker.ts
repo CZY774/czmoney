@@ -29,35 +29,21 @@ self.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
     const cache = await caches.open(CACHE);
 
-    // NEVER cache API calls - always fetch fresh
-    if (url.pathname.startsWith("/api/")) {
-      return fetch(event.request);
-    }
-
-    // Serve build files from cache
+    // Only cache static build assets - NEVER cache pages or API
     if (ASSETS.includes(url.pathname)) {
-      return cache.match(event.request);
+      const cached = await cache.match(event.request);
+      return cached || fetch(event.request);
     }
 
-    // For pages, try cache first, then network
+    // Everything else: network-first (pages, API, data)
     try {
-      const response = await cache.match(event.request);
-      if (response) {
-        return response;
-      }
+      return await fetch(event.request);
     } catch {
-      // Ignore cache errors
-    }
-
-    try {
-      const response = await fetch(event.request);
-      if (response.status === 200) {
-        cache.put(event.request, response.clone());
+      // Offline fallback: return app shell for navigation
+      if (event.request.mode === "navigate") {
+        return cache.match("/") || new Response("Offline", { status: 503 });
       }
-      return response;
-    } catch {
-      // Return cached index.html for navigation requests
-      return cache.match("/");
+      throw new Error("Network request failed");
     }
   }
 
