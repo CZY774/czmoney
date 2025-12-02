@@ -138,20 +138,9 @@ export async function cacheTransactions(
   });
 }
 
-// Get cached transactions
-export async function getCachedTransactions() {
-  const cached = await get("cached_transactions");
-  if (!cached) return [];
-
-  // No cache for mutations - always return empty to force fresh fetch
-  // Cache only useful for offline mode
-  return [];
-}
-
 // Clear cached transactions (called after mutations)
 export async function clearTransactionCache() {
   await del("cached_transactions");
-  // Trigger dashboard refresh
   window.dispatchEvent(new CustomEvent("transactionUpdated"));
 }
 
