@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { json, type RequestHandler } from "@sveltejs/kit";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { env } from "$env/dynamic/private";
 import { checkAIRateLimit } from "$lib/security/ratelimit";
 import { validateAndSanitize, aiSummarySchema } from "$lib/security/sanitize";
@@ -24,7 +24,7 @@ async function handleRequest(request: Request, url: URL) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const genAI = new GoogleGenerativeAI(geminiKey);
+    const genAI = new GoogleGenAI({ apiKey: geminiKey });
 
     const authHeader = request.headers.get("authorization");
     if (!authHeader) {
@@ -176,12 +176,11 @@ ${JSON.stringify(summaryData)}
 
 Focus on: spending patterns, month-over-month changes, and actionable advice. Keep it under 70 words.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const aiSummary =
-      response.text() ||
-      "Unable to generate summary at this time. Please try again later.";
+    const response = await genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+    const aiSummary = response.text || "Unable to generate summary at this time. Please try again later.";
 
     return json({
       summary: aiSummary,
