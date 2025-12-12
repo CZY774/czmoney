@@ -180,7 +180,9 @@ Focus on: spending patterns, month-over-month changes, and actionable advice. Ke
       model: "gemini-2.5-flash",
       contents: prompt,
     });
-    const aiSummary = response.text || "Unable to generate summary at this time. Please try again later.";
+    const aiSummary =
+      response.text ||
+      "Unable to generate summary at this time. Please try again later.";
 
     return json({
       summary: aiSummary,
