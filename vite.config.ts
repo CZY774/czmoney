@@ -12,10 +12,25 @@ export default defineConfig(({ mode }) => {
       sveltekit(),
       VitePWA({
         registerType: "prompt",
-        injectRegister: false, // Use SvelteKit's service worker
-        strategies: "injectManifest",
-        srcDir: "src",
-        filename: "service-worker.ts",
+        workbox: {
+          globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+          skipWaiting: false,
+          clientsClaim: false,
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "supabase-cache",
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 300,
+                },
+                networkTimeoutSeconds: 3,
+              },
+            },
+          ],
+        },
         includeAssets: ["favicon.ico", "icon-192.png", "icon-512.png"],
         manifest: {
           name: "CZmoneY - Personal Finance",
