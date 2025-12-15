@@ -1,5 +1,6 @@
 import { supabase } from "$lib/services/supabase";
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 
 let idleTimer: NodeJS.Timeout | null = null;
 let warningTimer: NodeJS.Timeout | null = null;
@@ -65,6 +66,7 @@ function resetIdleTimer() {
   idleTimer = setTimeout(async () => {
     await supabase.auth.signOut();
     alert("You have been logged out due to inactivity.");
-    goto(resolve("/auth/login"));
+    const loginPath = resolve("/auth/login");
+    goto(loginPath);
   }, IDLE_TIME);
 }
