@@ -8,6 +8,7 @@
   import { getSyncStatus } from "$lib/services/sync";
   import Toast from "$lib/components/Toast.svelte";
   import { startIdleTimer, stopIdleTimer } from "$lib/utils/idle-logout";
+  import { preloadCriticalData, handleVisibilityChange } from "$lib/utils/pwa-perf";
 
   let user: { id: string; email?: string } | null = null;
   let loading = true;
@@ -16,25 +17,26 @@
   let mobileMenuOpen = false;
 
   onMount(async () => {
+    // Simplified SW registration
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js').then(reg => {
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
+      try {
+        const registration = await navigator.serviceWorker.register('/service-worker.js');
+        
+        // Handle updates without blocking
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                if (confirm('New version available! Reload to update?')) {
-                  window.location.reload();
-                }
+                // Show update available notification instead of blocking
+                console.log('Update available - will apply on next visit');
               }
             });
           }
         });
-        
-        setInterval(() => {
-          reg.update();
-        }, 3600000);
-      });
+      } catch (error) {
+        console.log('SW registration failed:', error);
+      }
     }
 
     const { data } = await getSession();
@@ -56,7 +58,11 @@
       await updateSyncStatus();
       setInterval(updateSyncStatus, 30000);
       startIdleTimer(); // Start idle timer for logged in user
+      preloadCriticalData(); // Preload critical routes
     }
+
+    // Handle app visibility changes for better PWA performance
+    handleVisibilityChange();
 
     isOffline = !navigator.onLine;
     window.addEventListener("online", () => {
