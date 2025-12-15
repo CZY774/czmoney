@@ -7,6 +7,7 @@
   import { resolve } from "$app/paths";
   import { getSyncStatus } from "$lib/services/sync";
   import Toast from "$lib/components/Toast.svelte";
+  import { startIdleTimer, stopIdleTimer } from "$lib/utils/idle-logout";
 
   let user: { id: string; email?: string } | null = null;
   let loading = true;
@@ -42,11 +43,19 @@
 
     supabase.auth.onAuthStateChange((event, session) => {
       user = session?.user || null;
+      
+      // Start/stop idle timer based on auth state
+      if (user) {
+        startIdleTimer();
+      } else {
+        stopIdleTimer();
+      }
     });
 
     if (user) {
       await updateSyncStatus();
       setInterval(updateSyncStatus, 30000);
+      startIdleTimer(); // Start idle timer for logged in user
     }
 
     isOffline = !navigator.onLine;
