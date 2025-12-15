@@ -3,62 +3,60 @@ import { build, files, version } from "$service-worker";
 const CACHE = `cache-${version}`;
 const ASSETS = [...build, ...files];
 
+// Install - cache static assets only
 self.addEventListener("install", (event) => {
-  async function addFilesToCache() {
-    const cache = await caches.open(CACHE);
-    await cache.addAll(ASSETS);
-  }
-
-  event.waitUntil(addFilesToCache());
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  self.skipWaiting(); // Force activation
 });
 
+// Activate - clean old caches
 self.addEventListener("activate", (event) => {
-  async function deleteOldCaches() {
-    for (const key of await caches.keys()) {
-      if (key !== CACHE) await caches.delete(key);
-    }
-  }
-
-  event.waitUntil(deleteOldCaches());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)),
+        ),
+      )
+      .then(() => self.clients.claim()), // Take control immediately
+  );
 });
 
+// Fetch - minimal caching strategy
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  const { request } = event;
+  const url = new URL(request.url);
 
-  async function respond() {
-    const url = new URL(event.request.url);
-    const cache = await caches.open(CACHE);
+  // Skip non-GET requests
+  if (request.method !== "GET") return;
 
-    // Only cache static build assets - NEVER cache pages or API
-    if (ASSETS.includes(url.pathname)) {
-      const cached = await cache.match(event.request);
-      return cached || fetch(event.request);
-    }
+  // Skip Supabase API calls - always fresh
+  if (url.hostname.includes("supabase.co")) return;
 
-    // Everything else: network-first (pages, API, data)
-    try {
-      return await fetch(event.request);
-    } catch {
-      // Offline fallback: return app shell for navigation
-      if (event.request.mode === "navigate") {
-        return cache.match("/") || new Response("Offline", { status: 503 });
+  // Skip local API calls - always fresh
+  if (url.pathname.startsWith("/api/")) return;
+
+  event.respondWith(
+    caches.open(CACHE).then((cache) => {
+      // Static assets: cache-first
+      if (ASSETS.includes(url.pathname)) {
+        return cache.match(request).then(
+          (cached) =>
+            cached ||
+            fetch(request).then((response) => {
+              cache.put(request, response.clone());
+              return response;
+            }),
+        );
       }
-      throw new Error("Network request failed");
-    }
-  }
 
-  event.respondWith(respond());
+      // Pages: network-first with fast timeout
+      return fetch(request, {
+        signal: AbortSignal.timeout(3000),
+      }).catch(
+        () => cache.match("/") || new Response("Offline", { status: 503 }),
+      );
+    }),
+  );
 });
-
-// Background sync for offline transactions
-self.addEventListener("sync", (event) => {
-  if (event.tag === "background-sync") {
-    event.waitUntil(syncTransactions());
-  }
-});
-
-async function syncTransactions() {
-  // This would integrate with your sync service
-  // For now, just log that sync was attempted
-  console.log("Background sync triggered");
-}
