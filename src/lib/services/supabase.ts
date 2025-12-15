@@ -72,3 +72,38 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   if (error && error.code !== "PGRST116") throw error;
   return data;
 }
+
+// Client-side transaction operations (bypasses API for better performance)
+export async function updateTransaction(
+  id: string,
+  updates: Partial<Transaction>,
+): Promise<Transaction> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createTransaction(
+  transaction: Omit<Transaction, "id" | "created_at">,
+): Promise<Transaction> {
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert(transaction)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+  const { error } = await supabase.from("transactions").delete().eq("id", id);
+
+  if (error) throw error;
+}
