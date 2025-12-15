@@ -197,17 +197,33 @@ export const PUT: RequestHandler = async ({ request }) => {
 
     const validated = validateAndSanitize(transactionSchema.partial(), rest);
 
+    // First check if transaction exists and belongs to user
+    const { data: existingTransaction } = await supabase!
+      .from("transactions")
+      .select("id")
+      .eq("id", id)
+      .eq("user_id", user!.id)
+      .single();
+
+    if (!existingTransaction) {
+      return json({ error: "Transaction not found" }, { status: 404 });
+    }
+
+    // Build update object with only provided fields
+    const updateData: Record<string, unknown> = {};
+    if (validated.txn_date !== undefined)
+      updateData.txn_date = validated.txn_date;
+    if (validated.type !== undefined) updateData.type = validated.type;
+    if (validated.amount !== undefined)
+      updateData.amount = parseInt(validated.amount.toString());
+    if (validated.category_id !== undefined)
+      updateData.category_id = validated.category_id || null;
+    if (validated.description !== undefined)
+      updateData.description = validated.description;
+
     const { data, error: dbError } = await supabase!
       .from("transactions")
-      .update({
-        txn_date: validated.txn_date,
-        type: validated.type,
-        amount: validated.amount
-          ? parseInt(validated.amount.toString())
-          : undefined,
-        category_id: validated.category_id || undefined,
-        description: validated.description,
-      })
+      .update(updateData)
       .eq("id", id)
       .eq("user_id", user!.id)
       .select()
@@ -229,7 +245,8 @@ export const PUT: RequestHandler = async ({ request }) => {
         "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
-  } catch {
+  } catch (err) {
+    console.error("Transaction update error:", err);
     return json({ error: "Invalid input" }, { status: 400 });
   }
 };
