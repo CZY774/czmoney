@@ -88,6 +88,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      budgets: {
+        Row: {
+          id: string;
+          user_id: string;
+          category_id: string;
+          monthly_limit: number;
+          alert_threshold: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category_id: string;
+          monthly_limit: number;
+          alert_threshold?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category_id?: string;
+          monthly_limit?: number;
+          alert_threshold?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
