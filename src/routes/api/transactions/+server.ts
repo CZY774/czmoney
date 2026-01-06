@@ -261,29 +261,58 @@ export const DELETE: RequestHandler = async ({ request }) => {
     return json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const body = await request.json();
-  const { id }: { id: string } = body;
+  try {
+    const body = await request.json();
+    const { id }: { id: string } = body;
 
-  if (!id) {
-    return json({ error: "Transaction ID required" }, { status: 400 });
-  }
+    if (!id) {
+      return json({ error: "Transaction ID required" }, { status: 400 });
+    }
 
-  const { error: dbError } = await supabase!
-    .from("transactions")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user!.id);
+    // Validate UUID format
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return json({ error: "Invalid transaction ID format" }, { status: 400 });
+    }
 
-  if (dbError) {
-    return json({ error: dbError.message }, { status: 500 });
-  }
+    // First check if transaction exists and belongs to user
+    const { data: existingTransaction, error: checkError } = await supabase!
+      .from("transactions")
+      .select("id")
+      .eq("id", id)
+      .eq("user_id", user!.id)
+      .single();
 
-  return json(
-    { success: true },
-    {
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+    if (checkError || !existingTransaction) {
+      return json(
+        { error: "Transaction not found or access denied" },
+        { status: 404 },
+      );
+    }
+
+    // Delete the transaction
+    const { error: deleteError } = await supabase!
+      .from("transactions")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user!.id);
+
+    if (deleteError) {
+      console.error("Delete error:", deleteError);
+      return json({ error: "Failed to delete transaction" }, { status: 500 });
+    }
+
+    return json(
+      { success: true, message: "Transaction deleted successfully" },
+      {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
       },
-    },
-  );
+    );
+  } catch (err) {
+    console.error("Transaction delete error:", err);
+    return json({ error: "Invalid request data" }, { status: 400 });
+  }
 };
