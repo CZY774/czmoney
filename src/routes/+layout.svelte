@@ -121,6 +121,15 @@
               Transactions
             </a>
             <a
+              href={resolve("/budgets")}
+              data-sveltekit-preload-data
+              class="text-sm font-medium transition-colors {isActive('/budgets')
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'}"
+            >
+              Budgets
+            </a>
+            <a
               href={resolve("/reports")}
               data-sveltekit-preload-data
               class="text-sm font-medium transition-colors {isActive('/reports')
@@ -218,6 +227,16 @@
                   : 'text-muted-foreground'}"
               >
                 Transactions
+              </a>
+              <a
+                href={resolve("/budgets")}
+                data-sveltekit-preload-data
+                on:click={() => (mobileMenuOpen = false)}
+                class="py-2 text-sm font-medium {isActive('/budgets')
+                  ? 'text-primary'
+                  : 'text-muted-foreground'}"
+              >
+                Budgets
               </a>
               <a
                 href={resolve("/reports")}
