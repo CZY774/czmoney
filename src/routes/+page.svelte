@@ -5,6 +5,7 @@
   import { resolve } from "$app/paths";
   import BalanceChart from "$lib/components/BalanceChart.svelte";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
+  import SmartInsights from "$lib/components/SmartInsights.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
 
   let user: { id: string; email?: string } | null = null;
@@ -248,6 +249,9 @@
         {/if}
       </div>
     {/if}
+
+    <!-- Smart Insights -->
+    <SmartInsights />
 
     <!-- Quick Actions -->
     <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
