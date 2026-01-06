@@ -8,12 +8,13 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 - 🔍 **Smart Search**: Filter by month, category, type, and description
 - 📊 **Visual Reports**: Interactive charts and monthly breakdowns
 - 🤖 **AI Insights**: Get personalized financial advice powered by Google Gemini
+- 🎯 **Smart Alerts**: Budget tracking, overspending predictions, savings goals
 - 📱 **PWA Support**: Install as mobile/desktop app with offline capability
 - 🔄 **Offline Sync**: Work offline, sync automatically when online
 - ⚡ **Realtime Updates**: Instant data refresh across all tabs using Supabase Realtime
-- 📈 **Savings Tracker**: Set and monitor monthly savings targets
+- 📈 **Budget Management**: Set category budgets with customizable alerts
 - 📥 **CSV Export**: Download transaction history
-- 🔔 **Reminders**: Optional notifications for expense tracking
+- 🔔 **Toast Notifications**: Professional UI feedback system
 - 🌙 **Dark Theme**: Sleek, modern dark UI optimized for mobile
 - 🔒 **Idempotency**: Prevents duplicate transactions on network retries
 - 🚀 **Performance Optimized**: Debounced filters, skeleton loaders, direct queries
@@ -21,12 +22,14 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 
 ## Tech Stack
 
-- **Frontend**: SvelteKit + TailwindCSS
-- **Database & Auth**: Supabase (PostgreSQL)
-- **Charts**: ApexCharts
-- **AI**: Google Gemini API (Gemini Pro)
+- **Frontend**: SvelteKit 5 + TypeScript + TailwindCSS 4
+- **Database & Auth**: Supabase (PostgreSQL with RLS)
+- **Charts**: ApexCharts (lazy-loaded)
+- **AI**: Google Gemini API (Gemini 2.5 Flash)
 - **Offline Storage**: IndexedDB (idb-keyval)
-- **Hosting**: Vercel (recommended)
+- **Rate Limiting**: Upstash Redis with in-memory fallback
+- **Notifications**: Custom toast system with confirmation dialogs
+- **Hosting**: Vercel (serverless functions)
 
 ## Prerequisites
 
@@ -34,6 +37,7 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 - Supabase account (free tier works)
 - Google Gemini API key
 - Vercel account (for deployment)
+- Optional: Upstash Redis (for production rate limiting)
 
 ## Setup Instructions
 
@@ -50,7 +54,8 @@ npm install
 1. Create a new project at [supabase.com](https://supabase.com)
 2. Go to Project Settings → API to get your credentials
 3. Run the SQL script in `scripts/supabase-init.sql` in the Supabase SQL Editor
-4. This will create all tables, indexes, RLS policies, and default categories
+4. Run the SQL script in `scripts/add-budgets.sql` for budget features
+5. This will create all tables, indexes, RLS policies, and default categories
 
 ### 3. Environment Variables
 
@@ -70,6 +75,10 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 GEMINI_API_KEY=your-gemini-api-key
 PUBLIC_APP_NAME=CZmoneY
 PUBLIC_PWA_THEME_COLOR=#0b1221
+
+# Optional: For production rate limiting
+UPSTASH_REDIS_REST_URL=your-redis-url
+UPSTASH_REDIS_REST_TOKEN=your-redis-token
 ```
 
 **Important**:
@@ -119,6 +128,8 @@ Add these in your Vercel project settings:
 - `GEMINI_API_KEY` (mark as sensitive)
 - `PUBLIC_APP_NAME`
 - `PUBLIC_PWA_THEME_COLOR`
+- `UPSTASH_REDIS_REST_URL` (optional)
+- `UPSTASH_REDIS_REST_TOKEN` (optional)
 
 ## Project Structure
 
@@ -128,22 +139,33 @@ czmoney/
 │   ├── lib/
 │   │   ├── actions/          # Svelte actions (clickOutside)
 │   │   ├── components/       # Reusable Svelte components
+│   │   │   ├── ui/           # UI components (buttons, modals, etc.)
+│   │   │   ├── Toast.svelte  # Toast notification system
+│   │   │   ├── ConfirmDialog.svelte # Confirmation dialogs
+│   │   │   └── SmartInsights.svelte # AI-powered insights
 │   │   ├── security/         # Rate limiting, sanitization
 │   │   ├── services/         # Supabase, sync, utils
+│   │   ├── stores/           # Svelte stores (toast, etc.)
+│   │   ├── types/            # TypeScript definitions
 │   │   ├── utils/            # Performance utilities, idempotency
 │   │   └── utils.ts          # Helper functions
 │   ├── routes/
 │   │   ├── +layout.svelte    # Main layout with nav
-│   │   ├── +page.svelte      # Dashboard
+│   │   ├── +page.svelte      # Dashboard with smart insights
 │   │   ├── auth/             # Login/register pages
 │   │   ├── transactions/     # Transaction management
+│   │   ├── budgets/          # Budget management (NEW)
 │   │   ├── reports/          # Reports & AI summary
 │   │   ├── settings/         # User settings
 │   │   └── api/              # Server endpoints
-│   └── app.css               # Global styles
+│   │       ├── transactions/ # Transaction CRUD API
+│   │       ├── insights/     # Smart insights API (NEW)
+│   │       └── ai-summary/   # AI-powered summaries
+│   └── app.css               # Global styles with mobile-first design
 ├── static/                   # PWA icons, manifest
 ├── scripts/
-│   └── supabase-init.sql     # Database schema
+│   ├── supabase-init.sql     # Main database schema
+│   └── add-budgets.sql       # Budget features schema (NEW)
 └── package.json
 ```
 
@@ -153,8 +175,26 @@ czmoney/
 
 1. **Register**: Create an account at `/auth/register`
 2. **Profile**: Set your monthly income and savings target in Settings
-3. **Add Transactions**: Use the FAB button or Transactions page
-4. **View Reports**: Check Reports page for insights and AI summary
+3. **Budgets**: Set category budgets at `/budgets` for smart alerts
+4. **Add Transactions**: Use the FAB button or Transactions page
+5. **View Reports**: Check Reports page for insights and AI summary
+
+### Smart Insights Features
+
+**Budget Alerts**: 
+- Set monthly limits per category
+- Get warnings at 80% usage (customizable)
+- Critical alerts when exceeded
+
+**Spending Predictions**:
+- "You'll overspend by X this month"
+- Based on daily spending patterns
+- Alerts when approaching income limits
+
+**Savings Goals**:
+- Track progress toward monthly targets
+- Alerts when falling behind
+- Visual progress indicators
 
 ### Adding Transactions
 
@@ -163,6 +203,15 @@ czmoney/
 - Select category, type (income/expense), amount, and optional description
 - Works offline - syncs automatically when online
 - Realtime updates across all open tabs
+- Toast notifications for all actions
+
+### Budget Management
+
+1. Go to `/budgets`
+2. Select category and set monthly limit
+3. Customize alert threshold (default 80%)
+4. View budget status on dashboard
+5. Get smart alerts when approaching limits
 
 ### Searching Transactions
 
@@ -177,6 +226,7 @@ czmoney/
 2. Select a month
 3. Click "Generate Summary"
 4. Get personalized insights about spending patterns and recommendations
+5. Streaming response for better UX
 
 ### Offline Mode
 
@@ -184,6 +234,7 @@ czmoney/
 - Transactions are queued locally
 - Auto-syncs when connection is restored
 - Check sync status in Settings
+- Toast notifications for offline actions
 
 ## Features in Detail
 
@@ -192,7 +243,7 @@ czmoney/
 Default categories are automatically created:
 
 - **Income**: Salary, Freelance, Investment
-- **Expense**: Food & Drink, Transport, Shopping, Entertainment, Bills & Utilities, Healthcare, Other, Apart
+- **Expense**: Food & Drink, Transport, Shopping, Entertainment, Bills & Utilities, Healthcare, Other
 
 You can add custom categories in the database directly.
 
@@ -200,6 +251,7 @@ You can add custom categories in the database directly.
 
 - **Dashboard**: Monthly income vs expense bar chart + category donut chart
 - **Reports**: Detailed category breakdown with horizontal bar chart
+- **Lazy Loading**: Charts loaded on-demand for better performance
 
 ### CSV Export
 
@@ -224,6 +276,20 @@ Export your transaction history:
 - Click install icon in address bar
 - App opens in standalone window
 
+### Notification System
+
+**Toast Notifications**:
+- Success (green) - 5 second duration
+- Error (red) - 8 second duration
+- Warning (yellow) - 5 second duration
+- Info (blue) - 5 second duration
+- Dismissible with action buttons
+
+**Confirmation Dialogs**:
+- Professional modal dialogs
+- Keyboard navigation (ESC to close)
+- Proper accessibility support
+
 ## Security Best Practices
 
 ✅ **Implemented**:
@@ -236,6 +302,8 @@ Export your transaction history:
 - **Input validation & sanitization** (Zod + DOMPurify)
 - **Security headers** (XSS, clickjacking, CSP protection)
 - **CSRF protection** (SvelteKit built-in)
+- **Idempotency keys** - Prevents duplicate operations
+- **Request timeouts** - 10s for deletes, 15s for creates/updates
 
 ⚠️ **Important**:
 
@@ -244,38 +312,37 @@ Export your transaction history:
 - Rotate API keys if exposed
 - Set up Upstash Redis for production rate limiting (optional, falls back to in-memory)
 
-See [SECURITY.md](./SECURITY.md) for detailed security documentation.
+## Performance Optimizations
 
-## Troubleshooting
+### Perceived Speed Features
 
-### Build Fails
+**Skeleton Loaders**:
+- Content placeholders instead of blank screens
+- Shows structure while data loads
+- Used on dashboard, transactions, and charts
 
-```bash
-# Clear cache and reinstall
-rm -rf node_modules .svelte-kit
-npm install
-npm run build
-```
+**Realtime Updates**:
+- Supabase Realtime subscriptions
+- Instant data refresh across all tabs
+- No manual refresh needed
 
-### Supabase Connection Issues
+**Instant Feedback**:
+- Button press animations (`active:scale-95`)
+- Smooth transitions on all interactions
+- Loading states with clear messaging
+- Toast notifications for immediate feedback
 
-- Verify `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
-- Check RLS policies are enabled
-- Ensure SQL script ran successfully
+**Prefetch Navigation**:
+- Hover/focus preloads next page data
+- Near-instant page transitions
+- Applied to all navigation links
 
-### Gemini API Errors
+**Lazy-loaded Charts**:
+- ApexCharts imported on-demand
+- Reduces initial bundle size
+- Shows loading skeleton while importing
 
-- Verify API key is correct and has quota
-- Check API endpoint in `src/routes/api/ai-summary/+server.ts`
-- AI summary is optional - app works without it
-
-### Offline Sync Not Working
-
-- Check browser supports IndexedDB
-- Verify service worker is registered
-- Check console for sync errors
-
-## Performance Tips
+### Technical Optimizations
 
 1. **Image Optimization**: Use WebP format for icons
 2. **Code Splitting**: SvelteKit handles this automatically
@@ -283,11 +350,7 @@ npm run build
 4. **Database**: Indexes created for common queries
 5. **Debounced Filters**: Transaction filters debounced (300ms) to reduce API calls
 6. **Idempotency**: Prevents duplicate transactions on network retries/double-clicks
-7. **Skeleton Loaders**: Content placeholders instead of spinners for better perceived speed
-8. **Realtime Sync**: Supabase Realtime subscriptions for instant updates across tabs
-9. **Prefetch Navigation**: Preloads page data on hover for instant navigation
-10. **Lazy-loaded Charts**: ApexCharts loaded on-demand to reduce initial bundle size
-11. **Direct Queries**: Fast Supabase client queries with proper cache invalidation
+7. **Direct Queries**: Fast Supabase client queries with proper cache invalidation
 
 ## Idempotency
 
@@ -304,52 +367,73 @@ This prevents duplicates from:
 - Network retries
 - Offline sync running multiple times
 
-## Perceived Speed Optimizations
+## Troubleshooting
 
-The app feels faster through strategic UX improvements:
+### Build Fails
 
-**Skeleton Loaders**:
+```bash
+# Clear cache and reinstall
+rm -rf node_modules .svelte-kit
+npm install
+npm run build
+```
 
-- Content placeholders instead of blank screens
-- Shows structure while data loads
-- Used on dashboard, transactions, and charts
+### Supabase Connection Issues
 
-**Realtime Updates**:
+- Verify `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+- Check RLS policies are enabled
+- Ensure both SQL scripts ran successfully
+- Verify budgets table exists for smart insights
 
-- Supabase Realtime subscriptions
-- Instant data refresh across all tabs
-- No manual refresh needed
+### Gemini API Errors
 
-**Instant Feedback**:
+- Verify API key is correct and has quota
+- Check API endpoint in `src/routes/api/ai-summary/+server.ts`
+- AI summary is optional - app works without it
 
-- Button press animations (`active:scale-95`)
-- Smooth transitions on all interactions
-- Loading states with clear messaging
+### Offline Sync Not Working
 
-**Prefetch Navigation**:
+- Check browser supports IndexedDB
+- Verify service worker is registered
+- Check console for sync errors
+- Look for toast notifications about offline status
 
-- Hover/focus preloads next page data
-- Near-instant page transitions
-- Applied to all navigation links
+### Smart Insights Not Showing
 
-**Lazy-loaded Charts**:
+- Ensure `add-budgets.sql` script was run
+- Set budgets in `/budgets` page
+- Add transactions to trigger insights
+- Check browser console for API errors
 
-- ApexCharts imported on-demand
-- Reduces initial bundle size
-- Shows loading skeleton while importing
+## Development
+
+### Code Quality
+
+```bash
+npm run lint      # Check code style and linting
+npm run check     # TypeScript and Svelte checks
+npm run format    # Auto-format code with Prettier
+```
+
+### Type Safety
+
+- Full TypeScript coverage
+- Supabase database types in `src/lib/types/database.ts`
+- Zod schemas for runtime validation
+- Proper error handling with typed responses
 
 ## Customization
 
 ### Change Theme Colors
 
-Edit `tailwind.config.js`:
+Edit `src/app.css`:
 
-```js
-colors: {
-  background: '#0b1221',  // Main background
-  card: '#0f1b2b',        // Card background
-  accent: '#1f8ef1',      // Primary accent
-  // ...
+```css
+@theme {
+  --color-background: #0b1221;  /* Main background */
+  --color-card: #0f1b2b;        /* Card background */
+  --color-primary: #1f8ef1;     /* Primary accent */
+  /* ... */
 }
 ```
 
@@ -375,16 +459,27 @@ Edit `src/routes/settings/+page.svelte`:
 <option value="SGD">SGD (Singapore Dollar)</option>
 ```
 
+### Customize Smart Insights
+
+Edit `src/routes/api/insights/+server.ts`:
+
+- Adjust alert thresholds
+- Add new insight types
+- Modify severity levels
+- Change calculation logic
+
 ## Roadmap
 
-- [ ] Budget alerts per category
-- [ ] Multi-currency with live exchange rates
 - [ ] Recurring transactions
+- [ ] Multi-currency with live exchange rates
 - [ ] Data import from CSV/bank statements
 - [ ] Multi-user household budgets
-- [ ] Receipt photo upload
+- [ ] Receipt photo upload with OCR
 - [ ] Advanced filtering and search
 - [ ] Yearly reports and trends
+- [ ] Push notifications for budget alerts
+- [ ] Investment tracking
+- [ ] Debt payoff calculator
 
 ## Contributing
 
@@ -393,8 +488,9 @@ Contributions are welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+4. Run `npm run lint` and `npm run check`
+5. Test thoroughly
+6. Submit a pull request
 
 ## License
 
@@ -415,6 +511,7 @@ For issues or questions:
 - AI by [Google Gemini](https://ai.google.dev/)
 - Charts by [ApexCharts](https://apexcharts.com/)
 - Icons from [Heroicons](https://heroicons.com/)
+- Rate limiting by [Upstash](https://upstash.com/)
 
 ---
 
