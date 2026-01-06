@@ -70,7 +70,7 @@
         newBudget = { category_id: "", monthly_limit: "", alert_threshold: 80 };
         await loadData();
       }
-    } catch (err) {
+    } catch {
       toast.error("Error saving budget");
     } finally {
       saving = false;
