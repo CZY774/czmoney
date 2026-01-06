@@ -18,17 +18,17 @@
   };
 
   const styles = {
-    success: "bg-green-500/90 text-white",
-    error: "bg-red-500/90 text-white",
-    warning: "bg-yellow-500/90 text-white",
-    info: "bg-blue-500/90 text-white",
+    success: "bg-green-500/90 text-white border-green-400",
+    error: "bg-red-500/90 text-white border-red-400",
+    warning: "bg-yellow-500/90 text-white border-yellow-400",
+    info: "bg-blue-500/90 text-white border-blue-400",
   };
 </script>
 
 <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
   {#each $toastStore as toast (toast.id)}
     <div
-      class="pointer-events-auto rounded-lg shadow-2xl border border-white/20 backdrop-blur-sm {styles[
+      class="pointer-events-auto rounded-lg shadow-2xl border backdrop-blur-sm {styles[
         toast.type
       ]} p-4"
       transition:fly={{ x: 300, duration: 300 }}
@@ -43,6 +43,14 @@
             <h3 class="font-semibold text-sm mb-1">{toast.title}</h3>
           {/if}
           <p class="text-sm opacity-95">{toast.message}</p>
+          {#if toast.action}
+            <button
+              on:click={toast.action.callback}
+              class="mt-2 text-xs underline hover:no-underline opacity-90 hover:opacity-100"
+            >
+              {toast.action.label}
+            </button>
+          {/if}
         </div>
         <button
           on:click={() => toastStore.remove(toast.id)}
