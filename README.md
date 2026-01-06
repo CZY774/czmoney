@@ -181,17 +181,20 @@ czmoney/
 
 ### Smart Insights Features
 
-**Budget Alerts**: 
+**Budget Alerts**:
+
 - Set monthly limits per category
 - Get warnings at 80% usage (customizable)
 - Critical alerts when exceeded
 
 **Spending Predictions**:
+
 - "You'll overspend by X this month"
 - Based on daily spending patterns
 - Alerts when approaching income limits
 
 **Savings Goals**:
+
 - Track progress toward monthly targets
 - Alerts when falling behind
 - Visual progress indicators
@@ -279,6 +282,7 @@ Export your transaction history:
 ### Notification System
 
 **Toast Notifications**:
+
 - Success (green) - 5 second duration
 - Error (red) - 8 second duration
 - Warning (yellow) - 5 second duration
@@ -286,6 +290,7 @@ Export your transaction history:
 - Dismissible with action buttons
 
 **Confirmation Dialogs**:
+
 - Professional modal dialogs
 - Keyboard navigation (ESC to close)
 - Proper accessibility support
@@ -317,27 +322,32 @@ Export your transaction history:
 ### Perceived Speed Features
 
 **Skeleton Loaders**:
+
 - Content placeholders instead of blank screens
 - Shows structure while data loads
 - Used on dashboard, transactions, and charts
 
 **Realtime Updates**:
+
 - Supabase Realtime subscriptions
 - Instant data refresh across all tabs
 - No manual refresh needed
 
 **Instant Feedback**:
+
 - Button press animations (`active:scale-95`)
 - Smooth transitions on all interactions
 - Loading states with clear messaging
 - Toast notifications for immediate feedback
 
 **Prefetch Navigation**:
+
 - Hover/focus preloads next page data
 - Near-instant page transitions
 - Applied to all navigation links
 
 **Lazy-loaded Charts**:
+
 - ApexCharts imported on-demand
 - Reduces initial bundle size
 - Shows loading skeleton while importing
@@ -430,9 +440,9 @@ Edit `src/app.css`:
 
 ```css
 @theme {
-  --color-background: #0b1221;  /* Main background */
-  --color-card: #0f1b2b;        /* Card background */
-  --color-primary: #1f8ef1;     /* Primary accent */
+  --color-background: #0b1221; /* Main background */
+  --color-card: #0f1b2b; /* Card background */
+  --color-primary: #1f8ef1; /* Primary accent */
   /* ... */
 }
 ```
