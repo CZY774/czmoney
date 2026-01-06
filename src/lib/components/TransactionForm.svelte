@@ -3,6 +3,7 @@
   import { supabase } from "$lib/services/supabase";
   import { queueTransaction, clearTransactionCache } from "$lib/services/sync";
   import { generateIdempotencyKey } from "$lib/utils/idempotency";
+  import { toast } from "$lib/stores/toast";
 
   export let isOpen = false;
   export let transaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
@@ -64,11 +65,11 @@
 
   async function handleSubmit() {
     if (!form.amount || parseFloat(form.amount) <= 0) {
-      alert("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
 
-    if (!user) return;
+    if (!user || loading) return;
 
     loading = true;
 
@@ -89,53 +90,64 @@
         await queueTransaction(action, transactionData);
 
         dispatch("success", { ...transactionData, _pending: true });
-        alert("Transaction saved offline. Will sync when online.");
+        toast.info("Transaction saved offline. Will sync when online.");
         closeModal();
-      } else {
-        // Online - save to API
-        const { data: session } = await supabase.auth.getSession();
-        const token = session.session?.access_token;
-
-        const method = transaction ? "PUT" : "POST";
-
-        // Optimistic update - notify immediately
-        const optimisticData = { ...transactionData, id: transaction?.id || crypto.randomUUID() };
-        dispatch("success", optimisticData);
-        window.dispatchEvent(new CustomEvent('transactionUpdated', { detail: optimisticData }));
-        closeModal();
-
-        const response = await fetch("/api/transactions", {
-          method,
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            "Idempotency-Key": generateIdempotencyKey(),
-          },
-          body: JSON.stringify(transactionData),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          await clearTransactionCache();
-          // Sync with real data
-          window.dispatchEvent(new CustomEvent('transactionUpdated', { detail: result.data }));
-          
-          const msg = transaction ? "Transaction updated!" : "Transaction added!";
-          const toast = document.createElement("div");
-          toast.className = "fixed top-4 right-4 bg-green-600 text-white px-4 py-3 rounded-lg shadow-lg z-50";
-          toast.textContent = msg;
-          document.body.appendChild(toast);
-          setTimeout(() => toast.remove(), 3000);
-        } else {
-          // Rollback on error
-          alert(result.error || "Failed to save transaction");
-          window.dispatchEvent(new CustomEvent('transactionUpdated'));
-        }
+        return;
       }
+
+      // Online - save to API
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
+      const method = transaction ? "PUT" : "POST";
+      const idempotencyKey = generateIdempotencyKey();
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+      const response = await fetch("/api/transactions", {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "Idempotency-Key": idempotencyKey,
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify(transactionData),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Success
+      dispatch("success", result.data);
+      await clearTransactionCache();
+      window.dispatchEvent(new CustomEvent('transactionUpdated', { detail: result.data }));
+      closeModal();
+      
+      // Show success toast
+      const msg = transaction ? "Transaction updated successfully!" : "Transaction added successfully!";
+      toast.success(msg);
+
     } catch (error) {
-      alert("Error saving transaction");
-      console.error(error);
+      console.error("Transaction save failed:", error);
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.error("Request timed out. Please try again.");
+      } else {
+        toast.error(`Failed to save transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     } finally {
       loading = false;
     }
