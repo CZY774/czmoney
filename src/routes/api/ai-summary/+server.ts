@@ -51,9 +51,12 @@ async function handleRequest(request: Request, url: URL) {
 
     // Get month from URL params (GET) or request body (POST)
     let month = url.searchParams.get("month");
+    let lookback = parseInt(url.searchParams.get("lookback") || "1");
+
     if (!month && request.method === "POST") {
       const body = await request.json();
       month = body.month;
+      lookback = body.lookback || 3; // Default 3 months lookback
     }
 
     if (!month) {
@@ -63,9 +66,10 @@ async function handleRequest(request: Request, url: URL) {
       );
     }
 
-    // Validate month format
+    // Validate inputs
     try {
       validateAndSanitize(aiSummarySchema, { month });
+      if (lookback < 1 || lookback > 12) lookback = 3;
     } catch {
       return json(
         { error: "Invalid month format (use YYYY-MM)" },
@@ -73,120 +77,165 @@ async function handleRequest(request: Request, url: URL) {
       );
     }
 
-    // Get current month transactions
-    const [year, monthNum] = month.split("-");
-    const startDate = `${year}-${monthNum}-01`;
-    const endDate = new Date(parseInt(year), parseInt(monthNum), 0)
-      .toISOString()
-      .split("T")[0];
+    // Get historical data for comparison (lookback months)
+    const historicalData = [];
+    const currentDate = new Date(`${month}-01`);
 
-    const { data: currentTransactions } = await supabase
-      .from("transactions")
-      .select("*, categories(name)")
-      .eq("user_id", user.id)
-      .gte("txn_date", startDate)
-      .lte("txn_date", endDate);
+    for (let i = 0; i < lookback; i++) {
+      const targetDate = new Date(currentDate);
+      targetDate.setMonth(targetDate.getMonth() - i);
 
-    if (!currentTransactions || currentTransactions.length === 0) {
+      const targetYear = targetDate.getFullYear();
+      const targetMonth = String(targetDate.getMonth() + 1).padStart(2, "0");
+      const targetStartDate = `${targetYear}-${targetMonth}-01`;
+      const targetEndDate = new Date(targetYear, targetDate.getMonth() + 1, 0)
+        .toISOString()
+        .split("T")[0];
+
+      const { data: monthTransactions } = await supabase
+        .from("transactions")
+        .select("*, categories(name)")
+        .eq("user_id", user.id)
+        .gte("txn_date", targetStartDate)
+        .lte("txn_date", targetEndDate);
+
+      if (monthTransactions && monthTransactions.length > 0) {
+        const monthIncome = monthTransactions
+          .filter((t) => t.type === "income")
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const monthExpense = monthTransactions
+          .filter((t) => t.type === "expense")
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        // Category breakdown
+        const categoryTotals: Record<string, number> = {};
+        monthTransactions
+          .filter((t) => t.type === "expense")
+          .forEach((t) => {
+            const categoryName = t.categories?.name || "No Category";
+            categoryTotals[categoryName] =
+              (categoryTotals[categoryName] || 0) + t.amount;
+          });
+
+        historicalData.push({
+          month: `${targetYear}-${targetMonth}`,
+          income: monthIncome,
+          expense: monthExpense,
+          balance: monthIncome - monthExpense,
+          categories: categoryTotals,
+          transactionCount: monthTransactions.length,
+        });
+      }
+    }
+
+    if (historicalData.length === 0) {
       return json({
         summary:
-          "No transactions found for this month. Start tracking your expenses to get personalized insights!",
+          "No transaction history found. Start tracking your expenses to get personalized insights!",
       });
     }
 
-    // Calculate totals
-    const currentIncome = currentTransactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + t.amount, 0);
+    const currentMonthData = historicalData[0];
+    const avgExpense =
+      historicalData.reduce((sum, m) => sum + m.expense, 0) /
+      historicalData.length;
+    const avgIncome =
+      historicalData.reduce((sum, m) => sum + m.income, 0) /
+      historicalData.length;
 
-    const currentExpense = currentTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    // Get previous month for comparison
-    const prevMonth = new Date(parseInt(year), parseInt(monthNum) - 2, 1);
-    const prevYear = prevMonth.getFullYear();
-    const prevMonthNum = String(prevMonth.getMonth() + 1).padStart(2, "0");
-    const prevStartDate = `${prevYear}-${prevMonthNum}-01`;
-    const prevEndDate = new Date(prevYear, prevMonth.getMonth() + 1, 0)
-      .toISOString()
-      .split("T")[0];
-
-    const { data: prevTransactions } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("txn_date", prevStartDate)
-      .lte("txn_date", prevEndDate);
-
-    const prevIncome = prevTransactions
-      ? prevTransactions
-          .filter((t) => t.type === "income")
-          .reduce((sum, t) => sum + t.amount, 0)
-      : 0;
-
-    const prevExpense = prevTransactions
-      ? prevTransactions
-          .filter((t) => t.type === "expense")
-          .reduce((sum, t) => sum + t.amount, 0)
-      : 0;
-
-    // Calculate top categories
-    const categoryTotals: Record<string, number> = {};
-    currentTransactions
-      .filter((t) => t.type === "expense")
-      .forEach((t) => {
-        const categoryName = t.categories?.name || "No Category";
-        categoryTotals[categoryName] =
-          (categoryTotals[categoryName] || 0) + t.amount;
-      });
-
-    const topCategories = Object.entries(categoryTotals)
-      .sort(([, a], [, b]) => (b as number) - (a as number))
-      .slice(0, 3)
-      .map(([name, amount]) => ({ name, amount: amount as number }));
-
-    // Calculate percentage changes
+    // Calculate trends
     const expenseChange =
-      prevExpense > 0
-        ? (((currentExpense - prevExpense) / prevExpense) * 100).toFixed(1)
+      historicalData.length > 1
+        ? (
+            ((currentMonthData.expense - historicalData[1].expense) /
+              historicalData[1].expense) *
+            100
+          ).toFixed(1)
         : "0";
 
     const incomeChange =
-      prevIncome > 0
-        ? (((currentIncome - prevIncome) / prevIncome) * 100).toFixed(1)
+      historicalData.length > 1
+        ? (
+            ((currentMonthData.income - historicalData[1].income) /
+              historicalData[1].income) *
+            100
+          ).toFixed(1)
         : "0";
 
-    // Create summary data for AI
+    // Find top spending categories across all months
+    const allCategories: Record<string, number[]> = {};
+    historicalData.forEach((monthData) => {
+      Object.entries(monthData.categories).forEach(([cat, amount]) => {
+        if (!allCategories[cat]) allCategories[cat] = [];
+        allCategories[cat].push(amount as number);
+      });
+    });
+
+    const categoryInsights = Object.entries(allCategories)
+      .map(([cat, amounts]) => ({
+        name: cat,
+        currentAmount: amounts[0] || 0,
+        avgAmount: amounts.reduce((sum, amt) => sum + amt, 0) / amounts.length,
+        trend:
+          amounts.length > 1
+            ? (((amounts[0] - amounts[1]) / amounts[1]) * 100).toFixed(1)
+            : "0",
+      }))
+      .sort((a, b) => b.currentAmount - a.currentAmount)
+      .slice(0, 5);
+
+    // Create enhanced summary data for AI
     const summaryData = {
-      month: month,
-      total_income: currentIncome,
-      total_expense: currentExpense,
-      balance: currentIncome - currentExpense,
-      top_categories: topCategories,
-      expense_change_pct: parseFloat(expenseChange),
-      income_change_pct: parseFloat(incomeChange),
-      transaction_count: currentTransactions.length,
+      current_month: month,
+      lookback_months: lookback,
+      current_data: {
+        income: currentMonthData.income,
+        expense: currentMonthData.expense,
+        balance: currentMonthData.balance,
+        transaction_count: currentMonthData.transactionCount,
+      },
+      trends: {
+        expense_change_pct: parseFloat(expenseChange),
+        income_change_pct: parseFloat(incomeChange),
+        vs_average_expense: (
+          ((currentMonthData.expense - avgExpense) / avgExpense) *
+          100
+        ).toFixed(1),
+        vs_average_income: (
+          ((currentMonthData.income - avgIncome) / avgIncome) *
+          100
+        ).toFixed(1),
+      },
+      category_insights: categoryInsights,
+      historical_summary: {
+        avg_monthly_expense: Math.round(avgExpense),
+        avg_monthly_income: Math.round(avgIncome),
+        months_analyzed: historicalData.length,
+      },
     };
 
-    // Generate AI summary
-    const prompt = `You are a concise personal finance coach. Given the monthly summary JSON below, produce a short 3-5 sentence analysis in English. Use casual friendly tone and include one concrete recommendation.
+    // Enhanced AI prompt for better insights
+    const prompt = `You are a sharp personal finance advisor. Analyze this ${lookback}-month financial data and provide actionable insights in 4-5 sentences. Be specific about trends and give ONE concrete recommendation.
 
 ${JSON.stringify(summaryData)}
 
-Focus on: spending patterns, month-over-month changes, and actionable advice. Keep it under 70 words.`;
+Focus on: significant changes, concerning patterns, and one specific action to improve their finances. Use Indonesian Rupiah context. Keep under 80 words, casual tone.`;
 
+    // Stream the response
     const response = await genAI.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
     });
-    const aiSummary =
-      response.text ||
-      "Unable to generate summary at this time. Please try again later.";
 
-    return json({
-      summary: aiSummary,
-      data: summaryData,
+    const aiSummary =
+      response.text || "Unable to generate insights at this time.";
+
+    return new Response(aiSummary, {
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+      },
     });
   } catch (error) {
     console.error("AI Summary Error:", error);
