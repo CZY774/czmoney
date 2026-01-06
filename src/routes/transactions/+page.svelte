@@ -4,8 +4,10 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import TransactionForm from "$lib/components/TransactionForm.svelte";
+  import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
   import { clearTransactionCache } from "$lib/services/sync";
   import { debounce } from "$lib/utils/perf";
+  import { toast } from "$lib/stores/toast";
   import Skeleton from "$lib/components/Skeleton.svelte";
 
   let user: { id: string } | null = null;
@@ -15,6 +17,8 @@
   let showForm = false;
   let editingTransaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
   let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+  let showDeleteConfirm = false;
+  let transactionToDelete: string | null = null;
 
   // Filters
   let filters = {
@@ -97,36 +101,72 @@
     dataLoading = false;
   }
 
-  async function deleteTransaction(id: string) {
-    if (!confirm("Are you sure you want to delete this transaction?")) {
+  function confirmDelete(id: string) {
+    transactionToDelete = id;
+    showDeleteConfirm = true;
+  }
+
+  async function deleteTransaction() {
+    if (!transactionToDelete) return;
+
+    const id = transactionToDelete;
+    const targetTransaction = transactions.find(t => t.id === id);
+    
+    if (!targetTransaction) {
+      toast.error("Transaction not found");
       return;
     }
 
+    // Store backup for rollback
+    const backup = [...transactions];
+
     // Optimistic delete
-    const backup = transactions;
     transactions = transactions.filter(t => t.id !== id);
-    window.dispatchEvent(new CustomEvent('transactionUpdated'));
 
-    const { data: session } = await supabase.auth.getSession();
-    const token = session.session?.access_token;
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
 
-    const response = await fetch(`/api/transactions?_t=${Date.now()}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      },
-      body: JSON.stringify({ id }),
-    });
+      if (!token) {
+        throw new Error("No auth token");
+      }
 
-    if (response.ok) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+      const response = await fetch("/api/transactions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify({ id }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `HTTP ${response.status}`);
+      }
+
+      // Success - clear cache and notify
       await clearTransactionCache();
-    } else {
-      // Rollback on error
+      window.dispatchEvent(new CustomEvent('transactionUpdated'));
+      toast.success("Transaction deleted successfully");
+      
+    } catch (error) {
+      // Rollback on any error
       transactions = backup;
-      alert("Failed to delete transaction");
+      console.error("Delete failed:", error);
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.error("Delete request timed out. Please try again.");
+      } else {
+        toast.error(`Failed to delete transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   }
 
@@ -308,7 +348,7 @@
                       Edit
                     </button>
                     <button
-                      on:click={() => deleteTransaction(transaction.id as string)}
+                      on:click={() => confirmDelete(transaction.id as string)}
                       class="px-2.5 py-1 text-xs sm:text-sm text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
                     >
                       Delete
@@ -332,5 +372,19 @@
   on:close={() => {
     showForm = false;
     editingTransaction = null;
+  }}
+/>
+
+<!-- Delete Confirmation Dialog -->
+<ConfirmDialog
+  bind:open={showDeleteConfirm}
+  title="Delete Transaction"
+  message="Are you sure you want to delete this transaction? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  danger={true}
+  on:confirm={deleteTransaction}
+  on:cancel={() => {
+    transactionToDelete = null;
   }}
 />
