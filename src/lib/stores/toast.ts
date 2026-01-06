@@ -6,6 +6,7 @@ export interface Toast {
   title?: string;
   message: string;
   duration?: number;
+  action?: { label: string; callback: () => void };
 }
 
 function createToastStore() {
@@ -15,44 +16,37 @@ function createToastStore() {
     subscribe,
     add: (toast: Omit<Toast, "id">) => {
       const id = Math.random().toString(36).substring(2, 9);
-      const duration = toast.duration || 5000;
+      const duration = toast.duration || (toast.type === "error" ? 8000 : 5000);
 
       update((toasts) => [...toasts, { ...toast, id }]);
 
-      setTimeout(() => {
-        update((toasts) => toasts.filter((t) => t.id !== id));
-      }, duration);
+      if (duration > 0) {
+        setTimeout(() => {
+          update((toasts) => toasts.filter((t) => t.id !== id));
+        }, duration);
+      }
 
       return id;
     },
     remove: (id: string) => {
       update((toasts) => toasts.filter((t) => t.id !== id));
     },
-    success: (message: string, title?: string) => {
-      return createToastStore().add({ type: "success", message, title });
-    },
-    error: (message: string, title?: string) => {
-      return createToastStore().add({ type: "error", message, title });
-    },
-    warning: (message: string, title?: string) => {
-      return createToastStore().add({ type: "warning", message, title });
-    },
-    info: (message: string, title?: string) => {
-      return createToastStore().add({ type: "info", message, title });
+    clear: () => {
+      update(() => []);
     },
   };
 }
 
 export const toastStore = createToastStore();
 
-// Helper functions for easy use
+// Helper functions
 export const toast = {
-  success: (message: string, title?: string) =>
-    toastStore.add({ type: "success", message, title }),
-  error: (message: string, title?: string) =>
-    toastStore.add({ type: "error", message, title }),
-  warning: (message: string, title?: string) =>
-    toastStore.add({ type: "warning", message, title }),
-  info: (message: string, title?: string) =>
-    toastStore.add({ type: "info", message, title }),
+  success: (message: string, title?: string, action?: Toast["action"]) =>
+    toastStore.add({ type: "success", message, title, action }),
+  error: (message: string, title?: string, action?: Toast["action"]) =>
+    toastStore.add({ type: "error", message, title, action }),
+  warning: (message: string, title?: string, action?: Toast["action"]) =>
+    toastStore.add({ type: "warning", message, title, action }),
+  info: (message: string, title?: string, action?: Toast["action"]) =>
+    toastStore.add({ type: "info", message, title, action }),
 };
