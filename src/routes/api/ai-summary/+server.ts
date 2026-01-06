@@ -125,6 +125,7 @@ async function handleRequest(request: Request, url: URL) {
           balance: monthIncome - monthExpense,
           categories: categoryTotals,
           transactionCount: monthTransactions.length,
+          transactions: monthTransactions, // Include full transaction data
         });
       }
     }
@@ -212,15 +213,38 @@ async function handleRequest(request: Request, url: URL) {
         avg_monthly_expense: Math.round(avgExpense),
         avg_monthly_income: Math.round(avgIncome),
         months_analyzed: historicalData.length,
+        previous_month_income: historicalData.length > 1 ? historicalData[1].income : 0,
+        income_timing_pattern: {
+          current_month_income: currentMonthData.income,
+          previous_month_income: historicalData.length > 1 ? historicalData[1].income : 0,
+          // Include transaction descriptions to detect salary timing
+          recent_income_descriptions: historicalData
+            .slice(0, 2)
+            .flatMap(m => m.transactions || [])
+            .filter(t => t.type === 'income' && t.description)
+            .map(t => ({ amount: t.amount, description: t.description, date: t.txn_date }))
+            .slice(0, 5)
+        }
       },
     };
 
     // Enhanced AI prompt for better insights
-    const prompt = `You are a sharp personal finance advisor. Analyze this ${lookback}-month financial data and provide actionable insights in 4-5 sentences. Be specific about trends and give ONE concrete recommendation.
+    const prompt = `You are a sharp Indonesian personal finance advisor. Analyze this ${lookback}-month financial data and provide actionable insights in Indonesian. Be specific about trends and give ONE concrete recommendation.
 
+IMPORTANT CONTEXT:
+- Look at transaction descriptions for salary timing clues (e.g., "untuk januari 2026" means January salary paid in December)
+- If current month has low/zero income but previous month had income with future month description, this is normal
+- Analyze spending patterns and give practical advice
+
+DATA:
 ${JSON.stringify(summaryData)}
 
-Focus on: significant changes, concerning patterns, and one specific action to improve their finances. Use Indonesian Rupiah context. Keep under 80 words, casual tone.`;
+ANALYSIS FOCUS:
+1. Income patterns: Check descriptions for salary timing (e.g., salary paid early)
+2. Spending trends: Any concerning changes?
+3. One specific actionable advice
+
+Respond in casual Indonesian, max 80 words. If you see salary paid early in descriptions, mention this is good financial planning.`;
 
     // Stream the response
     const response = await genAI.models.generateContent({
