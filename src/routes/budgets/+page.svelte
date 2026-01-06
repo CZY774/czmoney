@@ -107,8 +107,8 @@
       <h2 class="text-xl font-semibold mb-4">Set Category Budget</h2>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
-          <label class="block text-sm font-medium mb-1">Category</label>
-          <select bind:value={newBudget.category_id} class="w-full p-2 border border-border rounded bg-background">
+          <label for="budget-category" class="block text-sm font-medium mb-1">Category</label>
+          <select id="budget-category" bind:value={newBudget.category_id} class="w-full p-2 border border-border rounded bg-background">
             <option value="">Select category</option>
             {#each categories as category (category.id)}
               <option value={category.id}>{category.name}</option>
@@ -117,8 +117,9 @@
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-1">Monthly Limit (IDR)</label>
+          <label for="budget-limit" class="block text-sm font-medium mb-1">Monthly Limit (IDR)</label>
           <input
+            id="budget-limit"
             type="number"
             bind:value={newBudget.monthly_limit}
             placeholder="1000000"
@@ -127,8 +128,9 @@
         </div>
         
         <div>
-          <label class="block text-sm font-medium mb-1">Alert at (%)</label>
+          <label for="budget-threshold" class="block text-sm font-medium mb-1">Alert at (%)</label>
           <input
+            id="budget-threshold"
             type="number"
             bind:value={newBudget.alert_threshold}
             min="1"
