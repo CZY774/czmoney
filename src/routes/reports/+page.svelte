@@ -3,6 +3,7 @@
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
+  import { toast } from "$lib/stores/toast";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
 
   let user: { id: string } | null = null;
@@ -85,12 +86,12 @@
 
   async function generateAISummary() {
     if (!monthlyData.transactions.length) {
-      alert("No transactions found for this month");
+      toast.warning("No transactions found for this month");
       return;
     }
 
     generatingAI = true;
-    aiSummary = "";
+    aiSummary = "Analyzing your spending patterns...";
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -102,19 +103,44 @@
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ month: selectedMonth }),
+        body: JSON.stringify({ 
+          month: selectedMonth,
+          lookback: 3 // 3 months of context
+        }),
       });
 
-      const result = await response.json();
+      if (!response.ok) {
+        const error = await response.json();
+        aiSummary = "";
+        toast.error(error.error || "Failed to generate AI summary");
+        return;
+      }
 
-      if (response.ok) {
-        aiSummary = result.summary;
-      } else {
-        alert(result.error || "Failed to generate AI summary");
+      const reader = response.body?.getReader();
+      if (!reader) {
+        aiSummary = "";
+        toast.error("Failed to read AI response");
+        return;
+      }
+
+      aiSummary = "";
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        aiSummary += chunk;
+      }
+
+      if (aiSummary.trim()) {
+        toast.success("AI insights generated successfully!");
       }
     } catch (error) {
-      alert("Error generating AI summary");
+      aiSummary = "";
       console.error(error);
+      toast.error("Error generating AI summary. Please try again.");
     } finally {
       generatingAI = false;
     }
@@ -122,30 +148,37 @@
 
   function exportCSV() {
     if (!monthlyData.transactions.length) {
-      alert("No transactions to export");
+      toast.warning("No transactions to export");
       return;
     }
 
-    const headers = ["Date", "Type", "Category", "Amount", "Description"];
-    const rows = monthlyData.transactions.map((t: Record<string, unknown>) => [
-      t.txn_date,
-      t.type,
-      (t.categories as { name?: string })?.name || "No Category",
-      t.amount,
-      t.description || "",
-    ]);
+    try {
+      const headers = ["Date", "Type", "Category", "Amount", "Description"];
+      const rows = monthlyData.transactions.map((t: Record<string, unknown>) => [
+        t.txn_date,
+        t.type,
+        (t.categories as { name?: string })?.name || "No Category",
+        t.amount,
+        t.description || "",
+      ]);
 
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map((field: unknown) => `"${field}"`).join(","))
-      .join("\n");
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((field: unknown) => `"${field}"`).join(","))
+        .join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `transactions_${selectedMonth}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transactions_${selectedMonth}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("CSV exported successfully!");
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast.error("Failed to export CSV");
+    }
   }
 
   function formatCurrency(amount: number) {
