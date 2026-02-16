@@ -9,14 +9,12 @@
   let confirmPassword = "";
   let loading = false;
   let validToken = false;
-  let isRecoveryMode = false;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
 
     if (data.session) {
       validToken = true;
-      isRecoveryMode = true;
     } else {
       toast.error("Invalid or expired reset link");
       setTimeout(() => goto(resolve("/auth/forgot-password")), 2000);
