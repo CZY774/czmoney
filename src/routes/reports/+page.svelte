@@ -220,21 +220,15 @@
     exportingPDF = true;
 
     try {
-      interface Transaction {
-        txn_date: string;
-        categories?: { name?: string };
-        type: "income" | "expense";
-        amount: number;
-        description?: string;
-      }
-
       await generatePDF({
-        transactions: (monthlyData.transactions as Transaction[]).map((t) => ({
-          date: t.txn_date,
-          category: t.categories?.name || "Unknown",
-          type: t.type,
-          amount: t.amount,
-          description: t.description,
+        transactions: monthlyData.transactions.map((t) => ({
+          date: (t as { txn_date: string }).txn_date,
+          category:
+            ((t as { categories?: { name?: string } }).categories?.name) ||
+            "Unknown",
+          type: (t as { type: "income" | "expense" }).type,
+          amount: (t as { amount: number }).amount,
+          description: (t as { description?: string }).description,
         })),
         summary: {
           totalIncome: monthlyData.income,
