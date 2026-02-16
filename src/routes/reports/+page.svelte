@@ -161,13 +161,20 @@
   async function fetchCategoryTrends() {
     loadingTrends = true;
     try {
-      const res = await fetch(`/api/reports/category-trends?period=${selectedPeriod}`);
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+
+      const res = await fetch(`/api/reports/category-trends?period=${selectedPeriod}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const result = await res.json();
 
       if (result.success) {
         trendData = result.data;
       } else {
-        toast.error("Failed to load trends");
+        toast.error(result.error || "Failed to load trends");
       }
     } catch {
       toast.error("Network error");
