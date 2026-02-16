@@ -194,8 +194,9 @@ export async function generatePDF(options: PDFExportOptions): Promise<void> {
   });
 
   // Footer
-  const pageCount = (doc as { internal: { getNumberOfPages: () => number } })
-    .internal.getNumberOfPages();
+  const pageCount = (
+    doc as { internal: { getNumberOfPages: () => number } }
+  ).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
