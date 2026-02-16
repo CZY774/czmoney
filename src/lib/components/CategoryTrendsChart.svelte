@@ -11,7 +11,7 @@
   };
 
   let chartContainer: HTMLElement;
-  let chart: any;
+  let chart: ApexCharts | null = null;
 
   onMount(async () => {
     const ApexCharts = (await import("apexcharts")).default;
