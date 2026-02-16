@@ -12,16 +12,11 @@
   let isRecoveryMode = false;
 
   onMount(async () => {
-    // Check if user has a session (from recovery link)
     const { data } = await supabase.auth.getSession();
 
     if (data.session) {
-      // User has a session - allow password reset
       validToken = true;
       isRecoveryMode = true;
-      
-      // Store flag in sessionStorage to prevent redirect loop
-      sessionStorage.setItem("password_recovery_mode", "true");
     } else {
       toast.error("Invalid or expired reset link");
       setTimeout(() => goto(resolve("/auth/forgot-password")), 2000);
@@ -51,10 +46,6 @@
       toast.error(error.message);
     } else {
       toast.success("Password updated successfully!");
-      
-      // Clear recovery mode flag
-      sessionStorage.removeItem("password_recovery_mode");
-      
       await supabase.auth.signOut();
       setTimeout(() => goto(resolve("/auth/login")), 1500);
     }
