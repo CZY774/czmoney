@@ -20,25 +20,23 @@
 
     const options = {
       chart: {
-        type: "bar",
+        type: "line",
         height: 400,
         background: "transparent",
         toolbar: { show: false },
         animations: { enabled: true },
       },
-      plotOptions: {
-        bar: {
-          horizontal: false,
-          columnWidth: "70%",
-          dataLabels: { position: "top" },
+      stroke: {
+        curve: "smooth",
+        width: 3,
+      },
+      markers: {
+        size: 5,
+        hover: {
+          size: 7,
         },
       },
       dataLabels: { enabled: false },
-      stroke: {
-        show: true,
-        width: 2,
-        colors: ["transparent"],
-      },
       series: data.categories.map((cat) => ({
         name: cat.name,
         data: cat.amounts,
@@ -77,6 +75,12 @@
       legend: {
         position: "bottom",
         labels: { colors: "#94a3b8" },
+        onItemClick: {
+          toggleDataSeries: true,
+        },
+        onItemHover: {
+          highlightDataSeries: true,
+        },
       },
       grid: {
         borderColor: "#1e293b",
