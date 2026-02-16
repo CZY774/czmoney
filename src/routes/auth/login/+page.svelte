@@ -51,6 +51,7 @@
           type="email"
           bind:value={email}
           required
+          autocomplete="email"
           class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
           placeholder="Enter your email"
         />
@@ -66,6 +67,7 @@
             type={showPassword ? "text" : "password"}
             bind:value={password}
             required
+            autocomplete="current-password"
             class="w-full p-2 pr-9 text-sm sm:text-base border border-border rounded bg-background"
             placeholder="Enter your password"
           />
