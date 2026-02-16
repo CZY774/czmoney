@@ -1,16 +1,41 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { supabase } from "$lib/services/supabase";
-import { rateLimit } from "$lib/security/rate-limit";
+import { createClient } from "@supabase/supabase-js";
+import { env } from "$env/dynamic/private";
+import { checkRateLimit } from "$lib/security/ratelimit";
+import type { Database } from "$lib/types/database";
 
-export const GET: RequestHandler = async ({ request, locals }) => {
-  const rateLimitResult = await rateLimit(request, "category-trends", 10, 10);
+const supabaseUrl = env.VITE_SUPABASE_URL;
+const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+let supabase: ReturnType<typeof createClient<Database>> | null = null;
+
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient<Database>(supabaseUrl, supabaseKey);
+}
+
+export const GET: RequestHandler = async ({ request }) => {
+  const rateLimitResult = await checkRateLimit(request, "category-trends");
   if (!rateLimitResult.success) {
     return json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const session = await locals.getSession();
-  if (!session?.user) {
+  if (!supabase) {
+    return json({ error: "Service unavailable" }, { status: 503 });
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader) {
+    return json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -33,10 +58,17 @@ export const GET: RequestHandler = async ({ request, locals }) => {
     const { data: transactions, error } = await supabase
       .from("transactions")
       .select("amount, date, categories(name, color)")
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
       .eq("type", "expense")
       .gte("date", startDate.toISOString())
-      .lte("date", endDate.toISOString());
+      .lte("date", endDate.toISOString())
+      .returns<
+        Array<{
+          amount: number;
+          date: string;
+          categories: { name: string; color: string } | null;
+        }>
+      >();
 
     if (error) throw error;
 
