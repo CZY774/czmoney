@@ -1,6 +1,7 @@
 <script lang="ts">
   import { supabase } from "$lib/services/supabase";
   import { toast } from "$lib/stores/toast";
+  import { resolve } from "$app/paths";
 
   let email = "";
   let loading = false;
@@ -57,7 +58,7 @@
             Click the link in the email to reset your password. The link expires in 1 hour.
           </p>
           <a
-            href="/auth/login"
+            href={resolve("/auth/login")}
             class="inline-block w-full py-2.5 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
           >
             Back to Login
@@ -94,7 +95,7 @@
           </button>
 
           <div class="text-center">
-            <a href="/auth/login" class="text-sm text-primary hover:underline">
+            <a href={resolve("/auth/login")} class="text-sm text-primary hover:underline">
               Back to Login
             </a>
           </div>
