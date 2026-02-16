@@ -1,6 +1,7 @@
 import { supabase } from "$lib/services/supabase";
 import { goto } from "$app/navigation";
 import { resolve } from "$app/paths";
+import { toast } from "$lib/stores/toast";
 
 let idleTimer: NodeJS.Timeout | null = null;
 let warningTimer: NodeJS.Timeout | null = null;
@@ -52,20 +53,23 @@ function resetIdleTimer() {
   warningTimer = setTimeout(() => {
     if (!isWarningShown) {
       isWarningShown = true;
-      const shouldStayLoggedIn = confirm(
-        "You will be logged out in 5 minutes due to inactivity. Click OK to stay logged in.",
+      toast.warning(
+        "You will be logged out in 5 minutes due to inactivity.",
+        "Session Expiring Soon",
+        {
+          label: "Stay Logged In",
+          callback: () => {
+            resetIdleTimer();
+          },
+        },
       );
-
-      if (shouldStayLoggedIn) {
-        resetIdleTimer(); // Reset timer if user wants to stay
-      }
     }
   }, WARNING_TIME);
 
   // Auto logout at 30 minutes
   idleTimer = setTimeout(async () => {
     await supabase.auth.signOut();
-    alert("You have been logged out due to inactivity.");
+    toast.info("You have been logged out due to inactivity.");
     const loginPath = resolve("/auth/login");
     goto(loginPath);
   }, IDLE_TIME);
