@@ -56,17 +56,21 @@ export const GET: RequestHandler = async ({ request }) => {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - period);
 
+    // Format dates as YYYY-MM-DD for Supabase
+    const startDateStr = startDate.toISOString().split("T")[0];
+    const endDateStr = endDate.toISOString().split("T")[0];
+
     const { data: transactions, error } = await supabase
       .from("transactions")
-      .select("amount, date, categories(name, color)")
+      .select("amount, txn_date, categories(name, color)")
       .eq("user_id", user.id)
       .eq("type", "expense")
-      .gte("date", startDate.toISOString())
-      .lte("date", endDate.toISOString())
+      .gte("txn_date", startDateStr)
+      .lte("txn_date", endDateStr)
       .returns<
         Array<{
           amount: number;
-          date: string;
+          txn_date: string;
           categories: { name: string; color: string } | null;
         }>
       >();
@@ -78,13 +82,19 @@ export const GET: RequestHandler = async ({ request }) => {
     return json({ success: true, data: result });
   } catch (error) {
     console.error("Category trends error:", error);
-    return json({ error: "Failed to fetch category trends" }, { status: 500 });
+    return json(
+      {
+        error: "Failed to fetch category trends",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
   }
 };
 
 function processTransactionsForChart(
   transactions: Array<{
-    date: string;
+    txn_date: string;
     amount: number;
     categories: { name: string; color: string } | null;
   }>,
@@ -110,7 +120,7 @@ function processTransactionsForChart(
     const category = t.categories;
     if (!category) return;
 
-    const month = t.date.slice(0, 7);
+    const month = t.txn_date.slice(0, 7);
     const monthIndex = months.indexOf(month);
 
     if (monthIndex === -1) return;
