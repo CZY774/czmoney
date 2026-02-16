@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { supabase } from "$lib/services/supabase";
   import { toast } from "$lib/stores/toast";
 
@@ -16,7 +17,7 @@
       validToken = true;
     } else {
       toast.error("Invalid or expired reset link");
-      setTimeout(() => goto("/auth/forgot-password"), 2000);
+      setTimeout(() => goto(resolve("/auth/forgot-password")), 2000);
     }
   });
 
@@ -44,7 +45,7 @@
     } else {
       toast.success("Password updated successfully!");
       await supabase.auth.signOut();
-      setTimeout(() => goto("/auth/login"), 1500);
+      setTimeout(() => goto(resolve("/auth/login")), 1500);
     }
   }
 </script>
