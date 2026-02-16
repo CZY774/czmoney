@@ -11,10 +11,12 @@
   };
 
   let chartContainer: HTMLElement;
-  let chart: ApexCharts | null = null;
 
-  onMount(async () => {
-    const ApexCharts = (await import("apexcharts")).default;
+  onMount(() => {
+    let chart: ApexCharts | null = null;
+
+    (async () => {
+      const ApexCharts = (await import("apexcharts")).default;
 
     const options = {
       chart: {
@@ -82,8 +84,9 @@
       },
     };
 
-    chart = new ApexCharts(chartContainer, options);
-    chart.render();
+      chart = new ApexCharts(chartContainer, options);
+      chart.render();
+    })();
 
     return () => {
       if (chart) chart.destroy();
@@ -91,7 +94,7 @@
   });
 </script>
 
-<div bind:this={chartContainer} class="chart-container" />
+<div bind:this={chartContainer} class="chart-container"></div>
 
 <style>
   .chart-container {
