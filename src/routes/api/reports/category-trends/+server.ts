@@ -55,7 +55,7 @@ function processTransactionsForChart(
     amount: number;
     categories: { name: string; color: string } | null;
   }>,
-  period: number
+  period: number,
 ) {
   const months: string[] = [];
   const now = new Date();
