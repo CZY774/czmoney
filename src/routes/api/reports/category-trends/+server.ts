@@ -49,7 +49,14 @@ export const GET: RequestHandler = async ({ request, locals }) => {
   }
 };
 
-function processTransactionsForChart(transactions: any[], period: number) {
+function processTransactionsForChart(
+  transactions: Array<{
+    date: string;
+    amount: number;
+    categories: { name: string; color: string } | null;
+  }>,
+  period: number
+) {
   const months: string[] = [];
   const now = new Date();
   for (let i = period - 1; i >= 0; i--) {
