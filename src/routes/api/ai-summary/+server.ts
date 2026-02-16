@@ -213,18 +213,24 @@ async function handleRequest(request: Request, url: URL) {
         avg_monthly_expense: Math.round(avgExpense),
         avg_monthly_income: Math.round(avgIncome),
         months_analyzed: historicalData.length,
-        previous_month_income: historicalData.length > 1 ? historicalData[1].income : 0,
+        previous_month_income:
+          historicalData.length > 1 ? historicalData[1].income : 0,
         income_timing_pattern: {
           current_month_income: currentMonthData.income,
-          previous_month_income: historicalData.length > 1 ? historicalData[1].income : 0,
+          previous_month_income:
+            historicalData.length > 1 ? historicalData[1].income : 0,
           // Include transaction descriptions to detect salary timing
           recent_income_descriptions: historicalData
             .slice(0, 2)
-            .flatMap(m => m.transactions || [])
-            .filter(t => t.type === 'income' && t.description)
-            .map(t => ({ amount: t.amount, description: t.description, date: t.txn_date }))
-            .slice(0, 5)
-        }
+            .flatMap((m) => m.transactions || [])
+            .filter((t) => t.type === "income" && t.description)
+            .map((t) => ({
+              amount: t.amount,
+              description: t.description,
+              date: t.txn_date,
+            }))
+            .slice(0, 5),
+        },
       },
     };
 
