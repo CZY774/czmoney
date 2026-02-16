@@ -5,6 +5,8 @@
   import { resolve } from "$app/paths";
   import { toast } from "$lib/stores/toast";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
+  import CategoryTrendsChart from "$lib/components/CategoryTrendsChart.svelte";
+  import { generatePDF } from "$lib/services/pdfExport";
 
   let user: { id: string } | null = null;
   let selectedMonth = new Date().toISOString().slice(0, 7);
@@ -14,6 +16,15 @@
   let loading = true;
   let generatingAI = false;
   let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+  let selectedPeriod: 3 | 6 | 12 = 3;
+  let trendData: {
+    months: string[];
+    categories: Array<{ name: string; color: string; amounts: number[] }>;
+  } | null = null;
+  let loadingTrends = false;
+  let exportingPDF = false;
+  let chartElement: HTMLElement;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -25,6 +36,7 @@
     }
 
     await loadMonthlyData();
+    await fetchCategoryTrends();
     loading = false;
 
     window.addEventListener('transactionUpdated', loadMonthlyData);
@@ -146,6 +158,24 @@
     }
   }
 
+  async function fetchCategoryTrends() {
+    loadingTrends = true;
+    try {
+      const res = await fetch(`/api/reports/category-trends?period=${selectedPeriod}`);
+      const result = await res.json();
+
+      if (result.success) {
+        trendData = result.data;
+      } else {
+        toast.error("Failed to load trends");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      loadingTrends = false;
+    }
+  }
+
   function exportCSV() {
     if (!monthlyData.transactions.length) {
       toast.warning("No transactions to export");
@@ -181,6 +211,57 @@
     }
   }
 
+  async function exportPDF() {
+    if (!monthlyData.transactions.length) {
+      toast.warning("No transactions to export");
+      return;
+    }
+
+    exportingPDF = true;
+
+    try {
+      await generatePDF({
+        transactions: monthlyData.transactions.map((t: {
+          txn_date: string;
+          categories?: { name?: string };
+          type: string;
+          amount: number;
+          description?: string;
+        }) => ({
+          date: t.txn_date,
+          category: t.categories?.name || "Unknown",
+          type: t.type,
+          amount: t.amount,
+          description: t.description,
+        })),
+        summary: {
+          totalIncome: monthlyData.income,
+          totalExpense: monthlyData.expense,
+          netSavings: monthlyData.income - monthlyData.expense,
+          savingsRate:
+            monthlyData.income > 0
+              ? ((monthlyData.income - monthlyData.expense) /
+                  monthlyData.income) *
+                100
+              : 0,
+        },
+        period: new Date(selectedMonth + "-01").toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        }),
+        chartElement: chartElement,
+        currency: "IDR",
+      });
+
+      toast.success("PDF exported successfully!");
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast.error("Failed to export PDF");
+    } finally {
+      exportingPDF = false;
+    }
+  }
+
   function formatCurrency(amount: number) {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -192,6 +273,10 @@
     loadMonthlyData();
     aiSummary = "";
   }
+
+  $: if (selectedPeriod && user) {
+    fetchCategoryTrends();
+  }
 </script>
 
 <svelte:head>
@@ -201,12 +286,21 @@
 <div class="space-y-6 sm:space-y-8">
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
     <h1 class="text-3xl sm:text-4xl font-bold">Reports</h1>
-    <button
-      on:click={exportCSV}
-      class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base border border-border rounded-lg hover:bg-accent font-medium"
-    >
-      Export CSV
-    </button>
+    <div class="flex gap-2 w-full sm:w-auto">
+      <button
+        on:click={exportCSV}
+        class="flex-1 sm:flex-none px-4 py-2 text-sm sm:text-base border border-border rounded-lg hover:bg-accent font-medium active:scale-95 transition-transform"
+      >
+        Export CSV
+      </button>
+      <button
+        on:click={exportPDF}
+        disabled={exportingPDF}
+        class="flex-1 sm:flex-none px-4 py-2 text-sm sm:text-base bg-primary text-white rounded-lg hover:bg-primary/90 font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
+      >
+        {exportingPDF ? "Generating..." : "Export PDF"}
+      </button>
+    </div>
   </div>
 
   <!-- Month Selector -->
@@ -292,11 +386,50 @@
       {/if}
     </div>
 
+    <!-- Category Trends -->
+    <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <h2 class="text-lg sm:text-xl font-semibold">Category Trends</h2>
+        <div class="flex gap-2 w-full sm:w-auto">
+          <button
+            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod === 3 ? 'bg-primary text-white' : 'bg-background border border-border hover:bg-accent'}"
+            on:click={() => selectedPeriod = 3}
+          >
+            3 Months
+          </button>
+          <button
+            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod === 6 ? 'bg-primary text-white' : 'bg-background border border-border hover:bg-accent'}"
+            on:click={() => selectedPeriod = 6}
+          >
+            6 Months
+          </button>
+          <button
+            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod === 12 ? 'bg-primary text-white' : 'bg-background border border-border hover:bg-accent'}"
+            on:click={() => selectedPeriod = 12}
+          >
+            12 Months
+          </button>
+        </div>
+      </div>
+
+      {#if loadingTrends}
+        <div class="h-96 bg-background/50 rounded-lg animate-pulse" />
+      {:else if trendData && trendData.categories.length > 0}
+        <CategoryTrendsChart data={trendData} />
+      {:else}
+        <p class="text-muted-foreground text-xs sm:text-sm text-center py-8">
+          No expense data available for this period.
+        </p>
+      {/if}
+    </div>
+
     <!-- Category Chart -->
     {#if categoryData.length > 0}
       <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
         <h2 class="text-lg sm:text-xl font-semibold mb-4">Expense Categories</h2>
-        <CategoryChart categories={categoryData} />
+        <div bind:this={chartElement}>
+          <CategoryChart categories={categoryData} />
+        </div>
       </div>
     {/if}
 
