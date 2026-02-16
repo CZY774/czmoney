@@ -15,7 +15,8 @@ if (supabaseUrl && supabaseKey) {
 }
 
 export const GET: RequestHandler = async ({ request }) => {
-  const rateLimitResult = await checkRateLimit(request, "category-trends");
+  const clientIP = request.headers.get("x-forwarded-for") || "anonymous";
+  const rateLimitResult = await checkRateLimit(`category-trends:${clientIP}`);
   if (!rateLimitResult.success) {
     return json({ error: "Too many requests" }, { status: 429 });
   }
