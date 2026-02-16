@@ -220,14 +220,16 @@
     exportingPDF = true;
 
     try {
+      interface Transaction {
+        txn_date: string;
+        categories?: { name?: string };
+        type: "income" | "expense";
+        amount: number;
+        description?: string;
+      }
+
       await generatePDF({
-        transactions: monthlyData.transactions.map((t: {
-          txn_date: string;
-          categories?: { name?: string };
-          type: string;
-          amount: number;
-          description?: string;
-        }) => ({
+        transactions: (monthlyData.transactions as Transaction[]).map((t) => ({
           date: t.txn_date,
           category: t.categories?.name || "Unknown",
           type: t.type,
@@ -413,7 +415,7 @@
       </div>
 
       {#if loadingTrends}
-        <div class="h-96 bg-background/50 rounded-lg animate-pulse" />
+        <div class="h-96 bg-background/50 rounded-lg animate-pulse"></div>
       {:else if trendData && trendData.categories.length > 0}
         <CategoryTrendsChart data={trendData} />
       {:else}
