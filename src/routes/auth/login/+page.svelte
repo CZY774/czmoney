@@ -83,6 +83,12 @@
         </div>
       </div>
 
+      <div class="text-right">
+        <a href={resolve("/auth/forgot-password")} class="text-xs sm:text-sm text-primary hover:underline">
+          Forgot password?
+        </a>
+      </div>
+
       <button
         type="submit"
         disabled={loading}
