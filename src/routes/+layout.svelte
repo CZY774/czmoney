@@ -43,8 +43,23 @@
     user = data.session?.user || null;
     loading = false;
 
+    // Check if user is in password recovery mode
+    const isRecoveryMode = sessionStorage.getItem("password_recovery_mode") === "true";
+    if (isRecoveryMode && user && $page.url.pathname !== "/auth/reset-password") {
+      // Redirect to reset password page if user tries to navigate elsewhere
+      goto(resolve("/auth/reset-password"));
+      return;
+    }
+
     supabase.auth.onAuthStateChange((event, session) => {
       user = session?.user || null;
+      
+      // If user logged in via password recovery, redirect to reset password page
+      if (event === "PASSWORD_RECOVERY" && session) {
+        sessionStorage.setItem("password_recovery_mode", "true");
+        goto(resolve("/auth/reset-password"));
+        return;
+      }
       
       // Start/stop idle timer based on auth state
       if (user) {
