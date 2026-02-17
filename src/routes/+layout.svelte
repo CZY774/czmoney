@@ -9,6 +9,9 @@
   import Toast from "$lib/components/Toast.svelte";
   import { startIdleTimer, stopIdleTimer } from "$lib/utils/idle-logout";
   import { preloadCriticalData, handleVisibilityChange } from "$lib/utils/pwa-perf";
+  import { injectAnalytics } from '@vercel/analytics/sveltekit';
+
+  injectAnalytics();
 
   let user: { id: string; email?: string } | null = null;
   let loading = true;
