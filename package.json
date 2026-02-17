@@ -43,6 +43,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@upstash/ratelimit": "^2.0.7",
     "@upstash/redis": "^1.35.6",
+    "@vercel/analytics": "^1.6.1",
     "apexcharts": "^5.3.5",
     "bits-ui": "^2.11.7",
     "class-variance-authority": "^0.7.1",
