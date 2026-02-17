@@ -8,6 +8,8 @@
   import SmartInsights from "$lib/components/SmartInsights.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
 
+  export let data;
+
   let user: { id: string; email?: string } | null = null;
   let balance = { income: 0, expense: 0, total: 0 };
   let recentTransactions: Array<Record<string, unknown>> = [];
@@ -114,6 +116,11 @@
 
 <svelte:head>
   <title>{user ? "Dashboard" : "Welcome"} - CZmoneY</title>
+  {#if data?.seo}
+    <meta name="description" content={data.seo.description} />
+    <meta name="keywords" content={data.seo.keywords} />
+    <link rel="canonical" href={data.seo.canonical} />
+  {/if}
 </svelte:head>
 
 {#if !user && loading}
