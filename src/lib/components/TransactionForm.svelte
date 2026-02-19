@@ -84,18 +84,32 @@
         transactionData.id = transaction.id;
       }
 
+      // Optimistic UI - dispatch immediately
+      const optimisticData = {
+        ...transactionData,
+        id: transaction?.id || `temp-${Date.now()}`,
+        categories: form.category_id
+          ? categories.find((c) => c.id === form.category_id)
+          : null,
+      };
+      dispatch("success", optimisticData);
+      closeModal();
+
+      // Show immediate feedback
+      const msg = transaction
+        ? "Updating transaction..."
+        : "Adding transaction...";
+      toast.info(msg);
+
       if (isOffline) {
         // Queue for offline sync
         const action = transaction ? "update" : "create";
         await queueTransaction(action, transactionData);
-
-        dispatch("success", { ...transactionData, _pending: true });
-        toast.info("Transaction saved offline. Will sync when online.");
-        closeModal();
+        toast.success("Transaction saved offline. Will sync when online.");
         return;
       }
 
-      // Online - save to API
+      // Online - save to API in background
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
 
@@ -107,7 +121,7 @@
       const idempotencyKey = generateIdempotencyKey();
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const response = await fetch("/api/transactions", {
         method,
@@ -115,10 +129,10 @@
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
           "Idempotency-Key": idempotencyKey,
-          'Cache-Control': 'no-cache'
+          "Cache-Control": "no-cache",
         },
         body: JSON.stringify(transactionData),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
@@ -129,24 +143,26 @@
       }
 
       const result = await response.json();
-      
-      // Success
-      dispatch("success", result.data);
-      await clearTransactionCache();
-      window.dispatchEvent(new CustomEvent('transactionUpdated', { detail: result.data }));
-      closeModal();
-      
-      // Show success toast
-      const msg = transaction ? "Transaction updated successfully!" : "Transaction added successfully!";
-      toast.success(msg);
 
+      // Success - update with real data
+      await clearTransactionCache();
+      window.dispatchEvent(
+        new CustomEvent("transactionUpdated", { detail: result.data }),
+      );
+
+      const successMsg = transaction
+        ? "Transaction updated!"
+        : "Transaction added!";
+      toast.success(successMsg);
     } catch (error) {
       console.error("Transaction save failed:", error);
-      
-      if (error instanceof Error && error.name === 'AbortError') {
+
+      if (error instanceof Error && error.name === "AbortError") {
         toast.error("Request timed out. Please try again.");
       } else {
-        toast.error(`Failed to save transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        toast.error(
+          `Failed to save: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       }
     } finally {
       loading = false;
