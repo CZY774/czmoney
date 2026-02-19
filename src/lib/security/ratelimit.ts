@@ -1,6 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { RATE_LIMIT } from "$lib/config/constants";
+import { RATE_LIMITS } from "$lib/config/constants";
 
 let ratelimit: Ratelimit | null = null;
 
@@ -17,8 +17,8 @@ if (redisUrl && redisToken) {
   ratelimit = new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(
-      RATE_LIMIT.STANDARD.REQUESTS,
-      RATE_LIMIT.STANDARD.WINDOW,
+      RATE_LIMITS.DEFAULT.REQUESTS,
+      RATE_LIMITS.DEFAULT.WINDOW,
     ),
     analytics: true,
   });
