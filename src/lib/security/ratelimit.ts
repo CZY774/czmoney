@@ -52,11 +52,7 @@ export async function checkRateLimit(identifier: string) {
   }
 
   // Fallback to in-memory for development
-  return memoryRateLimit(
-    identifier,
-    RATE_LIMIT.STANDARD.REQUESTS,
-    RATE_LIMIT.STANDARD.WINDOW_MS,
-  );
+  return memoryRateLimit(identifier, RATE_LIMITS.DEFAULT.REQUESTS, 10000);
 }
 
 export async function checkAIRateLimit(identifier: string) {
@@ -68,17 +64,13 @@ export async function checkAIRateLimit(identifier: string) {
         token: redisToken,
       }),
       limiter: Ratelimit.slidingWindow(
-        RATE_LIMIT.AI.REQUESTS,
-        RATE_LIMIT.AI.WINDOW,
+        RATE_LIMITS.AI.REQUESTS,
+        RATE_LIMITS.AI.WINDOW,
       ),
     });
     const { success, remaining } = await aiLimiter.limit(`ai:${identifier}`);
     return { success, remaining };
   }
 
-  return memoryRateLimit(
-    `ai:${identifier}`,
-    RATE_LIMIT.AI.REQUESTS,
-    RATE_LIMIT.AI.WINDOW_MS,
-  );
+  return memoryRateLimit(`ai:${identifier}`, RATE_LIMITS.AI.REQUESTS, 60000);
 }
