@@ -121,8 +121,13 @@
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
-    goto(resolve("/"));
+    try {
+      await supabase.auth.signOut();
+      goto(resolve("/auth/login"));
+    } catch (error) {
+      console.error("Sign out error:", error);
+      goto(resolve("/auth/login"));
+    }
   }
 </script>
 
