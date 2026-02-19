@@ -16,11 +16,11 @@ export const VALIDATION = {
 export const RATE_LIMITS = {
   DEFAULT: {
     REQUESTS: 10,
-    WINDOW: "10 s",
+    WINDOW: "10 s" as const,
   },
   AI: {
     REQUESTS: 3,
-    WINDOW: "1 m",
+    WINDOW: "1 m" as const,
   },
 };
 
