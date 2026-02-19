@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { supabase } from "$lib/services/supabase";
+  import { realtimeManager } from "$lib/services/realtimeManager";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { toast } from "$lib/stores/toast";
@@ -10,12 +11,19 @@
 
   let user: { id: string } | null = null;
   let selectedMonth = new Date().toISOString().slice(0, 7);
-  let monthlyData: { income: number; expense: number; balance: number; transactions: Array<Record<string, unknown>> } = { income: 0, expense: 0, balance: 0, transactions: [] };
+  let monthlyData: {
+    income: number;
+    expense: number;
+    balance: number;
+    transactions: Array<Record<string, unknown>>;
+  } = { income: 0, expense: 0, balance: 0, transactions: [] };
   let categoryData: Array<{ name: string; amount: number }> = [];
   let aiSummary = "";
+  let aiGeneratedAt: string | null = null;
+  let aiIsStale = false;
   let loading = true;
   let generatingAI = false;
-  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+  let unsubscribe: (() => void) | null = null;
 
   let selectedPeriod: 3 | 6 | 12 = 3;
   let trendData: {
@@ -36,23 +44,23 @@
     }
 
     await loadMonthlyData();
+    await loadAISummary(); // Load cached summary on mount
     await fetchCategoryTrends();
     loading = false;
 
-    window.addEventListener('transactionUpdated', loadMonthlyData);
+    window.addEventListener("transactionUpdated", loadMonthlyData);
 
-    realtimeChannel = supabase
-      .channel('reports-transactions')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
-        () => loadMonthlyData()
-      )
-      .subscribe();
+    unsubscribe = realtimeManager.subscribe(
+      "reports-transactions",
+      "transactions",
+      user.id,
+      () => loadMonthlyData(),
+    );
   });
 
   onDestroy(() => {
-    window.removeEventListener('transactionUpdated', loadMonthlyData);
-    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+    window.removeEventListener("transactionUpdated", loadMonthlyData);
+    if (unsubscribe) unsubscribe();
   });
 
   async function loadMonthlyData() {
@@ -96,7 +104,36 @@
     }
   }
 
-  async function generateAISummary() {
+  async function loadAISummary() {
+    if (!user) return;
+
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+
+      if (!token) return;
+
+      const response = await fetch(
+        `/api/ai-summary?month=${selectedMonth}&lookback=3`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        aiSummary = data.summary;
+        aiGeneratedAt = data.generated_at;
+        aiIsStale = data.is_stale || false;
+      }
+    } catch (error) {
+      console.error("Failed to load AI summary:", error);
+    }
+  }
+
+  async function generateAISummary(forceRefresh = false) {
     if (!monthlyData.transactions.length) {
       toast.warning("No transactions found for this month");
       return;
@@ -104,6 +141,7 @@
 
     generatingAI = true;
     aiSummary = "Analyzing your spending patterns...";
+    aiIsStale = false;
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -115,9 +153,10 @@
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           month: selectedMonth,
-          lookback: 3 // 3 months of context
+          lookback: 3, // 3 months of context
+          refresh: forceRefresh, // Force new generation
         }),
       });
 
@@ -128,31 +167,15 @@
         return;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        aiSummary = "";
-        toast.error("Failed to read AI response");
-        return;
-      }
-
-      aiSummary = "";
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        aiSummary += chunk;
-      }
-
-      if (aiSummary.trim()) {
-        toast.success("AI insights generated successfully!");
-      }
+      const data = await response.json();
+      aiSummary = data.summary;
+      aiGeneratedAt = data.generated_at;
+      aiIsStale = false;
+      toast.success("AI summary generated successfully!");
     } catch (error) {
+      console.error("AI summary error:", error);
       aiSummary = "";
-      console.error(error);
-      toast.error("Error generating AI summary. Please try again.");
+      toast.error("Failed to generate AI summary. Please try again.");
     } finally {
       generatingAI = false;
     }
@@ -274,7 +297,7 @@
 
   $: if (selectedMonth && user) {
     loadMonthlyData();
-    aiSummary = "";
+    loadAISummary(); // Reload cached summary when month changes
   }
 
   $: if (selectedPeriod && user) {
@@ -361,20 +384,75 @@
 
     <!-- AI Summary -->
     <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div
+        class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6"
+      >
         <h2 class="text-lg sm:text-xl font-semibold">AI Insights</h2>
         <button
-          on:click={generateAISummary}
+          on:click={() => generateAISummary(true)}
           disabled={generatingAI || !monthlyData.transactions.length}
           class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
         >
-          {generatingAI ? "Generating..." : "Generate Summary"}
+          {generatingAI ? "Generating..." : aiSummary ? "Refresh" : "Generate Summary"}
         </button>
       </div>
 
       {#if aiSummary}
-        <div class="p-3 sm:p-4 bg-accent/20 rounded-lg border-l-4 border-primary">
-          <p class="text-xs sm:text-sm leading-relaxed">{aiSummary}</p>
+        <div class="space-y-3">
+          <!-- Staleness indicator -->
+          {#if aiIsStale}
+            <div
+              class="flex items-center gap-2 p-2 sm:p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg"
+            >
+              <svg
+                class="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <p class="text-xs sm:text-sm text-orange-500 font-medium">
+                Data has changed. Click "Refresh" for updated insights.
+              </p>
+            </div>
+          {:else if aiGeneratedAt}
+            <div
+              class="flex items-center gap-2 p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-lg"
+            >
+              <svg
+                class="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              <p class="text-xs sm:text-sm text-green-500">
+                Up to date (as of {new Date(aiGeneratedAt).toLocaleString("id-ID", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })})
+              </p>
+            </div>
+          {/if}
+
+          <!-- AI Summary content -->
+          <div
+            class="p-3 sm:p-4 bg-accent/20 rounded-lg border-l-4 border-primary"
+          >
+            <p class="text-xs sm:text-sm leading-relaxed">{aiSummary}</p>
+          </div>
         </div>
       {:else if !monthlyData.transactions.length}
         <p class="text-muted-foreground text-xs sm:text-sm">
@@ -383,8 +461,8 @@
         </p>
       {:else}
         <p class="text-muted-foreground text-xs sm:text-sm">
-          Click "Generate Summary" to get AI-powered insights about your
-          spending patterns.
+          Click "Generate Summary" to get AI-powered insights about your spending
+          patterns.
         </p>
       {/if}
     </div>
