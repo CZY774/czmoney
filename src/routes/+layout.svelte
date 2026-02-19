@@ -88,8 +88,16 @@
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
-    goto(resolve("/"));
+    try {
+      await supabase.auth.signOut();
+      user = null; // Clear user immediately
+      goto(resolve("/auth/login"));
+    } catch (error) {
+      console.error("Sign out error:", error);
+      // Force redirect anyway
+      user = null;
+      goto(resolve("/auth/login"));
+    }
   }
 
   function isActive(path: string) {
