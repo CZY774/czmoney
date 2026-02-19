@@ -1,5 +1,4 @@
 import { Redis } from "@upstash/redis";
-import { env } from "$env/dynamic/private";
 import { CACHE_TTL } from "$lib/config/constants";
 
 interface IdempotencyRecord {
@@ -10,10 +9,13 @@ interface IdempotencyRecord {
 // Redis client for persistent storage
 let redis: Redis | null = null;
 
-if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (redisUrl && redisToken) {
   redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL,
-    token: env.UPSTASH_REDIS_REST_TOKEN,
+    url: redisUrl,
+    token: redisToken,
   });
 }
 
