@@ -11,34 +11,51 @@ export function sanitizeHTML(input: string): string {
   }).trim();
 }
 
-// Transaction validation schema
+// Transaction validation schema with strict limits
 export const transactionSchema = z.object({
-  txn_date: z.string().regex(VALIDATION.DATE_REGEX),
+  txn_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((date) => {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      return (
+        year >= VALIDATION.DATE.MIN_YEAR && year <= VALIDATION.DATE.MAX_YEAR
+      );
+    }, "Date must be between 2000 and next year"),
   category_id: z.string().uuid().or(z.literal("")).optional(),
   type: z.enum(["income", "expense"]),
-  amount: z.number().positive().int().max(VALIDATION.MAX_AMOUNT),
-  description: z.string().max(VALIDATION.MAX_DESCRIPTION_LENGTH).optional(),
+  amount: z
+    .number()
+    .min(VALIDATION.AMOUNT.MIN, "Amount must be at least 0.01")
+    .max(VALIDATION.AMOUNT.MAX, "Amount exceeds maximum limit"),
+  description: z
+    .string()
+    .max(VALIDATION.DESCRIPTION.MAX_LENGTH, "Description too long")
+    .optional(),
 });
 
 // AI summary validation
 export const aiSummarySchema = z.object({
-  month: z.string().regex(VALIDATION.MONTH_REGEX),
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  lookback: z.number().int().min(1).max(12).optional(),
+  refresh: z.boolean().optional(),
 });
 
 // Profile update validation
 export const profileSchema = z.object({
-  full_name: z.string().max(VALIDATION.MAX_NAME_LENGTH).optional(),
+  full_name: z.string().max(100).optional(),
   monthly_income: z
     .number()
     .int()
     .nonnegative()
-    .max(VALIDATION.MAX_AMOUNT)
+    .max(VALIDATION.AMOUNT.MAX)
     .optional(),
   savings_target: z
     .number()
     .int()
     .nonnegative()
-    .max(VALIDATION.MAX_AMOUNT)
+    .max(VALIDATION.AMOUNT.MAX)
     .optional(),
 });
 
