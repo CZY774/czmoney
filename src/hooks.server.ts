@@ -39,9 +39,10 @@ export async function handle({ event, resolve }) {
     "Permissions-Policy",
     "geolocation=(), microphone=(), camera=()",
   );
+  // Stricter CSP - unsafe-eval only for ApexCharts
   response.headers.set(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com;",
+    "default-src 'self'; script-src 'self' 'unsafe-eval' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com; font-src 'self' data:; frame-ancestors 'none';",
   );
 
   return response;
