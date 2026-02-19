@@ -10,6 +10,7 @@ export const VALIDATION = {
     MIN_YEAR: 2000,
     MAX_YEAR: new Date().getFullYear() + 1,
   },
+  UUID_REGEX: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 };
 
 export const RATE_LIMITS = {
@@ -27,4 +28,10 @@ export const TIMEOUTS = {
   DELETE: 10000,
   CREATE_UPDATE: 15000,
   AI_GENERATE: 30000,
+};
+
+export const CACHE_TTL = {
+  CATEGORIES: 3600,
+  PROFILES: 3600,
+  IDEMPOTENCY: 86400,
 };
