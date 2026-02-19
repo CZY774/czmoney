@@ -1,6 +1,7 @@
 import { get, set, del, keys } from "idb-keyval";
 import { supabase } from "./supabase";
 import { generateIdempotencyKey } from "$lib/utils/idempotency";
+import { logError } from "./errorHandler";
 
 interface PendingTransaction {
   id: string;
@@ -8,7 +9,11 @@ interface PendingTransaction {
   data: Record<string, unknown>;
   action: "create" | "update" | "delete";
   timestamp: number;
+  retryCount?: number;
 }
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000; // Start with 1s, exponential backoff
 
 // Queue transaction for offline sync
 export async function queueTransaction(
@@ -24,13 +29,19 @@ export async function queueTransaction(
     data,
     action,
     timestamp: Date.now(),
+    retryCount: 0,
   };
 
   await set(id, pending);
   return id;
 }
 
-// Process all pending transactions
+// Exponential backoff delay
+function getRetryDelay(retryCount: number): number {
+  return RETRY_DELAY_MS * Math.pow(2, retryCount);
+}
+
+// Process all pending transactions with retry logic
 export async function syncPendingTransactions() {
   if (!navigator.onLine) return { synced: 0, failed: 0 };
 
@@ -46,6 +57,17 @@ export async function syncPendingTransactions() {
     try {
       const pending: PendingTransaction | undefined = await get(key);
       if (!pending) continue;
+
+      // Check if max retries exceeded
+      if ((pending.retryCount || 0) >= MAX_RETRIES) {
+        logError(
+          new Error(`Max retries exceeded for ${pending.action}`),
+          "Sync",
+        );
+        await del(key); // Remove from queue
+        failed++;
+        continue;
+      }
 
       // Get auth token
       const { data: session } = await supabase.auth.getSession();
@@ -105,9 +127,19 @@ export async function syncPendingTransactions() {
         await del(key);
         synced++;
       } else {
+        // Increment retry count and save back
+        pending.retryCount = (pending.retryCount || 0) + 1;
+        await set(key, pending);
+
+        // Wait before next retry (exponential backoff)
+        await new Promise((resolve) =>
+          setTimeout(resolve, getRetryDelay(pending.retryCount!)),
+        );
+
         failed++;
       }
-    } catch {
+    } catch (error) {
+      logError(error, "Sync Transaction");
       failed++;
     }
   }
