@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { json } from "@sveltejs/kit";
-import { env } from "$env/dynamic/private";
 import type { Database } from "$lib/types/database";
 
-const supabaseUrl = env.VITE_SUPABASE_URL;
-const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
+// Server-side: use process.env directly (works in Vercel)
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 let supabase: ReturnType<typeof createClient<Database>> | null = null;
 
