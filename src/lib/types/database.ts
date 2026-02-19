@@ -115,6 +115,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_summaries: {
+        Row: {
+          id: string;
+          user_id: string;
+          month: string;
+          summary: string;
+          transaction_count: number;
+          generated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          month: string;
+          summary: string;
+          transaction_count: number;
+          generated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          month?: string;
+          summary?: string;
+          transaction_count?: number;
+          generated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
