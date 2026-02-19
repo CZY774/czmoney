@@ -346,8 +346,56 @@
   </div>
 
   {#if loading}
-    <div class="flex items-center justify-center min-h-64">
-      <div class="text-base sm:text-lg text-muted-foreground">Loading reports...</div>
+    <!-- Skeleton Loader -->
+    <div class="space-y-6">
+      <!-- Summary Cards Skeleton -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
+          <div class="h-4 bg-muted rounded w-20 mb-3"></div>
+          <div class="h-8 bg-muted rounded w-32"></div>
+        </div>
+        <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
+          <div class="h-4 bg-muted rounded w-20 mb-3"></div>
+          <div class="h-8 bg-muted rounded w-32"></div>
+        </div>
+        <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
+          <div class="h-4 bg-muted rounded w-20 mb-3"></div>
+          <div class="h-8 bg-muted rounded w-32"></div>
+        </div>
+      </div>
+
+      <!-- AI Summary Skeleton -->
+      <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
+        <div class="flex justify-between items-center mb-6">
+          <div class="h-6 bg-muted rounded w-32"></div>
+          <div class="h-10 bg-muted rounded w-40"></div>
+        </div>
+        <div class="space-y-2">
+          <div class="h-4 bg-muted rounded w-full"></div>
+          <div class="h-4 bg-muted rounded w-5/6"></div>
+          <div class="h-4 bg-muted rounded w-4/6"></div>
+        </div>
+      </div>
+
+      <!-- Chart Skeleton -->
+      <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
+        <div class="h-6 bg-muted rounded w-40 mb-6"></div>
+        <div class="h-80 bg-muted rounded"></div>
+      </div>
+
+      <!-- Trends Skeleton -->
+      <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
+        <div class="flex justify-between items-center mb-6">
+          <div class="h-6 bg-muted rounded w-40"></div>
+          <div class="flex gap-2">
+            <div class="h-8 bg-muted rounded w-20"></div>
+            <div class="h-8 bg-muted rounded w-20"></div>
+            <div class="h-8 bg-muted rounded w-20"></div>
+          </div>
+        </div>
+        <div class="h-96 bg-muted rounded"></div>
+      </div>
+    </div>
     </div>
   {:else}
     <!-- Summary Cards -->
