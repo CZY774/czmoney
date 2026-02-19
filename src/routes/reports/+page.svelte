@@ -43,10 +43,12 @@
       return;
     }
 
-    await loadMonthlyData();
-    await loadAISummary(); // Load cached summary on mount
-    await fetchCategoryTrends();
-    loading = false;
+    // Load data in parallel, don't block on AI
+    Promise.all([loadMonthlyData(), loadAISummary(), fetchCategoryTrends()]).then(
+      () => {
+        loading = false;
+      },
+    );
 
     window.addEventListener("transactionUpdated", loadMonthlyData);
 
