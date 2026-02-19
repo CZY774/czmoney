@@ -1,15 +1,17 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { env } from "$env/dynamic/private";
 import { RATE_LIMIT } from "$lib/config/constants";
 
 let ratelimit: Ratelimit | null = null;
 
 // Initialize rate limiter only if Redis credentials exist
-if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (redisUrl && redisToken) {
   const redis = new Redis({
-    url: env.UPSTASH_REDIS_REST_URL,
-    token: env.UPSTASH_REDIS_REST_TOKEN,
+    url: redisUrl,
+    token: redisToken,
   });
 
   ratelimit = new Ratelimit({
@@ -59,11 +61,11 @@ export async function checkRateLimit(identifier: string) {
 
 export async function checkAIRateLimit(identifier: string) {
   // Stricter limit for AI endpoints (expensive)
-  if (ratelimit) {
+  if (ratelimit && redisUrl && redisToken) {
     const aiLimiter = new Ratelimit({
       redis: new Redis({
-        url: env.UPSTASH_REDIS_REST_URL!,
-        token: env.UPSTASH_REDIS_REST_TOKEN!,
+        url: redisUrl,
+        token: redisToken,
       }),
       limiter: Ratelimit.slidingWindow(
         RATE_LIMIT.AI.REQUESTS,
