@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { supabase } from "$lib/services/supabase";
+  import { realtimeManager } from "$lib/services/realtimeManager";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import TransactionForm from "$lib/components/TransactionForm.svelte";
@@ -15,10 +16,24 @@
   let categories: Array<{ id: string; name: string; type: string }> = [];
   let dataLoading = true;
   let showForm = false;
-  let editingTransaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
-  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+  let editingTransaction: {
+    id?: string;
+    txn_date: string;
+    category_id?: string;
+    type: string;
+    amount: number;
+    description?: string;
+  } | null = null;
+  let unsubscribe: (() => void) | null = null;
   let showDeleteConfirm = false;
   let transactionToDelete: string | null = null;
+  let isDeleting = false; // Prevent race condition
+
+  // Pagination
+  let currentPage = 1;
+  let totalPages = 1;
+  let totalCount = 0;
+  const pageSize = 50;
 
   // Filters
   let filters = {
@@ -42,17 +57,16 @@
     loadCategories();
     loadTransactions();
 
-    realtimeChannel = supabase
-      .channel('transactions-list')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
-        () => loadTransactions()
-      )
-      .subscribe();
+    unsubscribe = realtimeManager.subscribe(
+      "transactions-list",
+      "transactions",
+      user.id,
+      () => loadTransactions(),
+    );
   });
 
   onDestroy(() => {
-    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+    if (unsubscribe) unsubscribe();
   });
 
   async function loadCategories() {
@@ -74,8 +88,33 @@
 
     const [year, month] = filters.month.split("-");
     const startDate = `${year}-${month}-01`;
-    const endDate = `${year}-${month}-${new Date(parseInt(year), parseInt(month), 0).getDate().toString().padStart(2, '0')}`;
+    const endDate = `${year}-${month}-${new Date(parseInt(year), parseInt(month), 0).getDate().toString().padStart(2, "0")}`;
 
+    // Count total for pagination
+    let countQuery = supabase
+      .from("transactions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("txn_date", startDate)
+      .lte("txn_date", endDate);
+
+    if (filters.category) {
+      countQuery = countQuery.eq("category_id", filters.category);
+    }
+
+    if (filters.type) {
+      countQuery = countQuery.eq("type", filters.type);
+    }
+
+    if (filters.search) {
+      countQuery = countQuery.ilike("description", `%${filters.search}%`);
+    }
+
+    const { count } = await countQuery;
+    totalCount = count || 0;
+    totalPages = Math.ceil(totalCount / pageSize);
+
+    // Fetch paginated data
     let query = supabase
       .from("transactions")
       .select("*, categories(name)")
@@ -95,7 +134,9 @@
       query = query.ilike("description", `%${filters.search}%`);
     }
 
-    const { data } = await query.order("txn_date", { ascending: false });
+    const { data } = await query
+      .order("txn_date", { ascending: false })
+      .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
 
     transactions = data || [];
     dataLoading = false;
@@ -107,13 +148,15 @@
   }
 
   async function deleteTransaction() {
-    if (!transactionToDelete) return;
+    if (!transactionToDelete || isDeleting) return;
 
+    isDeleting = true; // Prevent double-click
     const id = transactionToDelete;
-    const targetTransaction = transactions.find(t => t.id === id);
-    
+    const targetTransaction = transactions.find((t) => t.id === id);
+
     if (!targetTransaction) {
       toast.error("Transaction not found");
+      isDeleting = false;
       return;
     }
 
@@ -121,7 +164,7 @@
     const backup = [...transactions];
 
     // Optimistic delete
-    transactions = transactions.filter(t => t.id !== id);
+    transactions = transactions.filter((t) => t.id !== id);
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -139,10 +182,10 @@
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          'Cache-Control': 'no-cache'
+          "Cache-Control": "no-cache",
         },
         body: JSON.stringify({ id }),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
@@ -154,19 +197,22 @@
 
       // Success - clear cache and notify
       await clearTransactionCache();
-      window.dispatchEvent(new CustomEvent('transactionUpdated'));
+      window.dispatchEvent(new CustomEvent("transactionUpdated"));
       toast.success("Transaction deleted successfully");
-      
     } catch (error) {
       // Rollback on any error
       transactions = backup;
       console.error("Delete failed:", error);
-      
-      if (error instanceof Error && error.name === 'AbortError') {
+
+      if (error instanceof Error && error.name === "AbortError") {
         toast.error("Delete request timed out. Please try again.");
       } else {
-        toast.error(`Failed to delete transaction: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        toast.error(
+          `Failed to delete transaction: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       }
+    } finally {
+      isDeleting = false;
     }
   }
 
@@ -210,7 +256,31 @@
     filters.type !== undefined ||
     filters.search !== undefined
   ) {
+    currentPage = 1; // Reset to page 1 on filter change
     if (user) debouncedLoadTransactions();
+  }
+
+  // Reload when page changes
+  $: if (currentPage && user) {
+    loadTransactions();
+  }
+
+  function nextPage() {
+    if (currentPage < totalPages) {
+      currentPage++;
+    }
+  }
+
+  function prevPage() {
+    if (currentPage > 1) {
+      currentPage--;
+    }
+  }
+
+  function goToPage(page: number) {
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+    }
   }
 </script>
 
@@ -360,6 +430,56 @@
           </div>
         {/each}
       </div>
+
+      <!-- Pagination -->
+      {#if totalPages > 1}
+        <div
+          class="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border"
+        >
+          <p class="text-xs sm:text-sm text-muted-foreground">
+            Showing {(currentPage - 1) * pageSize + 1} to {Math.min(
+              currentPage * pageSize,
+              totalCount,
+            )} of {totalCount} transactions
+          </p>
+
+          <div class="flex items-center gap-2">
+            <button
+              on:click={prevPage}
+              disabled={currentPage === 1}
+              class="px-3 py-1.5 text-sm border border-border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+
+            <div class="flex gap-1">
+              {#each Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                if (totalPages <= 5) return i + 1;
+                if (currentPage <= 3) return i + 1;
+                if (currentPage >= totalPages - 2) return totalPages - 4 + i;
+                return currentPage - 2 + i;
+              }) as page (page)}
+                <button
+                  on:click={() => goToPage(page)}
+                  class="w-8 h-8 text-sm rounded {currentPage === page
+                    ? 'bg-primary text-primary-foreground'
+                    : 'border border-border hover:bg-accent'}"
+                >
+                  {page}
+                </button>
+              {/each}
+            </div>
+
+            <button
+              on:click={nextPage}
+              disabled={currentPage === totalPages}
+              class="px-3 py-1.5 text-sm border border-border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      {/if}
     {/if}
   </div>
 </div>
