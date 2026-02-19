@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { supabase } from "$lib/services/supabase";
+  import { realtimeManager } from "$lib/services/realtimeManager";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import BalanceChart from "$lib/components/BalanceChart.svelte";
@@ -17,7 +18,7 @@
   let profile = { monthly_income: 0, savings_target: 0 };
   let loading = true;
   let dataLoading = true;
-  let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+  let unsubscribe: (() => void) | null = null;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -26,18 +27,17 @@
 
     if (user) {
       loadDashboardData();
-      
-      window.addEventListener('transactionUpdated', loadDashboardData);
-      
-      realtimeChannel = supabase
-        .channel('dashboard-transactions')
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.id}` },
-          () => loadDashboardData()
-        )
-        .subscribe();
-      
-      document.addEventListener('visibilitychange', () => {
+
+      window.addEventListener("transactionUpdated", loadDashboardData);
+
+      unsubscribe = realtimeManager.subscribe(
+        "dashboard-transactions",
+        "transactions",
+        user.id,
+        () => loadDashboardData(),
+      );
+
+      document.addEventListener("visibilitychange", () => {
         if (!document.hidden && user) {
           loadDashboardData();
         }
@@ -46,38 +46,43 @@
   });
 
   onDestroy(() => {
-    window.removeEventListener('transactionUpdated', loadDashboardData);
-    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+    window.removeEventListener("transactionUpdated", loadDashboardData);
+    if (unsubscribe) unsubscribe();
   });
 
   async function loadDashboardData() {
     if (!user) return;
     dataLoading = true;
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("monthly_income, savings_target")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileData) {
-      profile = profileData;
-    }
-
     const month = new Date().toISOString().slice(0, 7);
     const [year, monthNum] = month.split("-");
     const startDate = `${year}-${monthNum}-01`;
-    const endDate = new Date(parseInt(year), parseInt(monthNum), 0).toISOString().split("T")[0];
+    const endDate = new Date(parseInt(year), parseInt(monthNum), 0)
+      .toISOString()
+      .split("T")[0];
 
-    const { data: transactions } = await supabase
-      .from("transactions")
-      .select("*, categories(name)")
-      .eq("user_id", user.id)
-      .gte("txn_date", startDate)
-      .lte("txn_date", endDate)
-      .order("txn_date", { ascending: false });
+    // Batch queries using Promise.all
+    const [profileResult, transactionsResult] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("monthly_income, savings_target")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("transactions")
+        .select("*, categories(name)")
+        .eq("user_id", user.id)
+        .gte("txn_date", startDate)
+        .lte("txn_date", endDate)
+        .order("txn_date", { ascending: false }),
+    ]);
 
-    if (transactions) {
+    if (profileResult.data) {
+      profile = profileResult.data;
+    }
+
+    if (transactionsResult.data) {
+      const transactions = transactionsResult.data;
       recentTransactions = transactions.slice(0, 5);
 
       balance.income = transactions
