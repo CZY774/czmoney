@@ -1,14 +1,14 @@
 import { z } from "zod";
-import DOMPurify from "isomorphic-dompurify";
 import { VALIDATION } from "$lib/config/constants";
 
-// Proper XSS sanitization using DOMPurify
+// Server-side: Simple but effective sanitization
 export function sanitizeHTML(input: string): string {
-  return DOMPurify.sanitize(input, {
-    ALLOWED_TAGS: [], // Strip all HTML tags
-    ALLOWED_ATTR: [], // Strip all attributes
-    KEEP_CONTENT: true, // Keep text content
-  }).trim();
+  return input
+    .replace(/[<>]/g, "") // Remove < and >
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+=/gi, "")
+    .replace(/data:/gi, "")
+    .trim();
 }
 
 // Transaction validation schema
