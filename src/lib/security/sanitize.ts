@@ -1,14 +1,14 @@
 import { z } from "zod";
+import xss from "xss";
 import { VALIDATION } from "$lib/config/constants";
 
-// Server-side: Simple but effective sanitization
+// Proper XSS sanitization using xss library (serverless-friendly)
 export function sanitizeHTML(input: string): string {
-  return input
-    .replace(/[<>]/g, "") // Remove < and >
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+=/gi, "")
-    .replace(/data:/gi, "")
-    .trim();
+  return xss(input, {
+    whiteList: {}, // Strip all HTML tags
+    stripIgnoreTag: true, // Remove unknown tags
+    stripIgnoreTagBody: ["script"], // Remove script content
+  }).trim();
 }
 
 // Transaction validation schema
