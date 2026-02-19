@@ -1,6 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { env } from "$env/dynamic/private";
+import { RATE_LIMIT } from "$lib/config/constants";
 
 let ratelimit: Ratelimit | null = null;
 
@@ -13,7 +14,10 @@ if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
 
   ratelimit = new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(10, "10 s"), // 10 requests per 10 seconds
+    limiter: Ratelimit.slidingWindow(
+      RATE_LIMIT.STANDARD.REQUESTS,
+      RATE_LIMIT.STANDARD.WINDOW,
+    ),
     analytics: true,
   });
 }
@@ -21,7 +25,7 @@ if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
 // Fallback in-memory rate limiter for development
 const memoryStore = new Map<string, { count: number; resetAt: number }>();
 
-function memoryRateLimit(identifier: string, limit = 10, window = 10000) {
+function memoryRateLimit(identifier: string, limit: number, window: number) {
   const now = Date.now();
   const key = identifier;
   const record = memoryStore.get(key);
@@ -46,7 +50,11 @@ export async function checkRateLimit(identifier: string) {
   }
 
   // Fallback to in-memory for development
-  return memoryRateLimit(identifier);
+  return memoryRateLimit(
+    identifier,
+    RATE_LIMIT.STANDARD.REQUESTS,
+    RATE_LIMIT.STANDARD.WINDOW_MS,
+  );
 }
 
 export async function checkAIRateLimit(identifier: string) {
@@ -57,11 +65,18 @@ export async function checkAIRateLimit(identifier: string) {
         url: env.UPSTASH_REDIS_REST_URL!,
         token: env.UPSTASH_REDIS_REST_TOKEN!,
       }),
-      limiter: Ratelimit.slidingWindow(3, "60 s"), // 3 requests per minute
+      limiter: Ratelimit.slidingWindow(
+        RATE_LIMIT.AI.REQUESTS,
+        RATE_LIMIT.AI.WINDOW,
+      ),
     });
     const { success, remaining } = await aiLimiter.limit(`ai:${identifier}`);
     return { success, remaining };
   }
 
-  return memoryRateLimit(`ai:${identifier}`, 3, 60000);
+  return memoryRateLimit(
+    `ai:${identifier}`,
+    RATE_LIMIT.AI.REQUESTS,
+    RATE_LIMIT.AI.WINDOW_MS,
+  );
 }
