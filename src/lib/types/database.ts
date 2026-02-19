@@ -69,6 +69,7 @@ export type Database = {
           monthly_income: number | null;
           savings_target: number | null;
           created_at: string;
+          last_transaction_at: string | null;
         };
         Insert: {
           id: string;
@@ -77,6 +78,7 @@ export type Database = {
           monthly_income?: number | null;
           savings_target?: number | null;
           created_at?: string;
+          last_transaction_at?: string | null;
         };
         Update: {
           id?: string;
@@ -85,6 +87,7 @@ export type Database = {
           monthly_income?: number | null;
           savings_target?: number | null;
           created_at?: string;
+          last_transaction_at?: string | null;
         };
         Relationships: [];
       };
