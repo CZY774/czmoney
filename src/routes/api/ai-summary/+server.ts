@@ -1,6 +1,5 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { GoogleGenAI } from "@google/genai";
-import { env } from "$env/dynamic/private";
 import { checkAIRateLimit } from "$lib/security/ratelimit";
 import { validateAndSanitize, aiSummarySchema } from "$lib/security/sanitize";
 import { authenticate, getSupabaseClient } from "$lib/middleware/auth";
@@ -11,7 +10,7 @@ async function handleRequest(request: Request, url: URL) {
     const { error, user } = await authenticate(request);
     if (error) return error;
 
-    const geminiKey = env.GEMINI_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) {
       throw new AppError("AI service temporarily unavailable", 503);
     }
