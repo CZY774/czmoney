@@ -2,15 +2,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { browser } from "$app/environment";
 import type { Transaction, Category, Profile } from "$lib/types";
 
-// Use import.meta.env for client-side
-const supabaseUrl =
-  typeof window !== "undefined"
-    ? import.meta.env.VITE_SUPABASE_URL
-    : process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey =
-  typeof window !== "undefined"
-    ? import.meta.env.VITE_SUPABASE_ANON_KEY
-    : process.env.VITE_SUPABASE_ANON_KEY;
+// Client-side: use import.meta.env
+// Server-side: use process.env (available in build)
+const supabaseUrl = browser
+  ? import.meta.env.VITE_SUPABASE_URL
+  : import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = browser
+  ? import.meta.env.VITE_SUPABASE_ANON_KEY
+  : import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing Supabase environment variables");
