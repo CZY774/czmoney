@@ -22,6 +22,7 @@
   let aiGeneratedAt: string | null = null;
   let aiIsStale = false;
   let loading = true;
+  let dataLoading = true; // Separate loading for main data
   let generatingAI = false;
   let unsubscribe: (() => void) | null = null;
 
@@ -43,12 +44,14 @@
       return;
     }
 
-    // Load data in parallel, don't block on AI
-    Promise.all([loadMonthlyData(), loadAISummary(), fetchCategoryTrends()]).then(
-      () => {
-        loading = false;
-      },
-    );
+    loading = false; // Hide initial loader immediately
+
+    // Load main data first (fast)
+    await Promise.all([loadMonthlyData(), fetchCategoryTrends()]);
+    dataLoading = false;
+
+    // Load AI summary in background (slow, don't block UI)
+    loadAISummary();
 
     window.addEventListener("transactionUpdated", loadMonthlyData);
 
@@ -67,9 +70,13 @@
 
   async function loadMonthlyData() {
     if (!user) return;
+    dataLoading = true;
+
     const [year, month] = selectedMonth.split("-");
     const startDate = `${year}-${month}-01`;
-    const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split("T")[0];
+    const endDate = new Date(parseInt(year), parseInt(month), 0)
+      .toISOString()
+      .split("T")[0];
 
     const { data: transactions } = await supabase
       .from("transactions")
@@ -104,6 +111,8 @@
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
     }
+
+    dataLoading = false;
   }
 
   async function loadAISummary() {
@@ -297,12 +306,12 @@
     }).format(amount);
   }
 
-  $: if (selectedMonth && user) {
+  $: if (selectedMonth && user && !loading) {
     loadMonthlyData();
     loadAISummary(); // Reload cached summary when month changes
   }
 
-  $: if (selectedPeriod && user) {
+  $: if (selectedPeriod && user && !loading) {
     fetchCategoryTrends();
   }
 </script>
@@ -346,6 +355,11 @@
   </div>
 
   {#if loading}
+    <!-- Initial auth check loader -->
+    <div class="flex items-center justify-center min-h-64">
+      <div class="text-base sm:text-lg text-muted-foreground">Loading...</div>
+    </div>
+  {:else if dataLoading}
     <!-- Skeleton Loader -->
     <div class="space-y-6">
       <!-- Summary Cards Skeleton -->
@@ -395,7 +409,6 @@
         </div>
         <div class="h-96 bg-muted rounded"></div>
       </div>
-    </div>
     </div>
   {:else}
     <!-- Summary Cards -->
