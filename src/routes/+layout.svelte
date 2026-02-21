@@ -78,14 +78,23 @@
   async function checkOnboardingStatus() {
     if (!user) return;
 
+    // Small delay to ensure profile is created by trigger
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("onboarding_completed")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
-      if (profile && profile.onboarding_completed !== true) {
+      if (error) {
+        console.error("Profile fetch error:", error);
+        return;
+      }
+
+      // Show modal if profile doesn't exist or onboarding not completed
+      if (!profile || profile.onboarding_completed !== true) {
         showWelcomeModal = true;
       }
     } catch (error) {
