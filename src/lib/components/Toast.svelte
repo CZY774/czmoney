@@ -25,7 +25,9 @@
   };
 </script>
 
-<div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+<div
+  class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-full max-w-sm sm:max-w-md px-4 sm:px-0 pointer-events-none"
+>
   {#each $toastStore as toast (toast.id)}
     <div
       class="pointer-events-auto rounded-lg shadow-2xl border backdrop-blur-sm {styles[
@@ -40,9 +42,9 @@
         </div>
         <div class="flex-1 min-w-0">
           {#if toast.title}
-            <h3 class="font-semibold text-sm mb-1">{toast.title}</h3>
+            <h3 class="font-semibold text-sm mb-1 break-words">{toast.title}</h3>
           {/if}
-          <p class="text-sm opacity-95">{toast.message}</p>
+          <p class="text-sm opacity-95 break-words">{toast.message}</p>
           {#if toast.action}
             <button
               on:click={toast.action.callback}
