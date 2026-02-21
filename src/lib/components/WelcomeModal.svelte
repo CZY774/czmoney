@@ -11,32 +11,26 @@
     {
       title: "Welcome to CZmoneY! 💰",
       description:
-        "Your personal finance manager with AI-powered insights. Track expenses, manage budgets, and achieve your financial goals.",
+        "Your personal finance manager with AI-powered insights. Let's get you started in 3 simple steps.",
       icon: "💰",
     },
     {
-      title: "Track Your Finances 📊",
+      title: "Track Every Transaction 📊",
       description:
-        "Add transactions easily, categorize expenses, and see your spending patterns with beautiful charts and reports.",
+        "Add your income and expenses easily. Categorize them to see where your money goes. Works offline too!",
       icon: "📊",
     },
     {
-      title: "Smart Budget Alerts 🎯",
+      title: "Set Your Budget Goals 🎯",
       description:
-        "Set category budgets and get intelligent alerts when you're approaching limits or overspending.",
+        "Set monthly budgets for each category. Get smart alerts when you're approaching your limits.",
       icon: "🎯",
     },
     {
-      title: "AI-Powered Insights 🤖",
+      title: "Get AI Insights 🤖",
       description:
-        "Get personalized financial advice and spending analysis powered by Google Gemini AI.",
+        "Receive personalized financial advice and spending analysis powered by AI. Make smarter money decisions.",
       icon: "🤖",
-    },
-    {
-      title: "Works Offline 📱",
-      description:
-        "Add transactions offline and they'll sync automatically when you're back online. Install as a PWA for the best experience!",
-      icon: "📱",
     },
   ];
 
