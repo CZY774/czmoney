@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { supabase } from "$lib/services/supabase";
+  import { toast } from "$lib/stores/toast";
   import { Eye, EyeOff } from "lucide-svelte";
 
   let email = "";
@@ -34,8 +35,9 @@
     if (authError) {
       error = authError.message;
     } else {
-      alert(
-        "Registration successful! Please check your email to verify your account."
+      toast.success(
+        "Please check your email to verify your account.",
+        "Registration Successful"
       );
       goto(resolve("/auth/login"));
     }
