@@ -40,7 +40,7 @@
     },
   ];
 
-  $: stepIndices = steps.map((_, i) => i);
+  const stepIndices = steps.map((_, i) => i);
 
   function nextStep() {
     if (currentStep < steps.length - 1) {
