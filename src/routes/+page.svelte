@@ -8,6 +8,8 @@
   import CategoryChart from "$lib/components/CategoryChart.svelte";
   import SmartInsights from "$lib/components/SmartInsights.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
+  import OnboardingChecklist from "$lib/components/OnboardingChecklist.svelte";
 
   export let data;
 
@@ -19,6 +21,13 @@
   let loading = true;
   let dataLoading = true;
   let unsubscribe: (() => void) | null = null;
+  let showChecklist = true;
+  let checklistTasks = [
+    { id: "transaction", label: "Add your first transaction", completed: false },
+    { id: "income", label: "Set your monthly income", completed: false },
+    { id: "budget", label: "Create a budget", completed: false },
+    { id: "report", label: "View your first report", completed: false },
+  ];
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -27,6 +36,7 @@
 
     if (user) {
       loadDashboardData();
+      loadChecklistStatus();
 
       window.addEventListener("transactionUpdated", loadDashboardData);
 
@@ -109,6 +119,36 @@
         .sort((a, b) => b.amount - a.amount);
     }
     dataLoading = false;
+    updateChecklistProgress();
+  }
+
+  async function loadChecklistStatus() {
+    const dismissed = localStorage.getItem("checklist_dismissed");
+    showChecklist = dismissed !== "true";
+  }
+
+  function updateChecklistProgress() {
+    checklistTasks[0].completed = recentTransactions.length > 0;
+    checklistTasks[1].completed = profile.monthly_income > 0;
+    checklistTasks = [...checklistTasks];
+  }
+
+  async function handleChecklistToggle(event: CustomEvent<string>) {
+    const taskId = event.detail;
+    if (taskId === "transaction") {
+      goto(resolve("/transactions"));
+    } else if (taskId === "income") {
+      goto(resolve("/settings"));
+    } else if (taskId === "budget") {
+      goto(resolve("/budgets"));
+    } else if (taskId === "report") {
+      goto(resolve("/reports"));
+    }
+  }
+
+  function dismissChecklist() {
+    localStorage.setItem("checklist_dismissed", "true");
+    showChecklist = false;
   }
 
   function formatCurrency(amount: number) {
@@ -165,6 +205,25 @@
   <div class="space-y-6 sm:space-y-8">
     <h1 class="text-3xl sm:text-4xl font-bold">Dashboard</h1>
 
+    <!-- Onboarding Checklist -->
+    {#if showChecklist && !dataLoading}
+      <OnboardingChecklist
+        tasks={checklistTasks}
+        on:toggle={handleChecklistToggle}
+        on:dismiss={dismissChecklist}
+      />
+    {/if}
+
+    <!-- Empty State for New Users -->
+    {#if !dataLoading && recentTransactions.length === 0}
+      <EmptyState
+        title="Start Tracking Your Finances"
+        description="Add your first transaction to see your spending patterns, charts, and AI-powered insights."
+        actionLabel="Add Transaction"
+        icon="💰"
+        onAction={() => goto(resolve("/transactions"))}
+      />
+    {:else}
     <!-- Balance Cards -->
     {#if dataLoading}
       <Skeleton type="card" count={3} />
@@ -338,5 +397,6 @@
         </div>
       {/if}
     </div>
+    {/if}
   </div>
 {/if}
