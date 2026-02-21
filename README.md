@@ -14,12 +14,14 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 - ⚡ **Realtime Updates**: Instant data refresh across all tabs using Supabase Realtime
 - 📈 **Budget Management**: Set category budgets with customizable alerts
 - 📥 **CSV Export**: Download transaction history
-- 🔔 **Toast Notifications**: Professional UI feedback system
+- 🔔 **Toast Notifications**: Professional UI feedback system (no more alerts!)
 - 🌙 **Dark Theme**: Sleek, modern dark UI optimized for mobile
 - 🔒 **Idempotency**: Prevents duplicate transactions on network retries
 - 🚀 **Performance Optimized**: Pagination (50 items/page), centralized realtime subscriptions, batch queries
 - ✨ **Perceived Speed**: Optimistic UI, instant feedback, prefetch navigation, lazy-loaded charts
 - 🎯 **Smart Validation**: Strict data validation (amount limits, date ranges, description length)
+- 🎓 **User Onboarding**: Welcome modal, empty states, and progress checklist for new users
+- 🔄 **Auto Updates**: Version check and service worker update detection with user prompts
 
 ## Tech Stack
 
@@ -172,10 +174,34 @@ czmoney/
 ### First Time Setup
 
 1. **Register**: Create an account at `/auth/register`
-2. **Profile**: Set your monthly income and savings target in Settings
-3. **Budgets**: Set category budgets at `/budgets` for smart alerts
-4. **Add Transactions**: Use the FAB button or Transactions page
-5. **View Reports**: Check Reports page for insights and AI summary
+2. **Welcome Tour**: Complete the 4-step onboarding to learn key features
+3. **Setup Checklist**: Follow the dashboard checklist to get started:
+   - Add your first transaction
+   - Set your monthly income in Settings
+   - Create a budget
+   - View your first report
+4. **Profile**: Set your monthly income and savings target in Settings
+5. **Budgets**: Set category budgets at `/budgets` for smart alerts
+
+### User Onboarding
+
+**Welcome Modal**:
+
+- 4-step interactive tour on first login
+- Learn about tracking, budgets, AI insights, and offline features
+- Skip or complete to dismiss
+
+**Empty States**:
+
+- Dashboard shows helpful prompts when no data exists
+- Clear call-to-action buttons guide next steps
+- Contextual help throughout the app
+
+**Progress Checklist**:
+
+- Track your setup progress on dashboard
+- Gamified completion with visual progress bar
+- Dismissible after completion
 
 ### Smart Insights Features
 
@@ -487,6 +513,9 @@ Edit `src/routes/api/insights/+server.ts`:
 
 ## Roadmap
 
+- [x] User onboarding (welcome modal, empty states, checklist)
+- [x] Auto-update detection (version check + service worker)
+- [x] Toast notifications (replaced all alerts)
 - [ ] Recurring transactions
 - [ ] Multi-currency with live exchange rates
 - [ ] Data import from CSV/bank statements
@@ -497,6 +526,7 @@ Edit `src/routes/api/insights/+server.ts`:
 - [ ] Push notifications for budget alerts
 - [ ] Investment tracking
 - [ ] Debt payoff calculator
+- [ ] Contextual tooltips (just-in-time help)
 
 ## Contributing
 
