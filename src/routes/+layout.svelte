@@ -85,7 +85,7 @@
         .eq("id", user.id)
         .single();
 
-      if (profile && !profile.onboarding_completed) {
+      if (profile && profile.onboarding_completed !== true) {
         showWelcomeModal = true;
       }
     } catch (error) {
