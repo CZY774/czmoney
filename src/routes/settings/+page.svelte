@@ -4,6 +4,7 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { syncPendingTransactions, getSyncStatus } from "$lib/services/sync";
+  import { toast } from "$lib/stores/toast";
 
   let user: { id: string; email?: string } | null = null;
   let profile = {
@@ -80,13 +81,13 @@
       });
 
       if (error) {
-        alert("Failed to save profile");
+        toast.error("Failed to save profile");
         console.error(error);
       } else {
-        alert("Profile saved successfully");
+        toast.success("Profile saved successfully");
       }
     } catch (error) {
-      alert("Error saving profile");
+      toast.error("Error saving profile");
       console.error(error);
     } finally {
       saving = false;
@@ -95,7 +96,7 @@
 
   async function manualSync() {
     if (isOffline) {
-      alert("Cannot sync while offline");
+      toast.warning("Cannot sync while offline");
       return;
     }
 
@@ -106,14 +107,14 @@
       await loadSyncStatus();
 
       if (result.synced > 0) {
-        alert(`Successfully synced ${result.synced} transactions`);
+        toast.success(`Successfully synced ${result.synced} transactions`);
       } else if (result.failed > 0) {
-        alert(`Failed to sync ${result.failed} transactions`);
+        toast.error(`Failed to sync ${result.failed} transactions`);
       } else {
-        alert("No transactions to sync");
+        toast.info("No transactions to sync");
       }
     } catch (error) {
-      alert("Sync failed");
+      toast.error("Sync failed");
       console.error(error);
     } finally {
       syncing = false;
