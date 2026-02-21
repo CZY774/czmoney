@@ -7,9 +7,13 @@
   import { resolve } from "$app/paths";
   import { getSyncStatus } from "$lib/services/sync";
   import Toast from "$lib/components/Toast.svelte";
+  import WelcomeModal from "$lib/components/WelcomeModal.svelte";
   import { startIdleTimer, stopIdleTimer } from "$lib/utils/idle-logout";
   import { preloadCriticalData, handleVisibilityChange } from "$lib/utils/pwa-perf";
-  import { injectAnalytics } from '@vercel/analytics/sveltekit';
+  import { registerServiceWorkerUpdateHandler } from "$lib/services/serviceWorkerUpdate";
+  import { checkForUpdates } from "$lib/services/versionCheck";
+  import { toast } from "$lib/stores/toast";
+  import { injectAnalytics } from "@vercel/analytics/sveltekit";
 
   injectAnalytics();
 
@@ -18,28 +22,12 @@
   let syncStatus = { pending: 0, lastSync: null };
   let isOffline = false;
   let mobileMenuOpen = false;
+  let showWelcomeModal = false;
 
   onMount(async () => {
-    // Simplified SW registration
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.register('/service-worker.js');
-        
-        // Handle updates without blocking
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // Show update available notification instead of blocking
-                console.log('Update available - will apply on next visit');
-              }
-            });
-          }
-        });
-      } catch (error) {
-        console.log('SW registration failed:', error);
-      }
+    // Register service worker with update detection
+    if ("serviceWorker" in navigator) {
+      registerServiceWorkerUpdateHandler();
     }
 
     const { data } = await getSession();
@@ -48,13 +36,13 @@
 
     supabase.auth.onAuthStateChange((event, session) => {
       user = session?.user || null;
-      
+
       // Redirect to reset password page on PASSWORD_RECOVERY event
       if (event === "PASSWORD_RECOVERY") {
         goto(resolve("/auth/reset-password"));
         return;
       }
-      
+
       // Start/stop idle timer based on auth state
       if (user) {
         startIdleTimer();
@@ -66,11 +54,17 @@
     if (user) {
       await updateSyncStatus();
       setInterval(updateSyncStatus, 30000);
-      startIdleTimer(); // Start idle timer for logged in user
-      preloadCriticalData(); // Preload critical routes
+      startIdleTimer();
+      preloadCriticalData();
+
+      // Check onboarding status
+      await checkOnboardingStatus();
+
+      // Check for updates every 5 minutes
+      checkAppVersion();
+      setInterval(checkAppVersion, 5 * 60 * 1000);
     }
 
-    // Handle app visibility changes for better PWA performance
     handleVisibilityChange();
 
     isOffline = !navigator.onLine;
@@ -81,6 +75,47 @@
     window.addEventListener("offline", () => (isOffline = true));
   });
 
+  async function checkOnboardingStatus() {
+    if (!user) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .single();
+
+      if (profile && !profile.onboarding_completed) {
+        showWelcomeModal = true;
+      }
+    } catch (error) {
+      console.error("Failed to check onboarding status:", error);
+    }
+  }
+
+  async function completeOnboarding() {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("id", user.id);
+    } catch (error) {
+      console.error("Failed to update onboarding status:", error);
+    }
+  }
+
+  async function checkAppVersion() {
+    const { hasUpdate } = await checkForUpdates();
+    if (hasUpdate) {
+      toast.info("A new version is available! Refresh to update.", "Update Available", {
+        label: "Refresh",
+        callback: () => window.location.reload(),
+      });
+    }
+  }
+
   async function updateSyncStatus() {
     if (user) {
       syncStatus = await getSyncStatus();
@@ -90,11 +125,10 @@
   async function signOut() {
     try {
       await supabase.auth.signOut();
-      user = null; // Clear user immediately
+      user = null;
       goto(resolve("/auth/login"));
     } catch (error) {
       console.error("Sign out error:", error);
-      // Force redirect anyway
       user = null;
       goto(resolve("/auth/login"));
     }
@@ -301,6 +335,8 @@
     <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
       <slot />
     </main>
+
+    <WelcomeModal bind:open={showWelcomeModal} on:complete={completeOnboarding} on:skip={completeOnboarding} />
   {:else}
     <slot />
   {/if}
