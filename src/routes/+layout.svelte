@@ -106,10 +106,16 @@
     if (!user) return;
 
     try {
-      await supabase
+      const { error } = await supabase
         .from("profiles")
-        .update({ onboarding_completed: true })
-        .eq("id", user.id);
+        .upsert(
+          { id: user.id, onboarding_completed: true },
+          { onConflict: "id" }
+        );
+
+      if (error) {
+        console.error("Failed to update onboarding:", error);
+      }
     } catch (error) {
       console.error("Failed to update onboarding status:", error);
     }
