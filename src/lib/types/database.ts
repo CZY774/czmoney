@@ -70,6 +70,7 @@ export type Database = {
           savings_target: number | null;
           created_at: string;
           last_transaction_at: string | null;
+          onboarding_completed: boolean;
         };
         Insert: {
           id: string;
@@ -79,6 +80,7 @@ export type Database = {
           savings_target?: number | null;
           created_at?: string;
           last_transaction_at?: string | null;
+          onboarding_completed?: boolean;
         };
         Update: {
           id?: string;
@@ -88,6 +90,7 @@ export type Database = {
           savings_target?: number | null;
           created_at?: string;
           last_transaction_at?: string | null;
+          onboarding_completed?: boolean;
         };
         Relationships: [];
       };
