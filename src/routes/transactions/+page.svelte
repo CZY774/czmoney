@@ -222,7 +222,7 @@
   }
 
   function openEditForm(transaction: Record<string, unknown>) {
-    editingTransaction = transaction as { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string };
+    editingTransaction = structuredClone(transaction) as { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string };
     showForm = true;
   }
 
