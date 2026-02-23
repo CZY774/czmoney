@@ -166,6 +166,38 @@
     <meta name="keywords" content={data.seo.keywords} />
     <link rel="canonical" href={data.seo.canonical} />
   {/if}
+  {#if !user}
+    <script type="application/ld+json">
+      {JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "CZmoneY",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "description": "Modern personal finance manager with offline support, AI insights, and budget tracking",
+        "featureList": [
+          "Transaction Management",
+          "Budget Tracking",
+          "AI-Powered Insights",
+          "Offline Support",
+          "Visual Reports",
+          "PWA Installation"
+        ],
+        "screenshot": data?.seo?.canonical || "",
+        "softwareVersion": "1.0.0",
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "5",
+          "ratingCount": "1"
+        }
+      })}
+    </script>
+  {/if}
 </svelte:head>
 
 {#if !user && loading}
