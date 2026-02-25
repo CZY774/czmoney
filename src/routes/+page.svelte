@@ -72,7 +72,7 @@
       .split("T")[0];
 
     // Batch queries using Promise.all
-    const [profileResult, transactionsResult] = await Promise.all([
+    const [profileResult, transactionsResult, budgetsResult] = await Promise.all([
       supabase
         .from("profiles")
         .select("monthly_income, savings_target")
@@ -85,6 +85,11 @@
         .gte("txn_date", startDate)
         .lte("txn_date", endDate)
         .order("txn_date", { ascending: false }),
+      supabase
+        .from("budgets")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1),
     ]);
 
     if (profileResult.data) {
@@ -119,7 +124,7 @@
         .sort((a, b) => b.amount - a.amount);
     }
     dataLoading = false;
-    updateChecklistProgress();
+    updateChecklistProgress(budgetsResult.data);
   }
 
   async function loadChecklistStatus() {
@@ -127,9 +132,11 @@
     showChecklist = dismissed !== "true";
   }
 
-  function updateChecklistProgress() {
+  function updateChecklistProgress(budgets: any[] | null) {
     checklistTasks[0].completed = recentTransactions.length > 0;
     checklistTasks[1].completed = profile.monthly_income > 0;
+    checklistTasks[2].completed = (budgets?.length || 0) > 0;
+    checklistTasks[3].completed = localStorage.getItem("visited_reports") === "true";
     checklistTasks = [...checklistTasks];
   }
 
