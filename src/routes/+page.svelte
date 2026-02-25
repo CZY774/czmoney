@@ -132,7 +132,7 @@
     showChecklist = dismissed !== "true";
   }
 
-  function updateChecklistProgress(budgets: any[] | null) {
+  function updateChecklistProgress(budgets: Array<{ id: string }> | null) {
     checklistTasks[0].completed = recentTransactions.length > 0;
     checklistTasks[1].completed = profile.monthly_income > 0;
     checklistTasks[2].completed = (budgets?.length || 0) > 0;
