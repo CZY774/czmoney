@@ -108,6 +108,27 @@ async function handleRequest(request: Request, url: URL) {
               (categoryTotals[categoryName] || 0) + t.amount;
           });
 
+        // Extract notable expense patterns (top 5 largest with descriptions)
+        const notableExpenses = monthTransactions
+          .filter((t) => t.type === "expense")
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 5)
+          .map((t) => ({
+            amount: t.amount,
+            category: (t.categories as unknown as { name: string } | null)
+              ?.name,
+            description: t.description || "No description",
+            context:
+              t.description?.toLowerCase().includes("lebaran") ||
+              t.description?.toLowerCase().includes("holiday") ||
+              t.description?.toLowerCase().includes("gift") ||
+              t.description?.toLowerCase().includes("emergency") ||
+              t.description?.toLowerCase().includes("repair") ||
+              t.description?.toLowerCase().includes("medical")
+                ? "seasonal/one-time"
+                : "regular",
+          }));
+
         historicalData.push({
           month: `${targetYear}-${targetMonth}`,
           income: monthIncome,
@@ -115,7 +136,7 @@ async function handleRequest(request: Request, url: URL) {
           balance: monthIncome - monthExpense,
           categories: categoryTotals,
           transactionCount: monthTransactions.length,
-          transactions: monthTransactions,
+          notableExpenses,
         });
       }
     }
@@ -209,36 +230,39 @@ async function handleRequest(request: Request, url: URL) {
           current_month_income: currentMonthData.income,
           previous_month_income:
             historicalData.length > 1 ? historicalData[1].income : 0,
-          recent_income_descriptions: historicalData
+          has_early_payment: historicalData
             .slice(0, 2)
-            .flatMap((m) => m.transactions || [])
-            .filter((t) => t.type === "income" && t.description)
-            .map((t) => ({
-              amount: t.amount,
-              description: t.description,
-              date: t.txn_date,
-            }))
-            .slice(0, 5),
+            .flatMap((m) => m.notableExpenses || [])
+            .some((e) => e.context === "seasonal/one-time"),
         },
+        notable_spending: historicalData.map((m) => ({
+          month: m.month,
+          top_expenses: m.notableExpenses,
+        })),
       },
     };
 
-    const prompt = `You are a sharp Indonesian personal finance advisor. Analyze this ${lookback}-month financial data and provide actionable insights in Indonesian. Be specific about trends and give ONE concrete recommendation.
+    const prompt = `You're a chill Gen Z finance advisor. Analyze this ${lookback}-month financial data and give real talk insights. Be specific about trends and drop ONE solid recommendation.
 
 IMPORTANT CONTEXT:
-- Look at transaction descriptions for salary timing clues (e.g., "untuk januari 2026" means January salary paid in December)
-- If current month has low/zero income but previous month had income with future month description, this is normal
-- Analyze spending patterns and give practical advice
+- Check notable_spending for top 5 expenses per month with descriptions
+- Items marked "seasonal/one-time" (holiday, gift, emergency, repair, medical) = normal spikes
+- Items marked "regular" = recurring spending, watch for patterns
+- If you see specific items (e.g., "tiket bis", "starbucks", "mall"), mention them in your advice
+- All numbers are pre-calculated, focus on analyzing spending behavior
 
 DATA:
 ${JSON.stringify(summaryData)}
 
 ANALYSIS FOCUS:
-1. Income patterns: Check descriptions for salary timing (e.g., salary paid early)
-2. Spending trends: Any concerning changes?
-3. One specific actionable advice
+1. Income vs expense balance: Is it healthy?
+2. Top expenses: Any recurring unnecessary spending? (check descriptions)
+3. One specific actionable tip based on actual items/services they bought
 
-Respond in casual Indonesian, max 80 words. If you see salary paid early in descriptions, mention this is good financial planning.`;
+RESPONSE FORMAT:
+- Plain text only, NO markdown (no **, __, *, etc.)
+- Casual Gen Z English, max 80 words
+- If big spike is seasonal, say it's chill. If it's regular unnecessary spending, call it out with specific examples`;
 
     const response = await genAI.models.generateContent({
       model: "gemini-2.5-flash",
