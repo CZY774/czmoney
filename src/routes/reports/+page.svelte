@@ -34,6 +34,7 @@
   let loadingTrends = false;
   let exportingPDF = false;
   let chartElement: HTMLElement;
+  let trendAbortController: AbortController | null = null;
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -196,6 +197,15 @@
   }
 
   async function fetchCategoryTrends() {
+    // Abort previous request if still pending
+    if (trendAbortController) {
+      trendAbortController.abort();
+    }
+
+    // Create new AbortController for this request
+    trendAbortController = new AbortController();
+    const signal = trendAbortController.signal;
+
     loadingTrends = true;
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -205,7 +215,12 @@
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal, // Pass abort signal
       });
+
+      // Check if request was aborted
+      if (signal.aborted) return;
+
       const result = await res.json();
 
       if (result.success) {
@@ -213,10 +228,17 @@
       } else {
         toast.error(result.error || "Failed to load trends");
       }
-    } catch {
+    } catch (error) {
+      // Ignore abort errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       toast.error("Network error");
     } finally {
-      loadingTrends = false;
+      // Only set loading false if not aborted
+      if (!signal.aborted) {
+        loadingTrends = false;
+      }
     }
   }
 
