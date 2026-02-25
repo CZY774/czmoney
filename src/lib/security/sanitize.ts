@@ -31,8 +31,8 @@ export const transactionSchema = z.object({
     .max(VALIDATION.AMOUNT.MAX, "Amount exceeds maximum limit"),
   description: z
     .string()
-    .max(VALIDATION.DESCRIPTION.MAX_LENGTH, "Description too long")
-    .optional(),
+    .min(3, "Description must be at least 3 characters")
+    .max(VALIDATION.DESCRIPTION.MAX_LENGTH, "Description too long"),
 });
 
 // AI summary validation
