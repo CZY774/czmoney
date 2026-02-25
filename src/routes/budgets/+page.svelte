@@ -4,12 +4,15 @@
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { toast } from "$lib/stores/toast";
+  import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
 
   let user: { id: string } | null = null;
   let categories: Array<{ id: string; name: string; type: string }> = [];
   let budgets: Array<{ id: string; category_id: string; monthly_limit: number; alert_threshold: number; categories: { name: string } }> = [];
   let loading = true;
   let saving = false;
+  let showDeleteConfirm = false;
+  let budgetToDelete: string | null = null;
 
   let newBudget = {
     category_id: "",
@@ -78,10 +81,23 @@
   }
 
   async function deleteBudget(id: string) {
-    if (!confirm("Delete this budget?")) return;
+    budgetToDelete = id;
+    showDeleteConfirm = true;
+  }
 
-    const { error } = await supabase.from("budgets").delete().eq("id", id);
-    if (!error) await loadData();
+  async function confirmDelete() {
+    if (!budgetToDelete) return;
+    
+    const { error } = await supabase.from("budgets").delete().eq("id", budgetToDelete);
+    
+    if (error) {
+      toast.error("Failed to delete budget");
+    } else {
+      toast.success("Budget deleted");
+      await loadData();
+    }
+    
+    budgetToDelete = null;
   }
 
   function formatCurrency(amount: number) {
@@ -184,3 +200,13 @@
     </div>
   {/if}
 </div>
+
+<ConfirmDialog
+  bind:open={showDeleteConfirm}
+  title="Delete Budget"
+  message="Are you sure you want to delete this budget? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  danger={true}
+  on:confirm={confirmDelete}
+/>
