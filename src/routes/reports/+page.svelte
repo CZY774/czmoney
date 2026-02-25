@@ -45,6 +45,9 @@
     }
 
     loading = false; // Hide initial loader immediately
+    
+    // Mark reports as visited for onboarding checklist
+    localStorage.setItem("visited_reports", "true");
 
     // Load main data first (fast)
     await Promise.all([loadMonthlyData(), fetchCategoryTrends()]);
@@ -516,6 +519,9 @@
           >
             <p class="text-xs sm:text-sm leading-relaxed">{aiSummary}</p>
           </div>
+          <p class="text-xs text-muted-foreground mt-3 italic">
+            💡 Tip: Add detailed descriptions to your transactions (e.g., "bus ticket Jakarta-Bandung" instead of just "transport") for more accurate AI insights.
+          </p>
         </div>
       {:else if !monthlyData.transactions.length}
         <p class="text-muted-foreground text-xs sm:text-sm">
