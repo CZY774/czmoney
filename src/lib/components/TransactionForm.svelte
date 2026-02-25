@@ -69,6 +69,11 @@
       return;
     }
 
+    if (!form.description || form.description.trim().length < 3) {
+      toast.error("Please add a description (min 3 characters)");
+      return;
+    }
+
     if (!user || loading) return;
 
     loading = true;
@@ -260,15 +265,20 @@
 
         <div>
           <label for="txn-description" class="block text-xs sm:text-sm font-medium mb-1"
-            >Description</label
+            >Description <span class="text-red-500">*</span></label
           >
           <input
             id="txn-description"
             type="text"
             bind:value={form.description}
             class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-            placeholder="Optional description"
+            placeholder="e.g., bus ticket Jakarta-Bandung"
+            required
+            minlength="3"
           />
+          <p class="text-xs text-muted-foreground mt-1">
+            💡 Detailed descriptions help AI give better insights
+          </p>
         </div>
 
         <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-4">
