@@ -118,10 +118,38 @@ export async function generatePDF(options: PDFExportOptions): Promise<void> {
       const chartImage = await getChartImage(chartElement);
 
       if (chartImage) {
-        const imgWidth = pageWidth - margin * 2;
-        const imgHeight = 80;
+        // Calculate proper dimensions maintaining aspect ratio
+        const maxWidth = pageWidth - margin * 2;
+        const maxHeight = 70;
 
-        doc.addImage(chartImage, "PNG", margin, yPosition, imgWidth, imgHeight);
+        // Create temp image to get dimensions
+        const img = new Image();
+        img.src = chartImage;
+        await new Promise((resolve) => {
+          img.onload = resolve;
+        });
+
+        const aspectRatio = img.width / img.height;
+        let imgWidth = maxWidth;
+        let imgHeight = imgWidth / aspectRatio;
+
+        // If height exceeds max, scale down
+        if (imgHeight > maxHeight) {
+          imgHeight = maxHeight;
+          imgWidth = imgHeight * aspectRatio;
+        }
+
+        // Center horizontally
+        const xOffset = (pageWidth - imgWidth) / 2;
+
+        doc.addImage(
+          chartImage,
+          "PNG",
+          xOffset,
+          yPosition,
+          imgWidth,
+          imgHeight,
+        );
         yPosition += imgHeight + 10;
       }
     } catch (error) {
@@ -216,11 +244,60 @@ async function getChartImage(
 ): Promise<string | null> {
   try {
     const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(chartElement, {
+
+    // Clone element to avoid modifying original
+    const clone = chartElement.cloneNode(true) as HTMLElement;
+    clone.style.position = "absolute";
+    clone.style.left = "-9999px";
+    document.body.appendChild(clone);
+
+    // Override dark theme colors for PDF (light background)
+    const svgElements = clone.querySelectorAll("svg");
+    svgElements.forEach((svg) => {
+      // Change text colors from white to black
+      svg.querySelectorAll("text").forEach((text) => {
+        const fill = text.getAttribute("fill");
+        if (fill === "#fff" || fill === "#ffffff" || fill === "white") {
+          text.setAttribute("fill", "#000000");
+        }
+      });
+
+      // Change legend text colors
+      svg.querySelectorAll(".apexcharts-legend-text").forEach((text) => {
+        (text as HTMLElement).style.color = "#000000";
+      });
+    });
+
+    const canvas = await html2canvas(clone, {
       backgroundColor: "#ffffff",
       scale: 2,
+      logging: false,
     });
-    return canvas.toDataURL("image/png");
+
+    // Clean up clone
+    document.body.removeChild(clone);
+
+    // Get original dimensions
+    const originalWidth = chartElement.offsetWidth;
+    const originalHeight = chartElement.offsetHeight;
+
+    // Calculate aspect ratio
+    const aspectRatio = originalWidth / originalHeight;
+
+    // Create properly sized canvas
+    const finalCanvas = document.createElement("canvas");
+    const targetWidth = 800; // Fixed width for PDF
+    const targetHeight = targetWidth / aspectRatio;
+
+    finalCanvas.width = targetWidth;
+    finalCanvas.height = targetHeight;
+
+    const ctx = finalCanvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+    }
+
+    return finalCanvas.toDataURL("image/png");
   } catch (error) {
     console.error("Chart image conversion failed:", error);
     return null;
