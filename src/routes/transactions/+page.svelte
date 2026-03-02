@@ -245,8 +245,9 @@
     // Optimistic update
     if (editingTransaction?.id) {
       // UPDATE: Replace existing transaction
+      const editId = editingTransaction.id;
       transactions = transactions.map((t) =>
-        t.id === editingTransaction.id ? { ...t, ...txn } : t,
+        t.id === editId ? { ...t, ...txn } : t,
       );
     } else {
       // CREATE: Add new transaction only if not already exists
