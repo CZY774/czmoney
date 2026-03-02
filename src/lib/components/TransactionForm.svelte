@@ -85,11 +85,13 @@
         user_id: user.id,
       };
 
-      if (transaction?.id) {
+      // Include ID for updates
+      const isEdit = !!transaction?.id;
+      if (isEdit) {
         transactionData.id = transaction.id;
       }
 
-      // Optimistic UI - dispatch immediately
+      // Optimistic UI - dispatch immediately with proper ID
       const optimisticData = {
         ...transactionData,
         id: transaction?.id || `temp-${Date.now()}`,
@@ -101,14 +103,12 @@
       closeModal();
 
       // Show immediate feedback
-      const msg = transaction
-        ? "Updating transaction..."
-        : "Adding transaction...";
+      const msg = isEdit ? "Updating transaction..." : "Adding transaction...";
       toast.info(msg);
 
       if (isOffline) {
         // Queue for offline sync
-        const action = transaction ? "update" : "create";
+        const action = isEdit ? "update" : "create";
         await queueTransaction(action, transactionData);
         toast.success("Transaction saved offline. Will sync when online.");
         return;
@@ -122,7 +122,7 @@
         throw new Error("Authentication required");
       }
 
-      const method = transaction ? "PUT" : "POST";
+      const method = isEdit ? "PUT" : "POST";
       const idempotencyKey = generateIdempotencyKey();
 
       const controller = new AbortController();
@@ -155,7 +155,7 @@
         new CustomEvent("transactionUpdated", { detail: result.data }),
       );
 
-      const successMsg = transaction
+      const successMsg = isEdit
         ? "Transaction updated!"
         : "Transaction added!";
       toast.success(successMsg);
