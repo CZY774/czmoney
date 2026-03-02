@@ -87,7 +87,7 @@
 
       // Include ID for updates
       const isEdit = !!transaction?.id;
-      if (isEdit) {
+      if (isEdit && transaction) {
         transactionData.id = transaction.id;
       }
 
