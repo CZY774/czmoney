@@ -10,6 +10,7 @@
   import { debounce } from "$lib/utils/perf";
   import { toast } from "$lib/stores/toast";
   import Skeleton from "$lib/components/Skeleton.svelte";
+  import { SvelteSet } from "svelte/reactivity";
 
   let user: { id: string } | null = null;
   let transactions: Array<Record<string, unknown>> = [];
@@ -28,6 +29,7 @@
   let showDeleteConfirm = false;
   let transactionToDelete: string | null = null;
   let isDeleting = false; // Prevent race condition
+  let pendingOperations = new SvelteSet<string>(); // Track operations in progress
 
   // Pagination
   let currentPage = 1;
@@ -61,7 +63,14 @@
       "transactions-list",
       "transactions",
       user.id,
-      () => loadTransactions(),
+      () => {
+        // Debounce realtime updates to prevent race with optimistic updates
+        setTimeout(() => {
+          if (pendingOperations.size === 0) {
+            loadTransactions();
+          }
+        }, 300);
+      },
     );
   });
 
@@ -228,13 +237,29 @@
 
   async function handleFormSuccess(event: CustomEvent) {
     const txn = event.detail;
-    
-    // Optimistic update - add/update immediately
+    const operationId = txn.id || `temp-${Date.now()}`;
+
+    // Mark operation as pending
+    pendingOperations.add(operationId);
+
+    // Optimistic update
     if (editingTransaction?.id) {
-      transactions = transactions.map(t => t.id === txn.id ? { ...t, ...txn } : t);
+      // UPDATE: Replace existing transaction
+      transactions = transactions.map((t) =>
+        t.id === editingTransaction.id ? { ...t, ...txn } : t,
+      );
     } else {
-      transactions = [txn, ...transactions];
+      // CREATE: Add new transaction only if not already exists
+      const exists = transactions.some((t) => t.id === operationId);
+      if (!exists) {
+        transactions = [txn, ...transactions];
+      }
     }
+
+    // Clear pending after grace period
+    setTimeout(() => {
+      pendingOperations.delete(operationId);
+    }, 1000);
   }
 
   function formatCurrency(amount: number) {
