@@ -6,11 +6,12 @@
   import { resolve } from "$app/paths";
   import TransactionForm from "$lib/components/TransactionForm.svelte";
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
-  import { clearTransactionCache } from "$lib/services/sync";
+  import { clearTransactionCache, cacheTransactions } from "$lib/services/sync";
   import { debounce } from "$lib/utils/perf";
   import { toast } from "$lib/stores/toast";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { SvelteSet } from "svelte/reactivity";
+  import { get } from "idb-keyval";
 
   let user: { id: string } | null = null;
   let transactions: Array<Record<string, unknown>> = [];
@@ -95,6 +96,17 @@
     dataLoading = true;
     if (!user) return;
 
+    // Try loading from cache if offline
+    if (!navigator.onLine) {
+      const cached = await get('cached_transactions');
+      if (cached && cached.data) {
+        transactions = cached.data;
+        dataLoading = false;
+        toast.info('Showing cached data (offline)');
+        return;
+      }
+    }
+
     const [year, month] = filters.month.split("-");
     const startDate = `${year}-${month}-01`;
     const endDate = `${year}-${month}-${new Date(parseInt(year), parseInt(month), 0).getDate().toString().padStart(2, "0")}`;
@@ -148,6 +160,12 @@
       .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
 
     transactions = data || [];
+    
+    // Cache for offline use
+    if (transactions.length > 0) {
+      await cacheTransactions(transactions);
+    }
+    
     dataLoading = false;
   }
 
