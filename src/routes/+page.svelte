@@ -10,6 +10,8 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import OnboardingChecklist from "$lib/components/OnboardingChecklist.svelte";
+  import { get, set } from "idb-keyval";
+  import { toast } from "$lib/stores/toast";
 
   export let data;
 
@@ -63,6 +65,20 @@
   async function loadDashboardData() {
     if (!user) return;
     dataLoading = true;
+
+    // Try loading from cache if offline
+    if (!navigator.onLine) {
+      const cached = await get('cached_dashboard');
+      if (cached) {
+        balance = cached.balance;
+        recentTransactions = cached.recentTransactions;
+        categoryData = cached.categoryData;
+        profile = cached.profile;
+        dataLoading = false;
+        toast.info('Showing cached data (offline)');
+        return;
+      }
+    }
 
     const month = new Date().toISOString().slice(0, 7);
     const [year, monthNum] = month.split("-");
@@ -123,6 +139,16 @@
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
     }
+    
+    // Cache dashboard data for offline use
+    await set('cached_dashboard', {
+      balance,
+      recentTransactions,
+      categoryData,
+      profile,
+      timestamp: Date.now()
+    });
+    
     dataLoading = false;
     updateChecklistProgress(budgetsResult.data);
   }
