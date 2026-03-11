@@ -10,7 +10,7 @@ A modern, offline-first personal finance manager built with SvelteKit, Supabase,
 - 🤖 **AI Insights**: Get personalized financial advice powered by Google Gemini with smart cache invalidation
 - 🎯 **Smart Alerts**: Budget tracking, overspending predictions, savings goals
 - 📱 **PWA Support**: Install as mobile/desktop app with offline capability
-- 🔄 **Offline Sync**: Work offline, sync automatically when online
+- 🔄 **Offline-First**: View cached data and queue transactions offline, auto-sync when online
 - ⚡ **Realtime Updates**: Instant data refresh across all tabs using Supabase Realtime
 - 📈 **Budget Management**: Set category budgets with customizable alerts
 - 📥 **CSV Export**: Download transaction history
@@ -257,11 +257,21 @@ czmoney/
 
 ### Offline Mode
 
-- App works completely offline
-- Transactions are queued locally
+**Works Offline:**
+
+- View previously loaded dashboard and transactions (cached)
+- Add, edit, and delete transactions (queued for sync)
 - Auto-syncs when connection is restored
-- Check sync status in Settings
-- Toast notifications for offline actions
+- Toast notifications for offline status
+
+**Requires Internet:**
+
+- Initial login/registration (Supabase Auth limitation)
+- Loading fresh transaction data
+- AI insights and reports
+- Budget data refresh
+
+**Best Practice:** Login while online, load your data once, then the app works offline for viewing cached data and managing transactions.
 
 ## Features in Detail
 
