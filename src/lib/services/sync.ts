@@ -170,9 +170,10 @@ export async function cacheTransactions(
   });
 }
 
-// Clear cached transactions (called after mutations)
+// Clear all caches (called after mutations)
 export async function clearTransactionCache() {
   await del("cached_transactions");
+  await del("cached_dashboard");
   window.dispatchEvent(new CustomEvent("transactionUpdated"));
 }
 
