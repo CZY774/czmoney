@@ -275,10 +275,28 @@
       }
     }
 
-    // Clear pending after grace period
-    setTimeout(() => {
+    // Listen for real data from API to replace temp ID
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const realData = customEvent.detail;
+      
+      if (realData && operationId.startsWith('temp-')) {
+        // Replace temp transaction with real one
+        transactions = transactions.map((t) =>
+          t.id === operationId ? { ...t, ...realData, id: realData.id } : t
+        );
+      }
+      
       pendingOperations.delete(operationId);
-    }, 1000);
+    };
+
+    window.addEventListener('transactionUpdated', handleUpdate, { once: true });
+
+    // Cleanup after timeout
+    setTimeout(() => {
+      window.removeEventListener('transactionUpdated', handleUpdate);
+      pendingOperations.delete(operationId);
+    }, 2000);
   }
 
   function formatCurrency(amount: number) {
