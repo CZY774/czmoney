@@ -190,6 +190,39 @@
       currency: "IDR",
     }).format(amount);
   }
+
+  // Structured data for SEO (only for landing page)
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "CZmoneY",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web, Android, iOS",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "Modern personal finance manager with offline support, AI insights, and budget tracking",
+    "featureList": [
+      "Transaction Management",
+      "Budget Tracking",
+      "AI-Powered Insights",
+      "Offline Support",
+      "Visual Reports",
+      "PWA Installation"
+    ],
+    "screenshot": "https://czmoney.vercel.app/icon-512.png",
+    "softwareVersion": "1.1.7",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5",
+      "ratingCount": "1"
+    }
+  };
+
+  // Pre-render structured data HTML (split closing tag to avoid parser confusion)
+  const structuredDataHTML = '<script type="application/ld+json">' + JSON.stringify(structuredData) + '<' + '/script>';
 </script>
 
 <svelte:head>
@@ -200,36 +233,8 @@
     <link rel="canonical" href={data.seo.canonical} />
   {/if}
   {#if !user}
-    <script type="application/ld+json">
-      {JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "CZmoneY",
-        "applicationCategory": "FinanceApplication",
-        "operatingSystem": "Web, Android, iOS",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
-        "description": "Modern personal finance manager with offline support, AI insights, and budget tracking",
-        "featureList": [
-          "Transaction Management",
-          "Budget Tracking",
-          "AI-Powered Insights",
-          "Offline Support",
-          "Visual Reports",
-          "PWA Installation"
-        ],
-        "screenshot": data?.seo?.canonical || "",
-        "softwareVersion": "1.0.0",
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "5",
-          "ratingCount": "1"
-        }
-      })}
-    </script>
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html structuredDataHTML}
   {/if}
 </svelte:head>
 
