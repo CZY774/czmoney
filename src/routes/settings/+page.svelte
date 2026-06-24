@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
@@ -28,28 +28,32 @@
     isOffline = true;
   }
 
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
-    user = data.session?.user || null;
+  onMount(() => {
+    async function initializeSettings() {
+      const { data } = await supabase.auth.getSession();
+      user = data.session?.user || null;
 
-    if (!user) {
-      goto(resolve("/auth/login"));
-      return;
+      if (!user) {
+        goto(resolve("/auth/login"));
+        return;
+      }
+
+      await loadProfile();
+      await loadSyncStatus();
+      loading = false;
+
+      // Monitor online status
+      isOffline = !navigator.onLine;
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
     }
 
-    await loadProfile();
-    await loadSyncStatus();
-    loading = false;
+    void initializeSettings();
 
-    // Monitor online status
-    isOffline = !navigator.onLine;
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("online", handleOnline);
-    window.removeEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   });
 
   async function loadProfile() {
