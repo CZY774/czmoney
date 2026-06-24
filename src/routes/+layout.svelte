@@ -1,6 +1,6 @@
 <script lang="ts">
   import "../app.css";
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { page } from "$app/stores";
   import { supabase, getSession } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
@@ -9,7 +9,10 @@
   import Toast from "$lib/components/Toast.svelte";
   import WelcomeModal from "$lib/components/WelcomeModal.svelte";
   import { startIdleTimer, stopIdleTimer } from "$lib/utils/idle-logout";
-  import { preloadCriticalData, handleVisibilityChange } from "$lib/utils/pwa-perf";
+  import {
+    preloadCriticalData,
+    handleVisibilityChange,
+  } from "$lib/utils/pwa-perf";
   import { registerServiceWorkerUpdateHandler } from "$lib/services/serviceWorkerUpdate";
   import { checkForUpdates } from "$lib/services/versionCheck";
   import { toast } from "$lib/stores/toast";
@@ -23,37 +26,54 @@
   let isOffline = false;
   let mobileMenuOpen = false;
   let showWelcomeModal = false;
+  let syncStatusInterval: ReturnType<typeof setInterval> | null = null;
+  let appVersionInterval: ReturnType<typeof setInterval> | null = null;
+  let cleanupVisibilityChange: (() => void) | null = null;
+  let cleanupServiceWorkerUpdate: (() => void) | null = null;
+  let authSubscription: { unsubscribe: () => void } | null = null;
+
+  function handleOnline() {
+    isOffline = false;
+    if (user) updateSyncStatus();
+  }
+
+  function handleOffline() {
+    isOffline = true;
+  }
 
   onMount(async () => {
     // Register service worker with update detection
     if ("serviceWorker" in navigator) {
-      registerServiceWorkerUpdateHandler();
+      cleanupServiceWorkerUpdate = registerServiceWorkerUpdateHandler();
     }
 
     const { data } = await getSession();
     user = data.session?.user || null;
     loading = false;
 
-    supabase.auth.onAuthStateChange((event, session) => {
-      user = session?.user || null;
+    const { data: authState } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        user = session?.user || null;
 
-      // Redirect to reset password page on PASSWORD_RECOVERY event
-      if (event === "PASSWORD_RECOVERY") {
-        goto(resolve("/auth/reset-password"));
-        return;
-      }
+        // Redirect to reset password page on PASSWORD_RECOVERY event
+        if (event === "PASSWORD_RECOVERY") {
+          goto(resolve("/auth/reset-password"));
+          return;
+        }
 
-      // Start/stop idle timer based on auth state
-      if (user) {
-        startIdleTimer();
-      } else {
-        stopIdleTimer();
-      }
-    });
+        // Start/stop idle timer based on auth state
+        if (user) {
+          startIdleTimer();
+        } else {
+          stopIdleTimer();
+        }
+      },
+    );
+    authSubscription = authState.subscription;
 
     if (user) {
       await updateSyncStatus();
-      setInterval(updateSyncStatus, 30000);
+      syncStatusInterval = setInterval(updateSyncStatus, 30000);
       startIdleTimer();
       preloadCriticalData();
 
@@ -62,17 +82,25 @@
 
       // Check for updates every 5 minutes
       checkAppVersion();
-      setInterval(checkAppVersion, 5 * 60 * 1000);
+      appVersionInterval = setInterval(checkAppVersion, 5 * 60 * 1000);
     }
 
-    handleVisibilityChange();
+    cleanupVisibilityChange = handleVisibilityChange();
 
     isOffline = !navigator.onLine;
-    window.addEventListener("online", () => {
-      isOffline = false;
-      if (user) updateSyncStatus();
-    });
-    window.addEventListener("offline", () => (isOffline = true));
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+  });
+
+  onDestroy(() => {
+    if (syncStatusInterval) clearInterval(syncStatusInterval);
+    if (appVersionInterval) clearInterval(appVersionInterval);
+    cleanupVisibilityChange?.();
+    cleanupServiceWorkerUpdate?.();
+    authSubscription?.unsubscribe();
+    window.removeEventListener("online", handleOnline);
+    window.removeEventListener("offline", handleOffline);
+    stopIdleTimer();
   });
 
   async function checkOnboardingStatus() {
@@ -110,7 +138,7 @@
         .from("profiles")
         .upsert(
           { id: user.id, onboarding_completed: true },
-          { onConflict: "id" }
+          { onConflict: "id" },
         );
 
       if (error) {
@@ -124,10 +152,14 @@
   async function checkAppVersion() {
     const { hasUpdate } = await checkForUpdates();
     if (hasUpdate) {
-      toast.info("A new version is available! Refresh to update.", "Update Available", {
-        label: "Refresh",
-        callback: () => window.location.reload(),
-      });
+      toast.info(
+        "A new version is available! Refresh to update.",
+        "Update Available",
+        {
+          label: "Refresh",
+          callback: () => window.location.reload(),
+        },
+      );
     }
   }
 
@@ -179,7 +211,7 @@
               href={resolve("/transactions")}
               data-sveltekit-preload-data
               class="text-sm font-medium transition-colors {isActive(
-                '/transactions'
+                '/transactions',
               )
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'}"
@@ -208,7 +240,7 @@
               href={resolve("/settings")}
               data-sveltekit-preload-data
               class="text-sm font-medium transition-colors {isActive(
-                '/settings'
+                '/settings',
               )
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'}"
@@ -324,7 +356,9 @@
               >
                 Settings
               </a>
-              <div class="flex items-center justify-between py-2 border-t border-border mt-2 pt-3">
+              <div
+                class="flex items-center justify-between py-2 border-t border-border mt-2 pt-3"
+              >
                 <button
                   on:click={signOut}
                   class="text-sm font-medium text-muted-foreground"
@@ -351,7 +385,11 @@
       <slot />
     </main>
 
-    <WelcomeModal bind:open={showWelcomeModal} on:complete={completeOnboarding} on:skip={completeOnboarding} />
+    <WelcomeModal
+      bind:open={showWelcomeModal}
+      on:complete={completeOnboarding}
+      on:skip={completeOnboarding}
+    />
   {:else}
     <slot />
   {/if}
