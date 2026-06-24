@@ -22,7 +22,7 @@ export function preloadCriticalData() {
 }
 
 export function handleVisibilityChange() {
-  document.addEventListener("visibilitychange", () => {
+  const handleChange = () => {
     if (document.hidden) {
       // App going to background - cleanup
       clearStaleCache();
@@ -30,5 +30,9 @@ export function handleVisibilityChange() {
       // App coming to foreground - refresh data
       window.dispatchEvent(new CustomEvent("appForeground"));
     }
-  });
+  };
+
+  document.addEventListener("visibilitychange", handleChange);
+
+  return () => document.removeEventListener("visibilitychange", handleChange);
 }
