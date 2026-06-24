@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { realtimeManager } from "$lib/services/realtimeManager";
   import { goto } from "$app/navigation";
@@ -41,38 +41,42 @@
     }
   }
 
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
-    user = data.session?.user || null;
-    loading = false;
+  onMount(() => {
+    async function initializeDashboard() {
+      const { data } = await supabase.auth.getSession();
+      user = data.session?.user || null;
+      loading = false;
 
-    if (user) {
-      loadDashboardData();
-      loadChecklistStatus();
+      if (user) {
+        loadDashboardData();
+        loadChecklistStatus();
 
-      window.addEventListener("transactionUpdated", loadDashboardData);
+        window.addEventListener("transactionUpdated", loadDashboardData);
 
-      unsubscribe = realtimeManager.subscribe(
-        "dashboard-transactions",
-        "transactions",
-        user.id,
-        () => loadDashboardData(),
-      );
+        unsubscribe = realtimeManager.subscribe(
+          "dashboard-transactions",
+          "transactions",
+          user.id,
+          () => loadDashboardData(),
+        );
 
-      document.addEventListener(
+        document.addEventListener(
+          "visibilitychange",
+          handleDashboardVisibilityChange,
+        );
+      }
+    }
+
+    void initializeDashboard();
+
+    return () => {
+      window.removeEventListener("transactionUpdated", loadDashboardData);
+      document.removeEventListener(
         "visibilitychange",
         handleDashboardVisibilityChange,
       );
-    }
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("transactionUpdated", loadDashboardData);
-    document.removeEventListener(
-      "visibilitychange",
-      handleDashboardVisibilityChange,
-    );
-    if (unsubscribe) unsubscribe();
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   async function loadDashboardData() {
