@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { realtimeManager } from "$lib/services/realtimeManager";
   import { goto } from "$app/navigation";
@@ -36,40 +36,44 @@
   let chartElement: HTMLElement;
   let trendAbortController: AbortController | null = null;
 
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
-    user = data.session?.user || null;
+  onMount(() => {
+    async function initializeReports() {
+      const { data } = await supabase.auth.getSession();
+      user = data.session?.user || null;
 
-    if (!user) {
-      goto(resolve("/auth/login"));
-      return;
+      if (!user) {
+        goto(resolve("/auth/login"));
+        return;
+      }
+
+      loading = false; // Hide initial loader immediately
+
+      // Mark reports as visited for onboarding checklist
+      localStorage.setItem("visited_reports", "true");
+
+      // Load main data first (fast)
+      await Promise.all([loadMonthlyData(), fetchCategoryTrends()]);
+
+      // Load AI summary in background (slow, don't block UI)
+      loadAISummary();
+
+      window.addEventListener("transactionUpdated", loadMonthlyData);
+
+      unsubscribe = realtimeManager.subscribe(
+        "reports-transactions",
+        "transactions",
+        user.id,
+        () => loadMonthlyData(),
+      );
     }
 
-    loading = false; // Hide initial loader immediately
+    void initializeReports();
 
-    // Mark reports as visited for onboarding checklist
-    localStorage.setItem("visited_reports", "true");
-
-    // Load main data first (fast)
-    await Promise.all([loadMonthlyData(), fetchCategoryTrends()]);
-
-    // Load AI summary in background (slow, don't block UI)
-    loadAISummary();
-
-    window.addEventListener("transactionUpdated", loadMonthlyData);
-
-    unsubscribe = realtimeManager.subscribe(
-      "reports-transactions",
-      "transactions",
-      user.id,
-      () => loadMonthlyData(),
-    );
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("transactionUpdated", loadMonthlyData);
-    trendAbortController?.abort();
-    if (unsubscribe) unsubscribe();
+    return () => {
+      window.removeEventListener("transactionUpdated", loadMonthlyData);
+      trendAbortController?.abort();
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   async function loadMonthlyData() {
