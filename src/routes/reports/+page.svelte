@@ -46,13 +46,12 @@
     }
 
     loading = false; // Hide initial loader immediately
-    
+
     // Mark reports as visited for onboarding checklist
     localStorage.setItem("visited_reports", "true");
 
     // Load main data first (fast)
     await Promise.all([loadMonthlyData(), fetchCategoryTrends()]);
-    dataLoading = false;
 
     // Load AI summary in background (slow, don't block UI)
     loadAISummary();
@@ -69,6 +68,7 @@
 
   onDestroy(() => {
     window.removeEventListener("transactionUpdated", loadMonthlyData);
+    trendAbortController?.abort();
     if (unsubscribe) unsubscribe();
   });
 
@@ -211,12 +211,15 @@
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
 
-      const res = await fetch(`/api/reports/category-trends?period=${selectedPeriod}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `/api/reports/category-trends?period=${selectedPeriod}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal, // Pass abort signal
         },
-        signal, // Pass abort signal
-      });
+      );
 
       // Check if request was aborted
       if (signal.aborted) return;
@@ -230,7 +233,7 @@
       }
     } catch (error) {
       // Ignore abort errors
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         return;
       }
       toast.error("Network error");
@@ -250,13 +253,15 @@
 
     try {
       const headers = ["Date", "Type", "Category", "Amount", "Description"];
-      const rows = monthlyData.transactions.map((t: Record<string, unknown>) => [
-        t.txn_date,
-        t.type,
-        (t.categories as { name?: string })?.name || "No Category",
-        t.amount,
-        t.description || "",
-      ]);
+      const rows = monthlyData.transactions.map(
+        (t: Record<string, unknown>) => [
+          t.txn_date,
+          t.type,
+          (t.categories as { name?: string })?.name || "No Category",
+          t.amount,
+          t.description || "",
+        ],
+      );
 
       const csvContent = [headers, ...rows]
         .map((row) => row.map((field: unknown) => `"${field}"`).join(","))
@@ -290,7 +295,7 @@
         transactions: monthlyData.transactions.map((t) => ({
           date: (t as { txn_date: string }).txn_date,
           category:
-            ((t as { categories?: { name?: string } }).categories?.name) ||
+            (t as { categories?: { name?: string } }).categories?.name ||
             "Unknown",
           type: (t as { type: "income" | "expense" }).type,
           amount: (t as { amount: number }).amount,
@@ -331,12 +336,15 @@
     }).format(amount);
   }
 
-  $: if (selectedMonth && user && !loading) {
-    loadMonthlyData();
-    loadAISummary(); // Reload cached summary when month changes
+  async function handleMonthChange() {
+    if (!user || loading) return;
+    await loadMonthlyData();
+    loadAISummary();
   }
 
-  $: if (selectedPeriod && user && !loading) {
+  function setPeriod(period: 3 | 6 | 12) {
+    if (selectedPeriod === period || !user || loading) return;
+    selectedPeriod = period;
     fetchCategoryTrends();
   }
 </script>
@@ -346,7 +354,9 @@
 </svelte:head>
 
 <div class="space-y-6 sm:space-y-8">
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+  <div
+    class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4"
+  >
     <h1 class="text-3xl sm:text-4xl font-bold">Reports</h1>
     <div class="flex gap-2 w-full sm:w-auto">
       <button
@@ -367,13 +377,16 @@
 
   <!-- Month Selector -->
   <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-    <label for="month-select" class="block text-xs sm:text-sm font-medium mb-2 sm:mb-3"
+    <label
+      for="month-select"
+      class="block text-xs sm:text-sm font-medium mb-2 sm:mb-3"
       >Select Month</label
     >
     <input
       id="month-select"
       type="month"
       bind:value={selectedMonth}
+      on:change={handleMonthChange}
       class="w-full p-2 sm:p-3 text-sm sm:text-base border border-border rounded-lg bg-background text-foreground"
       style="color-scheme: dark;"
     />
@@ -456,12 +469,15 @@
         </p>
       </div>
 
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1">
+      <div
+        class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1"
+      >
         <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
           Net Balance
         </h3>
         <p
-          class="text-2xl sm:text-3xl font-bold break-all {monthlyData.balance >= 0
+          class="text-2xl sm:text-3xl font-bold break-all {monthlyData.balance >=
+          0
             ? 'text-green-400'
             : 'text-red-400'}"
         >
@@ -481,7 +497,11 @@
           disabled={generatingAI || !monthlyData.transactions.length}
           class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
         >
-          {generatingAI ? "Generating..." : aiSummary ? "Refresh" : "Generate Summary"}
+          {generatingAI
+            ? "Generating..."
+            : aiSummary
+              ? "Refresh"
+              : "Generate Summary"}
         </button>
       </div>
 
@@ -527,10 +547,13 @@
                 />
               </svg>
               <p class="text-xs sm:text-sm text-green-500">
-                Up to date (as of {new Date(aiGeneratedAt).toLocaleString("id-ID", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })})
+                Up to date (as of {new Date(aiGeneratedAt).toLocaleString(
+                  "id-ID",
+                  {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  },
+                )})
               </p>
             </div>
           {/if}
@@ -542,7 +565,9 @@
             <p class="text-xs sm:text-sm leading-relaxed">{aiSummary}</p>
           </div>
           <p class="text-xs text-muted-foreground mt-3 italic">
-            💡 Tip: Add detailed descriptions to your transactions (e.g., "bus ticket Jakarta-Bandung" instead of just "transport") for more accurate AI insights.
+            💡 Tip: Add detailed descriptions to your transactions (e.g., "bus
+            ticket Jakarta-Bandung" instead of just "transport") for more
+            accurate AI insights.
           </p>
         </div>
       {:else if !monthlyData.transactions.length}
@@ -552,32 +577,43 @@
         </p>
       {:else}
         <p class="text-muted-foreground text-xs sm:text-sm">
-          Click "Generate Summary" to get AI-powered insights about your spending
-          patterns.
+          Click "Generate Summary" to get AI-powered insights about your
+          spending patterns.
         </p>
       {/if}
     </div>
 
     <!-- Category Trends -->
     <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div
+        class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6"
+      >
         <h2 class="text-lg sm:text-xl font-semibold">Category Trends</h2>
         <div class="flex gap-2 w-full sm:w-auto">
           <button
-            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod === 3 ? 'bg-primary text-white' : 'bg-background border border-border hover:bg-accent'}"
-            on:click={() => selectedPeriod = 3}
+            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod ===
+            3
+              ? 'bg-primary text-white'
+              : 'bg-background border border-border hover:bg-accent'}"
+            on:click={() => setPeriod(3)}
           >
             3 Months
           </button>
           <button
-            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod === 6 ? 'bg-primary text-white' : 'bg-background border border-border hover:bg-accent'}"
-            on:click={() => selectedPeriod = 6}
+            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod ===
+            6
+              ? 'bg-primary text-white'
+              : 'bg-background border border-border hover:bg-accent'}"
+            on:click={() => setPeriod(6)}
           >
             6 Months
           </button>
           <button
-            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod === 12 ? 'bg-primary text-white' : 'bg-background border border-border hover:bg-accent'}"
-            on:click={() => selectedPeriod = 12}
+            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod ===
+            12
+              ? 'bg-primary text-white'
+              : 'bg-background border border-border hover:bg-accent'}"
+            on:click={() => setPeriod(12)}
           >
             12 Months
           </button>
@@ -598,7 +634,9 @@
     <!-- Category Chart -->
     {#if categoryData.length > 0}
       <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h2 class="text-lg sm:text-xl font-semibold mb-4">Expense Categories</h2>
+        <h2 class="text-lg sm:text-xl font-semibold mb-4">
+          Expense Categories
+        </h2>
         <div bind:this={chartElement}>
           <CategoryChart categories={categoryData} />
         </div>
@@ -614,8 +652,11 @@
         <div class="divide-y divide-border">
           {#each categoryData as category (category.name)}
             <div class="p-3 sm:p-4 flex justify-between items-center gap-3">
-              <span class="font-medium text-sm sm:text-base truncate">{category.name}</span>
-              <span class="font-semibold text-red-400 text-sm sm:text-base whitespace-nowrap"
+              <span class="font-medium text-sm sm:text-base truncate"
+                >{category.name}</span
+              >
+              <span
+                class="font-semibold text-red-400 text-sm sm:text-base whitespace-nowrap"
                 >{formatCurrency(category.amount)}</span
               >
             </div>
@@ -623,7 +664,9 @@
         </div>
       </div>
     {:else}
-      <div class="bg-card p-6 sm:p-8 rounded-lg border border-border text-center">
+      <div
+        class="bg-card p-6 sm:p-8 rounded-lg border border-border text-center"
+      >
         <p class="text-muted-foreground text-sm sm:text-base">
           No expense data available for this month.
         </p>
