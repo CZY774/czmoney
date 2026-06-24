@@ -1,4 +1,3 @@
-# Allow all search engines
 User-agent: *
 Allow: /
 
@@ -10,5 +9,4 @@ Disallow: /reports/
 Disallow: /settings/
 Disallow: /api/
 
-# Sitemap location
 Sitemap: https://czmoney.vercel.app/sitemap.xml
