@@ -1,12 +1,19 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { queueTransaction, clearTransactionCache } from "$lib/services/sync";
   import { generateIdempotencyKey } from "$lib/utils/idempotency";
   import { toast } from "$lib/stores/toast";
 
   export let isOpen = false;
-  export let transaction: { id?: string; txn_date: string; category_id?: string; type: string; amount: number; description?: string } | null = null;
+  export let transaction: {
+    id?: string;
+    txn_date: string;
+    category_id?: string;
+    type: string;
+    amount: number;
+    description?: string;
+  } | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -18,10 +25,23 @@
     description: "",
   };
 
-  let categories: Array<{ id: string; name: string; type: string; user_id: string }> = [];
+  let categories: Array<{
+    id: string;
+    name: string;
+    type: string;
+    user_id: string;
+  }> = [];
   let loading = false;
   let user: { id: string } | null = null;
   let isOffline = false;
+
+  function handleOnline() {
+    isOffline = false;
+  }
+
+  function handleOffline() {
+    isOffline = true;
+  }
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -33,8 +53,13 @@
 
     // Monitor online status
     isOffline = !navigator.onLine;
-    window.addEventListener("online", () => (isOffline = false));
-    window.addEventListener("offline", () => (isOffline = true));
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("online", handleOnline);
+    window.removeEventListener("offline", handleOffline);
   });
 
   $: filteredCategories = categories.filter((cat) => cat.type === form.type);
@@ -155,9 +180,7 @@
         new CustomEvent("transactionUpdated", { detail: result.data }),
       );
 
-      const successMsg = isEdit
-        ? "Transaction updated!"
-        : "Transaction added!";
+      const successMsg = isEdit ? "Transaction updated!" : "Transaction added!";
       toast.success(successMsg);
     } catch (error) {
       console.error("Transaction save failed:", error);
@@ -191,7 +214,9 @@
   <div
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4"
   >
-    <div class="bg-card rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div
+      class="bg-card rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+    >
       <h2 class="text-lg sm:text-xl font-semibold mb-4">
         {transaction ? "Edit Transaction" : "Add Transaction"}
         {#if isOffline}
@@ -199,10 +224,14 @@
         {/if}
       </h2>
 
-      <form on:submit|preventDefault={handleSubmit} class="space-y-3 sm:space-y-4">
+      <form
+        on:submit|preventDefault={handleSubmit}
+        class="space-y-3 sm:space-y-4"
+      >
         <div>
-          <label for="txn-date" class="block text-xs sm:text-sm font-medium mb-1"
-            >Date</label
+          <label
+            for="txn-date"
+            class="block text-xs sm:text-sm font-medium mb-1">Date</label
           >
           <input
             id="txn-date"
@@ -215,8 +244,9 @@
         </div>
 
         <div>
-          <label for="txn-type" class="block text-xs sm:text-sm font-medium mb-1"
-            >Type</label
+          <label
+            for="txn-type"
+            class="block text-xs sm:text-sm font-medium mb-1">Type</label
           >
           <select
             id="txn-type"
@@ -230,8 +260,9 @@
         </div>
 
         <div>
-          <label for="txn-category" class="block text-xs sm:text-sm font-medium mb-1"
-            >Category</label
+          <label
+            for="txn-category"
+            class="block text-xs sm:text-sm font-medium mb-1">Category</label
           >
           <select
             id="txn-category"
@@ -246,7 +277,9 @@
         </div>
 
         <div>
-          <label for="txn-amount" class="block text-xs sm:text-sm font-medium mb-1"
+          <label
+            for="txn-amount"
+            class="block text-xs sm:text-sm font-medium mb-1"
             >Amount (IDR)</label
           >
           <input
@@ -264,7 +297,9 @@
         </div>
 
         <div>
-          <label for="txn-description" class="block text-xs sm:text-sm font-medium mb-1"
+          <label
+            for="txn-description"
+            class="block text-xs sm:text-sm font-medium mb-1"
             >Description <span class="text-red-500">*</span></label
           >
           <input
