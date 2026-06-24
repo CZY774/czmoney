@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
@@ -19,6 +19,15 @@
   let syncing = false;
   let isOffline = false;
 
+  function handleOnline() {
+    isOffline = false;
+    loadSyncStatus();
+  }
+
+  function handleOffline() {
+    isOffline = true;
+  }
+
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
     user = data.session?.user || null;
@@ -34,11 +43,13 @@
 
     // Monitor online status
     isOffline = !navigator.onLine;
-    window.addEventListener("online", () => {
-      isOffline = false;
-      loadSyncStatus();
-    });
-    window.addEventListener("offline", () => (isOffline = true));
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("online", handleOnline);
+    window.removeEventListener("offline", handleOffline);
   });
 
   async function loadProfile() {
@@ -149,8 +160,9 @@
       <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Profile</h2>
       <div class="space-y-3 sm:space-y-4">
         <div>
-          <label for="full-name" class="block text-xs sm:text-sm font-medium mb-1"
-            >Full Name</label
+          <label
+            for="full-name"
+            class="block text-xs sm:text-sm font-medium mb-1">Full Name</label
           >
           <input
             id="full-name"
@@ -162,7 +174,9 @@
         </div>
 
         <div>
-          <label for="monthly-income" class="block text-xs sm:text-sm font-medium mb-1"
+          <label
+            for="monthly-income"
+            class="block text-xs sm:text-sm font-medium mb-1"
             >Monthly Income (IDR)</label
           >
           <input
@@ -178,7 +192,9 @@
         </div>
 
         <div>
-          <label for="savings-target" class="block text-xs sm:text-sm font-medium mb-1"
+          <label
+            for="savings-target"
+            class="block text-xs sm:text-sm font-medium mb-1"
             >Monthly Savings Target (IDR)</label
           >
           <input
@@ -194,7 +210,9 @@
         </div>
 
         <div>
-          <label for="currency" class="block text-xs sm:text-sm font-medium mb-1"
+          <label
+            for="currency"
+            class="block text-xs sm:text-sm font-medium mb-1"
             >Preferred Currency</label
           >
           <select
@@ -220,7 +238,9 @@
 
     <!-- Sync Status -->
     <div class="bg-card p-4 sm:p-6 rounded-lg border">
-      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Offline Sync</h2>
+      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
+        Offline Sync
+      </h2>
       <div class="space-y-3 sm:space-y-4">
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0 flex-1">
@@ -243,7 +263,9 @@
               {syncStatus.pending} transactions waiting to sync
             </p>
           </div>
-          <span class="px-2 py-1 text-xs sm:text-sm bg-accent rounded flex-shrink-0">
+          <span
+            class="px-2 py-1 text-xs sm:text-sm bg-accent rounded flex-shrink-0"
+          >
             {syncStatus.pending}
           </span>
         </div>
@@ -273,12 +295,18 @@
       <div class="space-y-3 sm:space-y-4">
         <div>
           <p class="font-medium text-sm sm:text-base">Email</p>
-          <p class="text-xs sm:text-sm text-muted-foreground break-all">{user?.email}</p>
+          <p class="text-xs sm:text-sm text-muted-foreground break-all">
+            {user?.email}
+          </p>
         </div>
 
         <div>
           <p class="font-medium text-sm sm:text-base">User ID</p>
-          <p class="text-xs sm:text-sm text-muted-foreground font-mono break-all">{user?.id}</p>
+          <p
+            class="text-xs sm:text-sm text-muted-foreground font-mono break-all"
+          >
+            {user?.id}
+          </p>
         </div>
 
         <button
