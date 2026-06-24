@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { queueTransaction, clearTransactionCache } from "$lib/services/sync";
   import { generateIdempotencyKey } from "$lib/utils/idempotency";
@@ -43,23 +43,27 @@
     isOffline = true;
   }
 
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
-    user = data.session?.user || null;
+  onMount(() => {
+    async function initializeForm() {
+      const { data } = await supabase.auth.getSession();
+      user = data.session?.user || null;
 
-    if (user) {
-      await loadCategories();
+      if (user) {
+        await loadCategories();
+      }
+
+      // Monitor online status
+      isOffline = !navigator.onLine;
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
     }
 
-    // Monitor online status
-    isOffline = !navigator.onLine;
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-  });
+    void initializeForm();
 
-  onDestroy(() => {
-    window.removeEventListener("online", handleOnline);
-    window.removeEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   });
 
   $: filteredCategories = categories.filter((cat) => cat.type === form.type);
