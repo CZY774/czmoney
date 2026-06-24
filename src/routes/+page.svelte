@@ -25,11 +25,21 @@
   let unsubscribe: (() => void) | null = null;
   let showChecklist = true;
   let checklistTasks = [
-    { id: "transaction", label: "Add your first transaction", completed: false },
+    {
+      id: "transaction",
+      label: "Add your first transaction",
+      completed: false,
+    },
     { id: "income", label: "Set your monthly income", completed: false },
     { id: "budget", label: "Create a budget", completed: false },
     { id: "report", label: "View your first report", completed: false },
   ];
+
+  function handleDashboardVisibilityChange() {
+    if (!document.hidden && user) {
+      loadDashboardData();
+    }
+  }
 
   onMount(async () => {
     const { data } = await supabase.auth.getSession();
@@ -49,16 +59,19 @@
         () => loadDashboardData(),
       );
 
-      document.addEventListener("visibilitychange", () => {
-        if (!document.hidden && user) {
-          loadDashboardData();
-        }
-      });
+      document.addEventListener(
+        "visibilitychange",
+        handleDashboardVisibilityChange,
+      );
     }
   });
 
   onDestroy(() => {
     window.removeEventListener("transactionUpdated", loadDashboardData);
+    document.removeEventListener(
+      "visibilitychange",
+      handleDashboardVisibilityChange,
+    );
     if (unsubscribe) unsubscribe();
   });
 
@@ -68,14 +81,14 @@
 
     // Try loading from cache if offline
     if (!navigator.onLine) {
-      const cached = await get('cached_dashboard');
+      const cached = await get("cached_dashboard");
       if (cached) {
         balance = cached.balance;
         recentTransactions = cached.recentTransactions;
         categoryData = cached.categoryData;
         profile = cached.profile;
         dataLoading = false;
-        toast.info('Showing cached data (offline)');
+        toast.info("Showing cached data (offline)");
         return;
       }
     }
@@ -88,25 +101,22 @@
       .split("T")[0];
 
     // Batch queries using Promise.all
-    const [profileResult, transactionsResult, budgetsResult] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("monthly_income, savings_target")
-        .eq("id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("transactions")
-        .select("*, categories(name)")
-        .eq("user_id", user.id)
-        .gte("txn_date", startDate)
-        .lte("txn_date", endDate)
-        .order("txn_date", { ascending: false }),
-      supabase
-        .from("budgets")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1),
-    ]);
+    const [profileResult, transactionsResult, budgetsResult] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select("monthly_income, savings_target")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("transactions")
+          .select("*, categories(name)")
+          .eq("user_id", user.id)
+          .gte("txn_date", startDate)
+          .lte("txn_date", endDate)
+          .order("txn_date", { ascending: false }),
+        supabase.from("budgets").select("id").eq("user_id", user.id).limit(1),
+      ]);
 
     if (profileResult.data) {
       profile = profileResult.data;
@@ -139,16 +149,16 @@
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
     }
-    
+
     // Cache dashboard data for offline use
-    await set('cached_dashboard', {
+    await set("cached_dashboard", {
       balance,
       recentTransactions,
       categoryData,
       profile,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
-    
+
     dataLoading = false;
     updateChecklistProgress(budgetsResult.data);
   }
@@ -162,7 +172,8 @@
     checklistTasks[0].completed = recentTransactions.length > 0;
     checklistTasks[1].completed = profile.monthly_income > 0;
     checklistTasks[2].completed = (budgets?.length || 0) > 0;
-    checklistTasks[3].completed = localStorage.getItem("visited_reports") === "true";
+    checklistTasks[3].completed =
+      localStorage.getItem("visited_reports") === "true";
     checklistTasks = [...checklistTasks];
   }
 
@@ -195,34 +206,34 @@
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "CZmoneY",
-    "applicationCategory": "FinanceApplication",
-    "operatingSystem": "Web, Android, iOS",
-    "offers": {
+    name: "CZmoneY",
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "Web, Android, iOS",
+    offers: {
       "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
+      price: "0",
+      priceCurrency: "USD",
     },
-    "description": "Modern personal finance manager with offline support, AI insights, and budget tracking",
-    "featureList": [
+    description:
+      "Modern personal finance manager with offline support, AI insights, and budget tracking",
+    featureList: [
       "Transaction Management",
       "Budget Tracking",
       "AI-Powered Insights",
       "Offline Support",
       "Visual Reports",
-      "PWA Installation"
+      "PWA Installation",
     ],
-    "screenshot": "https://czmoney.vercel.app/icon-512.png",
-    "softwareVersion": "1.1.7",
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": "5",
-      "ratingCount": "1"
-    }
+    screenshot: "https://czmoney.vercel.app/icon-512.png",
+    softwareVersion: "1.1.7",
   };
 
   // Pre-render structured data HTML (split closing tag to avoid parser confusion)
-  const structuredDataHTML = '<script type="application/ld+json">' + JSON.stringify(structuredData) + '<' + '/script>';
+  const structuredDataHTML =
+    '<script type="application/ld+json">' +
+    JSON.stringify(structuredData) +
+    "<" +
+    "/script>";
 </script>
 
 <svelte:head>
@@ -294,179 +305,221 @@
         onAction={() => goto(resolve("/transactions"))}
       />
     {:else}
-    <!-- Balance Cards -->
-    {#if dataLoading}
-      <Skeleton type="card" count={3} />
-    {:else}
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-          Total Income
-        </h3>
-        <p class="text-2xl sm:text-3xl font-bold text-green-400 break-all">
-          {formatCurrency(balance.income)}
-        </p>
-      </div>
-
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-          Total Expense
-        </h3>
-        <p class="text-2xl sm:text-3xl font-bold text-red-400 break-all">
-          {formatCurrency(balance.expense)}
-        </p>
-      </div>
-
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1">
-        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">Balance</h3>
-        <p
-          class="text-2xl sm:text-3xl font-bold break-all {balance.total >= 0
-            ? 'text-green-400'
-            : 'text-red-400'}"
-        >
-          {formatCurrency(balance.total)}
-        </p>
-      </div>
-    </div>
-    {/if}
-
-    <!-- Savings & Spending Progress -->
-    {#if profile.savings_target > 0 || profile.monthly_income > 0}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {#if profile.savings_target > 0}
-          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-            <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-              Savings Progress
-            </h3>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1">
-              <span class="text-lg sm:text-2xl font-bold text-blue-400 truncate">
-                {formatCurrency(balance.total)}
-              </span>
-              <span class="text-xs sm:text-sm text-muted-foreground">
-                / {formatCurrency(profile.savings_target)}
-              </span>
-            </div>
-            <div class="w-full bg-muted rounded-full h-2">
-              <div
-                class="bg-blue-400 h-2 rounded-full transition-all"
-                style="width: {Math.min(
-                  100,
-                  Math.max(0, (balance.total / profile.savings_target) * 100)
-                )}%"
-              ></div>
-            </div>
-            <p class="text-xs text-muted-foreground mt-1">
-              {Math.round((balance.total / profile.savings_target) * 100)}% of target
-            </p>
-          </div>
-        {/if}
-
-        {#if profile.monthly_income > 0}
-          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-            <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-              Spending Ratio
-            </h3>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1">
-              <span class="text-lg sm:text-2xl font-bold text-orange-400">
-                {Math.round((balance.expense / profile.monthly_income) * 100)}%
-              </span>
-              <span class="text-xs sm:text-sm text-muted-foreground">
-                of income spent
-              </span>
-            </div>
-            <div class="w-full bg-muted rounded-full h-2">
-              <div
-                class="bg-orange-400 h-2 rounded-full transition-all"
-                style="width: {Math.min(
-                  100,
-                  (balance.expense / profile.monthly_income) * 100
-                )}%"
-              ></div>
-            </div>
-            <p class="text-xs text-muted-foreground mt-1 truncate">
-              {formatCurrency(balance.expense)} / {formatCurrency(profile.monthly_income)}
-            </p>
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    <!-- Smart Insights -->
-    <SmartInsights />
-
-    <!-- Quick Actions -->
-    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-      <button
-        on:click={() => goto(resolve("/transactions"))}
-        class="w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm sm:text-base"
-      >
-        Add Transaction
-      </button>
-      <button
-        on:click={() => goto(resolve("/reports"))}
-        class="w-full sm:w-auto px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium text-sm sm:text-base"
-      >
-        View Reports
-      </button>
-    </div>
-
-    <!-- Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h2 class="text-lg sm:text-xl font-semibold mb-4">Income vs Expense</h2>
-        <BalanceChart income={balance.income} expense={balance.expense} />
-      </div>
-
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h2 class="text-lg sm:text-xl font-semibold mb-4">Expense Categories</h2>
-        <CategoryChart categories={categoryData} />
-      </div>
-    </div>
-
-    <!-- Recent Transactions -->
-    <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-      <h2 class="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Recent Transactions</h2>
-
-      {#if recentTransactions.length === 0}
-        <p class="text-muted-foreground text-center py-8 text-sm sm:text-base">
-          No transactions yet.
-          <a href={resolve("/transactions")} class="text-primary hover:underline"
-            >Add your first transaction</a
-          >
-        </p>
+      <!-- Balance Cards -->
+      {#if dataLoading}
+        <Skeleton type="card" count={3} />
       {:else}
-        <div class="space-y-3 sm:space-y-4">
-          {#each recentTransactions as transaction (transaction.id)}
-            <div
-              class="flex justify-between items-start sm:items-center py-3 border-b border-border last:border-b-0 gap-3"
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6"
+        >
+          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+            <h3
+              class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
             >
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-sm sm:text-base truncate">
-                  {transaction.description || "No description"}
-                </p>
-                <p class="text-xs sm:text-sm text-muted-foreground">
-                  {new Date(transaction.txn_date as string).toLocaleDateString()}
-                </p>
-              </div>
-              <div class="text-right flex-shrink-0">
-                <p
-                  class="font-semibold text-sm sm:text-base {transaction.type === 'income'
-                    ? 'text-green-400'
-                    : 'text-red-400'}"
-                >
-                  {transaction.type === "income" ? "+" : "-"}{formatCurrency(
-                    transaction.amount as number
-                  )}
-                </p>
-                <p class="text-xs sm:text-sm text-muted-foreground capitalize">
-                  {transaction.type}
-                </p>
-              </div>
-            </div>
-          {/each}
+              Total Income
+            </h3>
+            <p class="text-2xl sm:text-3xl font-bold text-green-400 break-all">
+              {formatCurrency(balance.income)}
+            </p>
+          </div>
+
+          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+            <h3
+              class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
+            >
+              Total Expense
+            </h3>
+            <p class="text-2xl sm:text-3xl font-bold text-red-400 break-all">
+              {formatCurrency(balance.expense)}
+            </p>
+          </div>
+
+          <div
+            class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1"
+          >
+            <h3
+              class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
+            >
+              Balance
+            </h3>
+            <p
+              class="text-2xl sm:text-3xl font-bold break-all {balance.total >=
+              0
+                ? 'text-green-400'
+                : 'text-red-400'}"
+            >
+              {formatCurrency(balance.total)}
+            </p>
+          </div>
         </div>
       {/if}
-    </div>
+
+      <!-- Savings & Spending Progress -->
+      {#if profile.savings_target > 0 || profile.monthly_income > 0}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {#if profile.savings_target > 0}
+            <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+              <h3
+                class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
+              >
+                Savings Progress
+              </h3>
+              <div
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1"
+              >
+                <span
+                  class="text-lg sm:text-2xl font-bold text-blue-400 truncate"
+                >
+                  {formatCurrency(balance.total)}
+                </span>
+                <span class="text-xs sm:text-sm text-muted-foreground">
+                  / {formatCurrency(profile.savings_target)}
+                </span>
+              </div>
+              <div class="w-full bg-muted rounded-full h-2">
+                <div
+                  class="bg-blue-400 h-2 rounded-full transition-all"
+                  style="width: {Math.min(
+                    100,
+                    Math.max(0, (balance.total / profile.savings_target) * 100),
+                  )}%"
+                ></div>
+              </div>
+              <p class="text-xs text-muted-foreground mt-1">
+                {Math.round((balance.total / profile.savings_target) * 100)}% of
+                target
+              </p>
+            </div>
+          {/if}
+
+          {#if profile.monthly_income > 0}
+            <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+              <h3
+                class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
+              >
+                Spending Ratio
+              </h3>
+              <div
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1"
+              >
+                <span class="text-lg sm:text-2xl font-bold text-orange-400">
+                  {Math.round(
+                    (balance.expense / profile.monthly_income) * 100,
+                  )}%
+                </span>
+                <span class="text-xs sm:text-sm text-muted-foreground">
+                  of income spent
+                </span>
+              </div>
+              <div class="w-full bg-muted rounded-full h-2">
+                <div
+                  class="bg-orange-400 h-2 rounded-full transition-all"
+                  style="width: {Math.min(
+                    100,
+                    (balance.expense / profile.monthly_income) * 100,
+                  )}%"
+                ></div>
+              </div>
+              <p class="text-xs text-muted-foreground mt-1 truncate">
+                {formatCurrency(balance.expense)} / {formatCurrency(
+                  profile.monthly_income,
+                )}
+              </p>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      <!-- Smart Insights -->
+      <SmartInsights />
+
+      <!-- Quick Actions -->
+      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <button
+          on:click={() => goto(resolve("/transactions"))}
+          class="w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm sm:text-base"
+        >
+          Add Transaction
+        </button>
+        <button
+          on:click={() => goto(resolve("/reports"))}
+          class="w-full sm:w-auto px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium text-sm sm:text-base"
+        >
+          View Reports
+        </button>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+        <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+          <h2 class="text-lg sm:text-xl font-semibold mb-4">
+            Income vs Expense
+          </h2>
+          <BalanceChart income={balance.income} expense={balance.expense} />
+        </div>
+
+        <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+          <h2 class="text-lg sm:text-xl font-semibold mb-4">
+            Expense Categories
+          </h2>
+          <CategoryChart categories={categoryData} />
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
+        <h2 class="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">
+          Recent Transactions
+        </h2>
+
+        {#if recentTransactions.length === 0}
+          <p
+            class="text-muted-foreground text-center py-8 text-sm sm:text-base"
+          >
+            No transactions yet.
+            <a
+              href={resolve("/transactions")}
+              class="text-primary hover:underline">Add your first transaction</a
+            >
+          </p>
+        {:else}
+          <div class="space-y-3 sm:space-y-4">
+            {#each recentTransactions as transaction (transaction.id)}
+              <div
+                class="flex justify-between items-start sm:items-center py-3 border-b border-border last:border-b-0 gap-3"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="font-medium text-sm sm:text-base truncate">
+                    {transaction.description || "No description"}
+                  </p>
+                  <p class="text-xs sm:text-sm text-muted-foreground">
+                    {new Date(
+                      transaction.txn_date as string,
+                    ).toLocaleDateString()}
+                  </p>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <p
+                    class="font-semibold text-sm sm:text-base {transaction.type ===
+                    'income'
+                      ? 'text-green-400'
+                      : 'text-red-400'}"
+                  >
+                    {transaction.type === "income" ? "+" : "-"}{formatCurrency(
+                      transaction.amount as number,
+                    )}
+                  </p>
+                  <p
+                    class="text-xs sm:text-sm text-muted-foreground capitalize"
+                  >
+                    {transaction.type}
+                  </p>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
     {/if}
   </div>
 {/if}
