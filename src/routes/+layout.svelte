@@ -1,6 +1,6 @@
 <script lang="ts">
   import "../app.css";
-  import { onDestroy, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { supabase, getSession } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
@@ -41,66 +41,70 @@
     isOffline = true;
   }
 
-  onMount(async () => {
-    // Register service worker with update detection
-    if ("serviceWorker" in navigator) {
-      cleanupServiceWorkerUpdate = registerServiceWorkerUpdateHandler();
+  onMount(() => {
+    async function initializeClient() {
+      // Register service worker with update detection
+      if ("serviceWorker" in navigator) {
+        cleanupServiceWorkerUpdate = registerServiceWorkerUpdateHandler();
+      }
+
+      const { data } = await getSession();
+      user = data.session?.user || null;
+      loading = false;
+
+      const { data: authState } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          user = session?.user || null;
+
+          // Redirect to reset password page on PASSWORD_RECOVERY event
+          if (event === "PASSWORD_RECOVERY") {
+            goto(resolve("/auth/reset-password"));
+            return;
+          }
+
+          // Start/stop idle timer based on auth state
+          if (user) {
+            startIdleTimer();
+          } else {
+            stopIdleTimer();
+          }
+        },
+      );
+      authSubscription = authState.subscription;
+
+      if (user) {
+        await updateSyncStatus();
+        syncStatusInterval = setInterval(updateSyncStatus, 30000);
+        startIdleTimer();
+        preloadCriticalData();
+
+        // Check onboarding status
+        await checkOnboardingStatus();
+
+        // Check for updates every 5 minutes
+        checkAppVersion();
+        appVersionInterval = setInterval(checkAppVersion, 5 * 60 * 1000);
+      }
+
+      cleanupVisibilityChange = handleVisibilityChange();
+
+      isOffline = !navigator.onLine;
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
     }
 
-    const { data } = await getSession();
-    user = data.session?.user || null;
-    loading = false;
+    void initializeClient();
 
-    const { data: authState } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        user = session?.user || null;
-
-        // Redirect to reset password page on PASSWORD_RECOVERY event
-        if (event === "PASSWORD_RECOVERY") {
-          goto(resolve("/auth/reset-password"));
-          return;
-        }
-
-        // Start/stop idle timer based on auth state
-        if (user) {
-          startIdleTimer();
-        } else {
-          stopIdleTimer();
-        }
-      },
-    );
-    authSubscription = authState.subscription;
-
-    if (user) {
-      await updateSyncStatus();
-      syncStatusInterval = setInterval(updateSyncStatus, 30000);
-      startIdleTimer();
-      preloadCriticalData();
-
-      // Check onboarding status
-      await checkOnboardingStatus();
-
-      // Check for updates every 5 minutes
-      checkAppVersion();
-      appVersionInterval = setInterval(checkAppVersion, 5 * 60 * 1000);
-    }
-
-    cleanupVisibilityChange = handleVisibilityChange();
-
-    isOffline = !navigator.onLine;
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-  });
-
-  onDestroy(() => {
-    if (syncStatusInterval) clearInterval(syncStatusInterval);
-    if (appVersionInterval) clearInterval(appVersionInterval);
-    cleanupVisibilityChange?.();
-    cleanupServiceWorkerUpdate?.();
-    authSubscription?.unsubscribe();
-    window.removeEventListener("online", handleOnline);
-    window.removeEventListener("offline", handleOffline);
-    stopIdleTimer();
+    return () => {
+      if (syncStatusInterval) clearInterval(syncStatusInterval);
+      if (appVersionInterval) clearInterval(appVersionInterval);
+      cleanupVisibilityChange?.();
+      cleanupServiceWorkerUpdate?.();
+      authSubscription?.unsubscribe();
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      stopIdleTimer();
+    };
   });
 
   async function checkOnboardingStatus() {
