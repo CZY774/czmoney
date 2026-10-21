@@ -45,12 +45,12 @@
       xaxis: {
         categories: data.months,
         labels: {
-          style: { colors: "#94a3b8" },
+          style: { colors: "#a5a9b3" },
         },
       },
       yaxis: {
         labels: {
-          style: { colors: "#94a3b8" },
+          style: { colors: "#a5a9b3" },
           formatter: (val: number) => {
             return new Intl.NumberFormat("id-ID", {
               style: "currency",
@@ -74,7 +74,7 @@
       },
       legend: {
         position: "bottom",
-        labels: { colors: "#94a3b8" },
+        labels: { colors: "#a5a9b3" },
         onItemClick: {
           toggleDataSeries: true,
         },
@@ -83,7 +83,7 @@
         },
       },
       grid: {
-        borderColor: "#1e293b",
+        borderColor: "#17191d",
         strokeDashArray: 4,
       },
     };
