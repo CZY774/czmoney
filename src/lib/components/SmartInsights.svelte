@@ -13,22 +13,16 @@
   let insights: Insight[] = [];
   let loading = true;
 
-  const severityColors = {
-    critical: "bg-red-500/10 border-red-500 text-red-400",
-    high: "bg-orange-500/10 border-orange-500 text-orange-400", 
-    medium: "bg-yellow-500/10 border-yellow-500 text-yellow-400",
-    low: "bg-blue-500/10 border-blue-500 text-blue-400"
+  // Severity is carried by shape and label. Color only reinforces it.
+  const severityMeta = {
+    critical: { label: "Critical", shape: "bg-critical [clip-path:polygon(50%_4%,100%_96%,0_96%)]" },
+    high: { label: "High", shape: "bg-serious [clip-path:polygon(50%_4%,100%_96%,0_96%)]" },
+    medium: { label: "Medium", shape: "rounded-full bg-warning" },
+    low: { label: "Low", shape: "rounded-full border-[1.5px] border-ink-3" },
   };
 
-  const severityIcons = {
-    critical: "⚠️",
-    high: "🔥", 
-    medium: "💡",
-    low: "ℹ️"
-  };
-
-  onMount(async () => {
-    await loadInsights();
+  onMount(() => {
+    void loadInsights();
   });
 
   async function loadInsights() {
@@ -55,30 +49,30 @@
 </script>
 
 {#if loading}
-  <div class="bg-card p-4 rounded-lg border animate-pulse">
-    <div class="h-4 bg-accent/20 rounded w-32 mb-3"></div>
-    <div class="space-y-2">
-      <div class="h-3 bg-accent/20 rounded w-full"></div>
-      <div class="h-3 bg-accent/20 rounded w-3/4"></div>
-    </div>
+  <div class="animate-pulse space-y-3" aria-hidden="true">
+    <div class="h-4 w-32 rounded bg-muted"></div>
+    <div class="h-3 w-full rounded bg-muted"></div>
+    <div class="h-3 w-3/4 rounded bg-muted"></div>
   </div>
 {:else if insights.length > 0}
-  <div class="space-y-3">
-    <h3 class="text-lg font-semibold">Smart Insights</h3>
-    {#each insights as insight (insight.title)}
-      <div class="p-4 rounded-lg border-l-4 {severityColors[insight.severity]}">
-        <div class="flex items-start gap-3">
-          <span class="text-lg">{severityIcons[insight.severity]}</span>
-          <div class="flex-1">
-            <h4 class="font-medium text-sm">{insight.title}</h4>
-            <p class="text-xs mt-1 opacity-90">{insight.message}</p>
+  <section aria-labelledby="h-insights">
+    <div class="flex items-baseline justify-between gap-4 pb-4">
+      <h2 id="h-insights" class="text-[15px] font-semibold">Insights</h2>
+      <span class="font-mono text-xs text-ink-3">{insights.length}</span>
+    </div>
+    <ul>
+      {#each insights as insight (insight.title)}
+        {@const meta = severityMeta[insight.severity]}
+        <li class="grid grid-cols-[78px_minmax(0,1fr)] gap-3 border-t border-border py-3.5">
+          <span class="flex items-center gap-2 pt-0.5 font-mono text-[11px] tracking-[0.06em] text-ink-2 uppercase">
+            <i class="inline-block size-[9px] flex-none {meta.shape}"></i>{meta.label}
+          </span>
+          <div class="min-w-0">
+            <p class="font-medium">{insight.title}</p>
+            <p class="mt-1 text-[13.5px] leading-normal text-ink-2">{insight.message}</p>
           </div>
-        </div>
-      </div>
-    {/each}
-  </div>
-{:else}
-  <div class="bg-card p-4 rounded-lg border text-center">
-    <p class="text-muted-foreground text-sm">No insights available yet. Add more transactions to get personalized recommendations.</p>
-  </div>
+        </li>
+      {/each}
+    </ul>
+  </section>
 {/if}
