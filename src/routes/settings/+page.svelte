@@ -29,8 +29,10 @@
   }
 
   onMount(() => {
+    let disposed = false;
     async function initializeSettings() {
       const { data } = await supabase.auth.getSession();
+      if (disposed) return;
       user = data.session?.user || null;
 
       if (!user) {
@@ -40,6 +42,7 @@
 
       await loadProfile();
       await loadSyncStatus();
+      if (disposed) return;
       loading = false;
 
       // Monitor online status
@@ -51,6 +54,7 @@
     void initializeSettings();
 
     return () => {
+      disposed = true;
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
