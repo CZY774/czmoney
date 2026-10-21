@@ -116,92 +116,99 @@
   <title>Budgets - CZmoneY</title>
 </svelte:head>
 
-<div class="space-y-6">
-  <h1 class="text-3xl font-bold">Budget Management</h1>
+<div class="max-w-[1040px] space-y-10">
+  <header class="space-y-1">
+    <h1 class="text-xl font-semibold tracking-tight">Budgets</h1>
+    <p class="text-sm text-ink-2">One monthly limit per expense category. You are alerted at the percentage you set.</p>
+  </header>
 
   {#if loading}
-    <div class="text-center py-8">Loading...</div>
+    <p class="py-16 text-center text-sm text-ink-2">Loading</p>
   {:else}
-    <!-- Add New Budget -->
-    <div class="bg-card p-6 rounded-lg border">
-      <h2 class="text-xl font-semibold mb-4">Set Category Budget</h2>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label for="budget-category" class="block text-sm font-medium mb-1">Category</label>
-          <select id="budget-category" bind:value={newBudget.category_id} class="w-full p-2 border border-border rounded bg-background">
-            <option value="">Select category</option>
+    <!-- Add a budget -->
+    <section aria-labelledby="h-new" class="border-t border-border pt-5">
+      <h2 id="h-new" class="pb-4 text-[15px] font-semibold">Set a category budget</h2>
+      <form
+        class="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.7fr)_auto] md:items-end"
+        on:submit|preventDefault={saveBudget}
+      >
+        <div class="min-w-0">
+          <label for="budget-category" class="mb-1.5 block text-xs text-ink-2">Category</label>
+          <select id="budget-category" bind:value={newBudget.category_id} class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
+            <option value="">Select a category</option>
             {#each categories as category (category.id)}
               <option value={category.id}>{category.name}</option>
             {/each}
           </select>
         </div>
-        
-        <div>
-          <label for="budget-limit" class="block text-sm font-medium mb-1">Monthly Limit (IDR)</label>
+
+        <div class="min-w-0">
+          <label for="budget-limit" class="mb-1.5 block text-xs text-ink-2">Monthly limit (IDR)</label>
           <input
             id="budget-limit"
             type="number"
+            inputmode="numeric"
+            min="0"
             bind:value={newBudget.monthly_limit}
             placeholder="1000000"
-            class="w-full p-2 border border-border rounded bg-background"
+            class="amt h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3"
           />
         </div>
-        
-        <div>
-          <label for="budget-threshold" class="block text-sm font-medium mb-1">Alert at (%)</label>
+
+        <div class="min-w-0">
+          <label for="budget-threshold" class="mb-1.5 block text-xs text-ink-2">Alert at (%)</label>
           <input
             id="budget-threshold"
             type="number"
-            bind:value={newBudget.alert_threshold}
+            inputmode="numeric"
             min="1"
             max="100"
-            class="w-full p-2 border border-border rounded bg-background"
+            bind:value={newBudget.alert_threshold}
+            class="amt h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
           />
         </div>
-        
-        <div class="flex items-end">
-          <button
-            on:click={saveBudget}
-            disabled={saving || !newBudget.category_id || !newBudget.monthly_limit}
-            class="w-full px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Add Budget"}
-          </button>
-        </div>
-      </div>
-    </div>
 
-    <!-- Existing Budgets -->
-    <div class="bg-card rounded-lg border">
-      <div class="p-6 border-b">
-        <h2 class="text-xl font-semibold">Current Budgets</h2>
+        <button
+          type="submit"
+          disabled={saving || !newBudget.category_id || !newBudget.monthly_limit}
+          class="h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-40 active:scale-[0.98]"
+        >
+          {saving ? "Saving" : "Add budget"}
+        </button>
+      </form>
+    </section>
+
+    <!-- Existing budgets -->
+    <section aria-labelledby="h-current" class="border-t border-border pt-5">
+      <div class="flex items-baseline justify-between pb-2">
+        <h2 id="h-current" class="text-[15px] font-semibold">Current budgets</h2>
+        <p class="font-mono text-xs text-ink-3">{budgets.length}</p>
       </div>
-      
+
       {#if budgets.length === 0}
-        <div class="p-8 text-center text-muted-foreground">
-          No budgets set yet. Add your first budget above.
-        </div>
+        <p class="py-10 text-center text-sm text-ink-2">No budgets yet. Add one above to start tracking a category.</p>
       {:else}
-        <div class="divide-y divide-border">
+        <ul>
           {#each budgets as budget (budget.id)}
-            <div class="p-4 flex justify-between items-center">
-              <div>
-                <h3 class="font-medium">{budget.categories.name}</h3>
-                <p class="text-sm text-muted-foreground">
-                  {formatCurrency(budget.monthly_limit)} • Alert at {budget.alert_threshold}%
+            <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border py-4">
+              <div class="min-w-0">
+                <p class="truncate text-[15px]">{budget.categories.name}</p>
+                <p class="mt-0.5 font-mono text-xs text-ink-3">
+                  {formatCurrency(budget.monthly_limit)} a month, alert at {budget.alert_threshold}%
                 </p>
               </div>
               <button
+                type="button"
                 on:click={() => deleteBudget(budget.id)}
-                class="px-3 py-1 text-sm text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
+                class="min-h-10 text-[13px] text-critical underline-offset-4 hover:underline"
               >
                 Delete
               </button>
-            </div>
+            </li>
           {/each}
-        </div>
+        </ul>
       {/if}
-    </div>
+    </section>
   {/if}
 </div>
 
