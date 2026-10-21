@@ -361,324 +361,154 @@
   <title>Reports - CZmoneY</title>
 </svelte:head>
 
-<div class="space-y-6 sm:space-y-8">
-  <div
-    class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4"
-  >
-    <h1 class="text-3xl sm:text-4xl font-bold">Reports</h1>
-    <div class="flex gap-2 w-full sm:w-auto">
+<div class="max-w-[1040px] space-y-10">
+  <header class="flex flex-wrap items-end justify-between gap-4">
+    <div class="space-y-1">
+      <h1 class="text-xl font-semibold tracking-tight">Reports</h1>
+      <p class="text-sm text-ink-2">Pick a month. Every figure on the page covers that month.</p>
+    </div>
+    <div class="flex gap-2">
       <button
+        type="button"
         on:click={exportCSV}
-        class="flex-1 sm:flex-none px-4 py-2 text-sm sm:text-base border border-border rounded-lg hover:bg-accent font-medium active:scale-95 transition-transform"
+        class="min-h-11 rounded-lg border border-rule-strong px-4 text-sm hover:bg-accent active:scale-[0.98]"
       >
         Export CSV
       </button>
       <button
+        type="button"
         on:click={exportPDF}
         disabled={exportingPDF}
-        class="flex-1 sm:flex-none px-4 py-2 text-sm sm:text-base bg-primary text-white rounded-lg hover:bg-primary/90 font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
+        class="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-40 active:scale-[0.98]"
       >
-        {exportingPDF ? "Generating..." : "Export PDF"}
+        {exportingPDF ? "Generating" : "Export PDF"}
       </button>
     </div>
-  </div>
+  </header>
 
-  <!-- Month Selector -->
-  <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-    <label
-      for="month-select"
-      class="block text-xs sm:text-sm font-medium mb-2 sm:mb-3"
-      >Select Month</label
-    >
+  <div class="max-w-xs">
+    <label for="month-select" class="mb-1.5 block text-xs text-ink-2">Month</label>
     <input
       id="month-select"
       type="month"
       bind:value={selectedMonth}
       on:change={handleMonthChange}
-      class="w-full p-2 sm:p-3 text-sm sm:text-base border border-border rounded-lg bg-background text-foreground"
-      style="color-scheme: dark;"
+      class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
     />
   </div>
 
   {#if loading}
-    <!-- Initial auth check loader -->
-    <div class="flex items-center justify-center min-h-64">
-      <div class="text-base sm:text-lg text-muted-foreground">Loading...</div>
-    </div>
+    <p class="py-16 text-center text-sm text-ink-2">Loading</p>
   {:else if dataLoading}
-    <!-- Skeleton Loader -->
-    <div class="space-y-6">
-      <!-- Summary Cards Skeleton -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
-          <div class="h-4 bg-muted rounded w-20 mb-3"></div>
-          <div class="h-8 bg-muted rounded w-32"></div>
-        </div>
-        <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
-          <div class="h-4 bg-muted rounded w-20 mb-3"></div>
-          <div class="h-8 bg-muted rounded w-32"></div>
-        </div>
-        <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
-          <div class="h-4 bg-muted rounded w-20 mb-3"></div>
-          <div class="h-8 bg-muted rounded w-32"></div>
-        </div>
-      </div>
-
-      <!-- AI Summary Skeleton -->
-      <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
-        <div class="flex justify-between items-center mb-6">
-          <div class="h-6 bg-muted rounded w-32"></div>
-          <div class="h-10 bg-muted rounded w-40"></div>
-        </div>
-        <div class="space-y-2">
-          <div class="h-4 bg-muted rounded w-full"></div>
-          <div class="h-4 bg-muted rounded w-5/6"></div>
-          <div class="h-4 bg-muted rounded w-4/6"></div>
-        </div>
-      </div>
-
-      <!-- Chart Skeleton -->
-      <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
-        <div class="h-6 bg-muted rounded w-40 mb-6"></div>
-        <div class="h-80 bg-muted rounded"></div>
-      </div>
-
-      <!-- Trends Skeleton -->
-      <div class="bg-card p-6 rounded-lg border border-border animate-pulse">
-        <div class="flex justify-between items-center mb-6">
-          <div class="h-6 bg-muted rounded w-40"></div>
-          <div class="flex gap-2">
-            <div class="h-8 bg-muted rounded w-20"></div>
-            <div class="h-8 bg-muted rounded w-20"></div>
-            <div class="h-8 bg-muted rounded w-20"></div>
-          </div>
-        </div>
-        <div class="h-96 bg-muted rounded"></div>
-      </div>
+    <div class="grid animate-pulse gap-6" aria-hidden="true">
+      <div class="h-24 w-2/3 rounded bg-muted"></div>
+      <div class="h-64 rounded bg-muted"></div>
     </div>
   {:else}
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-          Total Income
-        </h3>
-        <p class="text-2xl sm:text-3xl font-bold text-green-400 break-all">
-          {formatCurrency(monthlyData.income)}
-        </p>
-      </div>
+    <!-- Month totals: one line each, the net is the figure that leads -->
+    <section aria-labelledby="h-totals" class="border-t border-border pt-5">
+      <h2 id="h-totals" class="pb-4 text-[15px] font-semibold">This month</h2>
+      <dl class="grid gap-6 md:grid-cols-3 md:gap-10">
+        <div>
+          <dt class="text-sm text-ink-2">Income</dt>
+          <dd class="amt mt-1 text-[22px] text-blue-text">{formatCurrency(monthlyData.income)}</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-ink-2">Expense</dt>
+          <dd class="amt mt-1 text-[22px]">{formatCurrency(monthlyData.expense)}</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-ink-2">Net balance</dt>
+          <dd class="amt mt-1 text-[22px] {monthlyData.balance < 0 ? 'text-critical' : ''}">
+            {monthlyData.balance < 0 ? "−" : ""}{formatCurrency(Math.abs(monthlyData.balance))}
+          </dd>
+        </div>
+      </dl>
+    </section>
 
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-          Total Expense
-        </h3>
-        <p class="text-2xl sm:text-3xl font-bold text-red-400 break-all">
-          {formatCurrency(monthlyData.expense)}
-        </p>
-      </div>
-
-      <div
-        class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1"
-      >
-        <h3 class="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-          Net Balance
-        </h3>
-        <p
-          class="text-2xl sm:text-3xl font-bold break-all {monthlyData.balance >=
-          0
-            ? 'text-green-400'
-            : 'text-red-400'}"
-        >
-          {formatCurrency(monthlyData.balance)}
-        </p>
-      </div>
-    </div>
-
-    <!-- AI Summary -->
-    <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-      <div
-        class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6"
-      >
-        <h2 class="text-lg sm:text-xl font-semibold">AI Insights</h2>
+    <!-- AI summary -->
+    <section aria-labelledby="h-ai" class="border-t border-border pt-5">
+      <div class="flex flex-wrap items-baseline justify-between gap-3 pb-4">
+        <h2 id="h-ai" class="text-[15px] font-semibold">AI insights</h2>
         <button
+          type="button"
           on:click={() => generateAISummary(true)}
           disabled={generatingAI || !monthlyData.transactions.length}
-          class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 font-medium"
+          class="min-h-10 rounded-lg border border-rule-strong px-4 text-sm hover:bg-accent disabled:opacity-40"
         >
-          {generatingAI
-            ? "Generating..."
-            : aiSummary
-              ? "Refresh"
-              : "Generate Summary"}
+          {generatingAI ? "Generating" : aiSummary ? "Refresh" : "Generate summary"}
         </button>
       </div>
 
       {#if aiSummary}
-        <div class="space-y-3">
-          <!-- Staleness indicator -->
-          {#if aiIsStale}
-            <div
-              class="flex items-center gap-2 p-2 sm:p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg"
-            >
-              <svg
-                class="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-              <p class="text-xs sm:text-sm text-orange-500 font-medium">
-                Data has changed. Click "Refresh" for updated insights.
-              </p>
-            </div>
-          {:else if aiGeneratedAt}
-            <div
-              class="flex items-center gap-2 p-2 sm:p-3 bg-green-500/10 border border-green-500/30 rounded-lg"
-            >
-              <svg
-                class="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <p class="text-xs sm:text-sm text-green-500">
-                Up to date (as of {new Date(aiGeneratedAt).toLocaleString(
-                  "id-ID",
-                  {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  },
-                )})
-              </p>
-            </div>
-          {/if}
-
-          <!-- AI Summary content -->
-          <div
-            class="p-3 sm:p-4 bg-accent/20 rounded-lg border-l-4 border-primary"
-          >
-            <p class="text-xs sm:text-sm leading-relaxed">{aiSummary}</p>
-          </div>
-          <p class="text-xs text-muted-foreground mt-3 italic">
-            💡 Tip: Add detailed descriptions to your transactions (e.g., "bus
-            ticket Jakarta-Bandung" instead of just "transport") for more
-            accurate AI insights.
+        {#if aiIsStale}
+          <p class="mb-3 flex items-center gap-2 text-sm text-warning">
+            <i class="inline-block size-[9px] bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]"></i>
+            Data has changed since this summary. Refresh for updated insights.
           </p>
-        </div>
+        {:else if aiGeneratedAt}
+          <p class="mb-3 font-mono text-xs text-ink-3">
+            Up to date, as of {new Date(aiGeneratedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+          </p>
+        {/if}
+        <p class="border-l-2 border-primary pl-4 text-[15px] leading-relaxed">{aiSummary}</p>
+        <p class="mt-4 text-xs text-ink-3">
+          Longer descriptions give the AI more to work with. "Bus ticket Jakarta to Bandung" tells it more than "transport".
+        </p>
       {:else if !monthlyData.transactions.length}
-        <p class="text-muted-foreground text-xs sm:text-sm">
-          No transactions found for this month. Add some transactions to get AI
-          insights.
-        </p>
+        <p class="text-sm text-ink-2">No transactions this month. Add some to get AI insights.</p>
       {:else}
-        <p class="text-muted-foreground text-xs sm:text-sm">
-          Click "Generate Summary" to get AI-powered insights about your
-          spending patterns.
-        </p>
+        <p class="text-sm text-ink-2">Generate a summary for an AI read on this month's spending.</p>
       {/if}
-    </div>
+    </section>
 
-    <!-- Category Trends -->
-    <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-      <div
-        class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6"
-      >
-        <h2 class="text-lg sm:text-xl font-semibold">Category Trends</h2>
-        <div class="flex gap-2 w-full sm:w-auto">
-          <button
-            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod ===
-            3
-              ? 'bg-primary text-white'
-              : 'bg-background border border-border hover:bg-accent'}"
-            on:click={() => setPeriod(3)}
-          >
-            3 Months
-          </button>
-          <button
-            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod ===
-            6
-              ? 'bg-primary text-white'
-              : 'bg-background border border-border hover:bg-accent'}"
-            on:click={() => setPeriod(6)}
-          >
-            6 Months
-          </button>
-          <button
-            class="flex-1 sm:flex-none px-3 py-1.5 text-sm rounded-lg transition-colors {selectedPeriod ===
-            12
-              ? 'bg-primary text-white'
-              : 'bg-background border border-border hover:bg-accent'}"
-            on:click={() => setPeriod(12)}
-          >
-            12 Months
-          </button>
+    <!-- Category trends -->
+    <section aria-labelledby="h-trends" class="border-t border-border pt-5">
+      <div class="flex flex-wrap items-baseline justify-between gap-3 pb-4">
+        <h2 id="h-trends" class="text-[15px] font-semibold">Category trends</h2>
+        <div class="flex gap-1 text-sm" role="group" aria-label="Period">
+          {#each [3, 6, 12] as period (period)}
+            <button
+              type="button"
+              aria-pressed={selectedPeriod === period}
+              on:click={() => setPeriod(period as 3 | 6 | 12)}
+              class="min-h-10 rounded-lg px-3 {selectedPeriod === period
+                ? 'bg-blue-wash text-foreground underline decoration-primary underline-offset-4'
+                : 'text-ink-2 hover:text-foreground'}"
+            >
+              {period} months
+            </button>
+          {/each}
         </div>
       </div>
 
       {#if loadingTrends}
-        <div class="h-96 bg-background/50 rounded-lg animate-pulse"></div>
+        <div class="h-96 animate-pulse rounded bg-muted"></div>
       {:else if trendData && trendData.categories.length > 0}
         <CategoryTrendsChart data={trendData} />
       {:else}
-        <p class="text-muted-foreground text-xs sm:text-sm text-center py-8">
-          No expense data available for this period.
-        </p>
+        <p class="py-10 text-center text-sm text-ink-2">No expense data for this period.</p>
       {/if}
-    </div>
+    </section>
 
-    <!-- Category Chart -->
+    <!-- Expense split -->
     {#if categoryData.length > 0}
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h2 class="text-lg sm:text-xl font-semibold mb-4">
-          Expense Categories
-        </h2>
+      <section aria-labelledby="h-split" class="border-t border-border pt-5">
+        <h2 id="h-split" class="pb-4 text-[15px] font-semibold">Expense by category</h2>
         <div bind:this={chartElement}>
           <CategoryChart categories={categoryData} />
         </div>
-      </div>
-    {/if}
-
-    <!-- Category Breakdown Table -->
-    {#if categoryData.length > 0}
-      <div class="bg-card rounded-lg border border-border">
-        <div class="p-4 sm:p-6 border-b border-border">
-          <h2 class="text-lg sm:text-xl font-semibold">Category Breakdown</h2>
-        </div>
-        <div class="divide-y divide-border">
+        <ul class="mt-6">
           {#each categoryData as category (category.name)}
-            <div class="p-3 sm:p-4 flex justify-between items-center gap-3">
-              <span class="font-medium text-sm sm:text-base truncate"
-                >{category.name}</span
-              >
-              <span
-                class="font-semibold text-red-400 text-sm sm:text-base whitespace-nowrap"
-                >{formatCurrency(category.amount)}</span
-              >
-            </div>
+            <li class="flex items-baseline justify-between gap-4 border-t border-border py-3">
+              <span class="min-w-0 truncate text-[15px]">{category.name}</span>
+              <span class="amt shrink-0 text-[15px]">{formatCurrency(category.amount)}</span>
+            </li>
           {/each}
-        </div>
-      </div>
+        </ul>
+      </section>
     {:else}
-      <div
-        class="bg-card p-6 sm:p-8 rounded-lg border border-border text-center"
-      >
-        <p class="text-muted-foreground text-sm sm:text-base">
-          No expense data available for this month.
-        </p>
-      </div>
+      <p class="border-t border-border pt-8 text-center text-sm text-ink-2">No expense data for this month.</p>
     {/if}
   {/if}
 </div>
