@@ -10,15 +10,19 @@
   let loading = false;
   let validToken = false;
 
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
+  onMount(() => {
+    async function initializeResetPassword() {
+      const { data } = await supabase.auth.getSession();
 
-    if (data.session) {
-      validToken = true;
-    } else {
-      toast.error("Invalid or expired reset link");
-      setTimeout(() => goto(resolve("/auth/forgot-password")), 2000);
+      if (data.session) {
+        validToken = true;
+      } else {
+        toast.error("Invalid or expired reset link");
+        setTimeout(() => goto(resolve("/auth/forgot-password")), 2000);
+      }
     }
+
+    void initializeResetPassword();
   });
 
   async function handleSubmit() {
