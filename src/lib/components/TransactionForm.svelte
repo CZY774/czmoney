@@ -219,65 +219,38 @@
 </script>
 
 {#if isOpen}
-  <div
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4"
-  >
+  <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center sm:p-6">
     <div
-      class="bg-card rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="txn-form-title"
+      class="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-background p-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-6"
     >
-      <h2 class="text-lg sm:text-xl font-semibold mb-4">
-        {transaction ? "Edit Transaction" : "Add Transaction"}
+      <h2 id="txn-form-title" class="flex items-baseline gap-3 text-lg font-semibold tracking-tight">
+        {transaction ? "Edit transaction" : "Add transaction"}
         {#if isOffline}
-          <span class="text-xs sm:text-sm text-orange-500 ml-2">(Offline)</span>
+          <span class="text-xs font-normal text-warning">Offline, saved on this device first</span>
         {/if}
       </h2>
 
-      <form
-        on:submit|preventDefault={handleSubmit}
-        class="space-y-3 sm:space-y-4"
-      >
+      <form on:submit|preventDefault={handleSubmit} class="mt-5 grid gap-4">
         <div>
-          <label
-            for="txn-date"
-            class="block text-xs sm:text-sm font-medium mb-1">Date</label
-          >
-          <input
-            id="txn-date"
-            type="date"
-            bind:value={form.txn_date}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-            required
-            style="color-scheme: dark;"
-          />
+          <label for="txn-date" class="mb-1.5 block text-xs text-ink-2">Date</label>
+          <input id="txn-date" type="date" bind:value={form.txn_date} required class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground" />
         </div>
 
         <div>
-          <label
-            for="txn-type"
-            class="block text-xs sm:text-sm font-medium mb-1">Type</label
-          >
-          <select
-            id="txn-type"
-            bind:value={form.type}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-            required
-          >
+          <label for="txn-type" class="mb-1.5 block text-xs text-ink-2">Type</label>
+          <select id="txn-type" bind:value={form.type} required class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
             <option value="income">Income</option>
             <option value="expense">Expense</option>
           </select>
         </div>
 
         <div>
-          <label
-            for="txn-category"
-            class="block text-xs sm:text-sm font-medium mb-1">Category</label
-          >
-          <select
-            id="txn-category"
-            bind:value={form.category_id}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-          >
-            <option value="">No Category</option>
+          <label for="txn-category" class="mb-1.5 block text-xs text-ink-2">Category</label>
+          <select id="txn-category" bind:value={form.category_id} class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
+            <option value="">No category</option>
             {#each filteredCategories as category (category.id)}
               <option value={category.id}>{category.name}</option>
             {/each}
@@ -285,11 +258,7 @@
         </div>
 
         <div>
-          <label
-            for="txn-amount"
-            class="block text-xs sm:text-sm font-medium mb-1"
-            >Amount (IDR)</label
-          >
+          <label for="txn-amount" class="mb-1.5 block text-xs text-ink-2">Amount (IDR)</label>
           <input
             id="txn-amount"
             type="number"
@@ -297,47 +266,40 @@
             min="0"
             step="1"
             inputmode="numeric"
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
             placeholder="0"
             required
-            style="color-scheme: dark;"
+            class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground amt"
           />
         </div>
 
         <div>
-          <label
-            for="txn-description"
-            class="block text-xs sm:text-sm font-medium mb-1"
-            >Description <span class="text-red-500">*</span></label
-          >
+          <label for="txn-description" class="mb-1.5 block text-xs text-ink-2">Description</label>
           <input
             id="txn-description"
             type="text"
             bind:value={form.description}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-            placeholder="e.g., bus ticket Jakarta-Bandung"
+            placeholder="For example, bus ticket Jakarta to Bandung"
             required
             minlength="3"
+            class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
           />
-          <p class="text-xs text-muted-foreground mt-1">
-            💡 Detailed descriptions help AI give better insights
-          </p>
+          <p class="mt-1.5 text-xs text-ink-3">A specific description gives the AI insights more to work with.</p>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-4">
-          <button
-            type="submit"
-            disabled={loading}
-            class="w-full sm:flex-1 px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 transition-transform active:scale-95"
-          >
-            {loading ? "Saving..." : transaction ? "Update" : "Add"}
-          </button>
+        <div class="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             on:click={closeModal}
-            class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base border border-border rounded hover:bg-accent transition-colors"
+            class="min-h-11 rounded-lg border border-rule-strong px-5 text-sm hover:bg-accent"
           >
             Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            class="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 active:scale-[0.98]"
+          >
+            {loading ? "Saving" : transaction ? "Update" : "Add"}
           </button>
         </div>
       </form>
