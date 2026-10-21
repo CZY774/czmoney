@@ -352,172 +352,165 @@
       currentPage = page;
     }
   }
+
+  // Day groups for the list. The query already orders by txn_date, newest first.
+  $: dayGroups = transactions.reduce<Array<[string, Array<Record<string, unknown>>]>>(
+    (days, t) => {
+      const key = String(t.txn_date);
+      const last = days[days.length - 1];
+      if (last && last[0] === key) last[1].push(t);
+      else days.push([key, [t]]);
+      return days;
+    },
+    [],
+  );
+
+  function formatDay(key: string) {
+    return new Date(`${key}T00:00:00`).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  }
 </script>
 
 <svelte:head>
   <title>Transactions - CZmoneY</title>
 </svelte:head>
 
-<div class="space-y-4 sm:space-y-6">
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-    <h1 class="text-2xl sm:text-3xl font-bold">Transactions</h1>
+<div class="max-w-[1040px] space-y-8">
+  <header class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-xl font-semibold tracking-tight">Transactions</h1>
     <button
+      type="button"
       on:click={openAddForm}
-      class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+      class="inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 active:scale-[0.98]"
     >
-      Add Transaction
+      Add transaction
     </button>
-  </div>
+  </header>
 
-  <!-- Filters -->
-  <div class="bg-card p-3 sm:p-4 rounded-lg border">
-    <h2 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Filters</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-      <div>
-        <label for="filter-month" class="block text-xs sm:text-sm font-medium mb-1"
-          >Month</label
-        >
-        <input
-          id="filter-month"
-          type="month"
-          bind:value={filters.month}
-          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-          style="color-scheme: dark;"
-        />
-      </div>
+  <!-- One filter row above the list. Every filter applies to the same list. -->
+  <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div class="min-w-0">
+      <label for="filter-month" class="mb-1.5 block text-xs text-ink-2">Month</label>
+      <input
+        id="filter-month"
+        type="month"
+        bind:value={filters.month}
+        class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
+      />
+    </div>
 
-      <div>
-        <label for="filter-category" class="block text-xs sm:text-sm font-medium mb-1"
-          >Category</label
-        >
-        <select
-          id="filter-category"
-          bind:value={filters.category}
-          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-        >
-          <option value="">All Categories</option>
-          {#each categories as category (category.id)}
-            <option value={category.id}>{category.name}</option>
-          {/each}
-        </select>
-      </div>
+    <div class="min-w-0">
+      <label for="filter-category" class="mb-1.5 block text-xs text-ink-2">Category</label>
+      <select
+        id="filter-category"
+        bind:value={filters.category}
+        class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
+      >
+        <option value="">All categories</option>
+        {#each categories as category (category.id)}
+          <option value={category.id}>{category.name}</option>
+        {/each}
+      </select>
+    </div>
 
-      <div>
-        <label for="filter-type" class="block text-xs sm:text-sm font-medium mb-1"
-          >Type</label
-        >
-        <select
-          id="filter-type"
-          bind:value={filters.type}
-          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-        >
-          <option value="">All Types</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
-        </select>
-      </div>
+    <div class="min-w-0">
+      <label for="filter-type" class="mb-1.5 block text-xs text-ink-2">Type</label>
+      <select
+        id="filter-type"
+        bind:value={filters.type}
+        class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
+      >
+        <option value="">All types</option>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+    </div>
 
-      <div>
-        <label for="filter-search" class="block text-xs sm:text-sm font-medium mb-1"
-          >Search</label
-        >
-        <input
-          id="filter-search"
-          type="text"
-          bind:value={filters.search}
-          placeholder="Search description..."
-          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-        />
-      </div>
+    <div class="col-span-2 min-w-0 md:col-span-1">
+      <label for="filter-search" class="mb-1.5 block text-xs text-ink-2">Search</label>
+      <input
+        id="filter-search"
+        type="text"
+        bind:value={filters.search}
+        placeholder="Search description"
+        class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3"
+      />
     </div>
   </div>
 
-  <!-- Transactions List -->
-  <div class="bg-card rounded-lg border">
+  <section aria-label="Transaction list">
     {#if dataLoading}
-      <div class="p-4">
-        <Skeleton type="list" count={5} />
-      </div>
+      <Skeleton type="list" count={5} />
     {:else if transactions.length === 0}
-      <div class="p-6 sm:p-8 text-center">
-        <p class="text-muted-foreground mb-4 text-sm sm:text-base">No transactions found</p>
+      <div class="py-16 text-center">
+        <p class="text-ink-2">No transactions found.</p>
         <button
+          type="button"
           on:click={openAddForm}
-          class="px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded hover:bg-primary/90"
+          class="mt-4 text-sm text-blue-text underline-offset-4 hover:underline"
         >
-          Add Your First Transaction
+          Add your first transaction
         </button>
       </div>
     {:else}
-      <div class="divide-y divide-border">
-        {#each transactions as transaction (transaction.id)}
-          <div class="p-3 sm:p-4 hover:bg-accent/50">
-            <div class="flex gap-2 sm:gap-3">
-              <div
-                class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full mt-1 flex-shrink-0 {transaction.type === 'income'
-                  ? 'bg-green-500'
-                  : 'bg-red-500'}"
-              ></div>
-              
-              <div class="flex-1 min-w-0">
-                <p class="font-medium text-sm sm:text-base break-words">
-                  {transaction.description || "No description"}
+      <p class="pb-2 font-mono text-xs text-ink-3">{totalCount} {totalCount === 1 ? "transaction" : "transactions"}</p>
+
+      {#each dayGroups as [day, items] (day)}
+        <h3 class="pt-6 pb-2 font-mono text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase first:pt-0">
+          {formatDay(day)}
+        </h3>
+        <ul>
+          {#each items as transaction (transaction.id)}
+            <li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 border-t border-border py-3.5">
+              <div class="min-w-0">
+                <p class="truncate text-[15px]">{transaction.description || "No description"}</p>
+                <p class="mt-0.5 text-[13px] text-ink-3">
+                  {getCategoryName(transaction.category_id as string)}
                 </p>
-                <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  {getCategoryName(transaction.category_id as string)} • {new Date(
-                    transaction.txn_date as string
-                  ).toLocaleDateString()}
+              </div>
+
+              <div class="flex flex-col items-end gap-1.5">
+                <p class="amt text-[15px] {transaction.type === 'income' ? 'text-blue-text' : ''}">
+                  {transaction.type === "income" ? "+" : "−"}
+                  {formatCurrency(transaction.amount as number)}
                 </p>
-                
-                <div class="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  <p
-                    class="font-semibold text-sm sm:text-base {transaction.type === 'income'
-                      ? 'text-green-500'
-                      : 'text-red-500'}"
+                <div class="flex gap-4 text-[13px]">
+                  <button
+                    type="button"
+                    on:click={() => openEditForm(transaction)}
+                    class="min-h-8 text-ink-2 underline-offset-4 hover:text-foreground hover:underline"
                   >
-                    {transaction.type === "income" ? "+" : "-"}{formatCurrency(
-                      transaction.amount as number
-                    )}
-                  </p>
-                  
-                  <div class="flex gap-2">
-                    <button
-                      on:click={() => openEditForm(transaction)}
-                      class="px-2.5 py-1 text-xs sm:text-sm border border-border rounded hover:bg-accent"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      on:click={() => confirmDelete(transaction.id as string)}
-                      class="px-2.5 py-1 text-xs sm:text-sm text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    on:click={() => confirmDelete(transaction.id as string)}
+                    class="min-h-8 text-critical underline-offset-4 hover:underline"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-            </div>
-          </div>
-        {/each}
-      </div>
+            </li>
+          {/each}
+        </ul>
+      {/each}
 
-      <!-- Pagination -->
       {#if totalPages > 1}
-        <div
-          class="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border"
-        >
-          <p class="text-xs sm:text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * pageSize + 1} to {Math.min(
-              currentPage * pageSize,
-              totalCount,
-            )} of {totalCount} transactions
+        <nav class="mt-6 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between" aria-label="Pagination">
+          <p class="font-mono text-xs text-ink-3">
+            {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
           </p>
 
           <div class="flex items-center gap-2">
             <button
+              type="button"
               on:click={prevPage}
               disabled={currentPage === 1}
-              class="px-3 py-1.5 text-sm border border-border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              class="min-h-10 rounded-lg border border-rule-strong px-4 text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
             >
               Previous
             </button>
@@ -530,10 +523,12 @@
                 return currentPage - 2 + i;
               }) as page (page)}
                 <button
+                  type="button"
                   on:click={() => goToPage(page)}
-                  class="w-8 h-8 text-sm rounded {currentPage === page
-                    ? 'bg-primary text-primary-foreground'
-                    : 'border border-border hover:bg-accent'}"
+                  aria-current={currentPage === page ? "page" : undefined}
+                  class="min-h-10 min-w-10 rounded-lg px-2 font-mono text-sm {currentPage === page
+                    ? 'bg-blue-wash text-foreground underline decoration-primary underline-offset-4'
+                    : 'text-ink-2 hover:text-foreground'}"
                 >
                   {page}
                 </button>
@@ -541,17 +536,18 @@
             </div>
 
             <button
+              type="button"
               on:click={nextPage}
               disabled={currentPage === totalPages}
-              class="px-3 py-1.5 text-sm border border-border rounded hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+              class="min-h-10 rounded-lg border border-rule-strong px-4 text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
             </button>
           </div>
-        </div>
+        </nav>
       {/if}
     {/if}
-  </div>
+  </section>
 </div>
 
 <!-- Transaction Form Modal -->
