@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { fade, scale } from "svelte/transition";
+  import { fade } from "svelte/transition";
 
   export let open = false;
   export let title = "Confirm Action";
@@ -24,40 +24,30 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-    transition:fade={{ duration: 200 }}
+    class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center sm:p-6"
+    transition:fade={{ duration: 150 }}
     on:keydown={(e) => e.key === "Escape" && handleCancel()}
     role="dialog"
     aria-modal="true"
+    aria-labelledby="confirm-title"
     tabindex="-1"
   >
-    <div
-      class="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md"
-      transition:scale={{ duration: 200, start: 0.95 }}
-    >
-      <!-- Header -->
-      <div class="px-6 py-4 border-b border-border">
-        <h2 class="text-lg font-semibold text-foreground">{title}</h2>
-      </div>
+    <div class="w-full max-w-md rounded-t-2xl border border-border bg-background p-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-6">
+      <h2 id="confirm-title" class="text-lg font-semibold tracking-tight">{title}</h2>
+      <p class="mt-2 text-sm text-ink-2">{message}</p>
 
-      <!-- Content -->
-      <div class="px-6 py-4">
-        <p class="text-sm text-muted-foreground">{message}</p>
-      </div>
-
-      <!-- Actions -->
-      <div class="px-6 py-4 border-t border-border flex gap-3 justify-end">
+      <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <button
           on:click={handleCancel}
-          class="px-4 py-2 text-sm border border-border rounded-lg hover:bg-accent transition-colors"
+          class="min-h-11 rounded-lg border border-rule-strong px-5 text-sm hover:bg-accent"
         >
           {cancelText}
         </button>
         <button
           on:click={handleConfirm}
-          class="px-4 py-2 text-sm rounded-lg transition-colors {danger
-            ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-            : 'bg-primary text-primary-foreground hover:bg-primary/90'}"
+          class="min-h-11 rounded-lg px-5 text-sm font-semibold active:scale-[0.98] {danger
+            ? 'bg-critical text-white hover:bg-critical/85'
+            : 'bg-primary text-primary-foreground hover:bg-primary/85'}"
         >
           {confirmText}
         </button>
