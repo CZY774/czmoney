@@ -47,100 +47,55 @@
 </script>
 
 <svelte:head>
-  <title>Register - CZmoneY</title>
+  <title>Create account - CZmoneY</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background flex items-center justify-center p-3 sm:p-4">
-  <div class="bg-card border border-border rounded-lg w-full max-w-md p-4 sm:p-6">
-    <h1 class="text-xl sm:text-2xl font-bold text-center mb-4 sm:mb-6">Register</h1>
+<div class="flex min-h-screen items-center justify-center px-6 py-12">
+  <div class="w-full max-w-sm">
+    <p class="text-sm font-semibold text-blue-text">CZmoneY</p>
+    <h1 class="mt-6 text-2xl font-semibold tracking-tight">Create account</h1>
 
     {#if error}
-      <div class="bg-destructive/10 text-destructive p-2 sm:p-3 rounded mb-3 sm:mb-4 text-xs sm:text-sm">
+      <p class="mt-4 flex items-start gap-2 text-sm text-critical" role="alert">
+        <i class="mt-1.5 inline-block size-[9px] flex-none bg-critical [clip-path:polygon(50%_4%,100%_96%,0_96%)]"></i>
         {error}
-      </div>
+      </p>
     {/if}
 
-    <form on:submit|preventDefault={handleRegister} class="space-y-3 sm:space-y-4">
+    <form on:submit|preventDefault={handleRegister} class="mt-8 grid gap-5">
       <div>
-        <label for="email" class="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Email</label>
-        <input
-          id="email"
-          type="email"
-          bind:value={email}
-          required
-          class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-          placeholder="Enter your email"
-        />
+        <label for="email" class="mb-1.5 block text-sm text-ink-2">Email</label>
+        <input id="email" type="email" bind:value={email} required autocomplete="email" placeholder="you@example.com" class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3" />
       </div>
 
       <div>
-        <label for="password" class="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-          >Password</label
-        >
+        <label for="password" class="mb-1.5 block text-sm text-ink-2">Password</label>
         <div class="relative">
-          <input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            bind:value={password}
-            required
-            minlength="6"
-            class="w-full p-2 pr-9 text-sm sm:text-base border border-border rounded bg-background"
-            placeholder="Enter your password"
-          />
-          <button
-            type="button"
-            on:click={() => (showPassword = !showPassword)}
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            {#if showPassword}
-              <EyeOff size={18} class="sm:w-5 sm:h-5" />
-            {:else}
-              <Eye size={18} class="sm:w-5 sm:h-5" />
-            {/if}
+          <input id="password" type={showPassword ? "text" : "password"} bind:value={password} required minlength="6" autocomplete="new-password" placeholder="At least 6 characters" class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3 pr-12" />
+          <button type="button" on:click={() => (showPassword = !showPassword)} class="absolute top-0 right-0 grid size-11 place-items-center text-ink-3 hover:text-foreground" aria-label={showPassword ? "Hide password" : "Show password"}>
+            {#if showPassword}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
           </button>
         </div>
       </div>
 
       <div>
-        <label for="confirmPassword" class="block text-xs sm:text-sm font-medium mb-1 sm:mb-2"
-          >Confirm Password</label
-        >
+        <label for="confirmPassword" class="mb-1.5 block text-sm text-ink-2">Confirm password</label>
         <div class="relative">
-          <input
-            id="confirmPassword"
-            type={showConfirmPassword ? "text" : "password"}
-            bind:value={confirmPassword}
-            required
-            minlength="6"
-            class="w-full p-2 pr-9 text-sm sm:text-base border border-border rounded bg-background"
-            placeholder="Confirm your password"
-          />
-          <button
-            type="button"
-            on:click={() => (showConfirmPassword = !showConfirmPassword)}
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            {#if showConfirmPassword}
-              <EyeOff size={18} class="sm:w-5 sm:h-5" />
-            {:else}
-              <Eye size={18} class="sm:w-5 sm:h-5" />
-            {/if}
+          <input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} bind:value={confirmPassword} required minlength="6" autocomplete="new-password" placeholder="Type it again" class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3 pr-12" />
+          <button type="button" on:click={() => (showConfirmPassword = !showConfirmPassword)} class="absolute top-0 right-0 grid size-11 place-items-center text-ink-3 hover:text-foreground" aria-label={showConfirmPassword ? "Hide password" : "Show password"}>
+            {#if showConfirmPassword}<EyeOff size={18} />{:else}<Eye size={18} />{/if}
           </button>
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        class="w-full px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
-      >
-        {loading ? "Creating account..." : "Register"}
+      <button type="submit" disabled={loading} class="min-h-11 w-full rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-40 active:scale-[0.98]">
+        {loading ? "Creating account" : "Create account"}
       </button>
     </form>
 
-    <p class="text-center mt-3 sm:mt-4 text-xs sm:text-sm">
+    <p class="mt-8 text-sm text-ink-2">
       Already have an account?
-      <a href={resolve("/auth/login")} class="text-primary hover:underline">Login</a>
+      <a href={resolve("/auth/login")} class="text-blue-text hover:underline">Sign in</a>
     </p>
   </div>
 </div>
