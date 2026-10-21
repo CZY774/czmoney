@@ -11,70 +11,64 @@
   <title>Error {status} - CZmoneY</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background flex items-center justify-center p-4">
-  <div class="bg-card border border-border rounded-lg w-full max-w-md p-8 text-center">
-    <div class="text-6xl font-bold text-primary mb-4">{status}</div>
-    
-    <h1 class="text-xl font-semibold mb-2">
+<div class="flex min-h-screen items-center justify-center p-6">
+  <div class="w-full max-w-md border-t border-border pt-6">
+    <p class="amt text-5xl text-blue-text">{status}</p>
+
+    <h1 class="mt-4 text-xl font-semibold tracking-tight">
       {#if status === 404}
-        Page Not Found
+        Page not found
       {:else if status === 401}
-        Unauthorized
+        Sign in to continue
       {:else if status === 403}
-        Access Forbidden
+        You can't open this page
       {:else if status === 500}
-        Server Error
+        Something broke on our side
       {:else}
-        Something Went Wrong
+        Something went wrong
       {/if}
     </h1>
 
-    <p class="text-muted-foreground mb-6">
+    <p class="mt-2 text-sm text-ink-2">
       {#if status === 404}
-        The page you're looking for doesn't exist.
+        The address may be wrong, or the page has moved.
       {:else if status === 401}
-        Please sign in to continue.
+        Your session has ended. Sign in again and you will be back here.
       {:else if status === 403}
-        You don't have permission to access this.
+        Your account doesn't have access to this page.
       {:else if status === 500}
-        We're experiencing technical difficulties.
+        We're looking into it. Try again in a moment.
       {:else}
-        An unexpected error occurred.
+        An unexpected error happened. Going back usually fixes it.
       {/if}
     </p>
 
     {#if message}
-      <details class="text-sm text-muted-foreground mb-6 text-left">
-        <summary class="cursor-pointer hover:text-foreground mb-2">
-          Technical Details
-        </summary>
-        <div class="p-3 bg-background rounded border border-border">
-          <code class="text-xs break-all">{message}</code>
-        </div>
+      <details class="mt-5 text-sm text-ink-3">
+        <summary class="cursor-pointer hover:text-foreground">Technical details</summary>
+        <code class="mt-2 block break-all font-mono text-xs">{message}</code>
       </details>
     {/if}
 
-    <div class="flex gap-3">
+    <div class="mt-8 flex gap-3">
       <button
         on:click={() => history.back()}
-        class="flex-1 px-4 py-2 border border-border rounded hover:bg-accent"
+        class="min-h-11 flex-1 rounded-lg border border-rule-strong px-4 text-sm hover:bg-accent"
       >
-        Go Back
+        Go back
       </button>
       <button
         on:click={() => goto(resolve("/"))}
-        class="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+        class="min-h-11 flex-1 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/85"
       >
         Home
       </button>
     </div>
 
     {#if status === 401}
-      <div class="mt-6 pt-6 border-t border-border">
-        <a href={resolve("/auth/login")} class="text-primary hover:underline">
-          Sign in to continue
-        </a>
-      </div>
+      <a href={resolve("/auth/login")} class="mt-6 inline-block text-sm text-blue-text hover:underline">
+        Sign in
+      </a>
     {/if}
   </div>
 </div>
