@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-  import { fade, scale } from "svelte/transition";
+  import { fade } from "svelte/transition";
   import { clickOutside } from "$lib/actions/clickOutside";
 
   export let open = false;
@@ -11,9 +11,9 @@
   const dispatch = createEventDispatcher();
 
   const sizes = {
-    sm: "max-w-md",
-    md: "max-w-lg",
-    lg: "max-w-2xl",
+    sm: "sm:max-w-md",
+    md: "sm:max-w-lg",
+    lg: "sm:max-w-2xl",
   };
 
   function handleClose() {
@@ -24,8 +24,8 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-    transition:fade={{ duration: 200 }}
+    class="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center sm:p-6"
+    transition:fade={{ duration: 150 }}
     on:keydown={(e) => e.key === "Escape" && handleClose()}
     role="dialog"
     aria-modal="true"
@@ -34,47 +34,23 @@
   >
     <div
       use:clickOutside={handleClose}
-      class="bg-card border border-border rounded-xl shadow-2xl w-full {sizes[
-        size
-      ]} max-h-[90vh] overflow-hidden flex flex-col"
-      transition:scale={{ duration: 200, start: 0.95 }}
+      class="flex max-h-[90dvh] w-full {sizes[size]} flex-col overflow-hidden rounded-t-2xl border border-border bg-background sm:rounded-2xl"
     >
-      <!-- Header -->
-      <div class="px-6 py-4 border-b border-border flex items-start justify-between">
-        <div class="flex-1">
-          {#if title}
-            <h2 id="modal-title" class="text-xl font-semibold text-foreground">
-              {title}
-            </h2>
-          {/if}
+      {#if title}
+        <div class="px-5 pt-5 sm:px-6 sm:pt-6">
+          <h2 id="modal-title" class="text-lg font-semibold tracking-tight">{title}</h2>
           {#if description}
-            <p class="text-sm text-muted-foreground mt-1">{description}</p>
+            <p class="mt-1 text-sm text-ink-2">{description}</p>
           {/if}
         </div>
-        <button
-          on:click={handleClose}
-          class="ml-4 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-accent"
-          aria-label="Close"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
+      {/if}
 
-      <!-- Content -->
-      <div class="px-6 py-4 overflow-y-auto flex-1">
+      <div class="flex-1 overflow-y-auto px-5 py-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] sm:px-6 sm:pb-6">
         <slot />
       </div>
 
-      <!-- Footer (optional) -->
       {#if $$slots.footer}
-        <div class="px-6 py-4 border-t border-border bg-accent/20">
+        <div class="border-t border-border px-5 py-4 sm:px-6">
           <slot name="footer" />
         </div>
       {/if}
