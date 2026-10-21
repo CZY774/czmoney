@@ -4,8 +4,6 @@
   import { realtimeManager } from "$lib/services/realtimeManager";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import BalanceChart from "$lib/components/BalanceChart.svelte";
-  import CategoryChart from "$lib/components/CategoryChart.svelte";
   import SmartInsights from "$lib/components/SmartInsights.svelte";
   import Skeleton from "$lib/components/Skeleton.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
@@ -15,12 +13,23 @@
 
   export let data;
 
+  type Snapshot = {
+    month: string;
+    balance: { income: number; expense: number; total: number };
+    recentTransactions: Array<Record<string, unknown>>;
+    categoryData: Array<{ name: string; amount: number }>;
+    profile: { monthly_income: number; savings_target: number };
+    ytd: { current: number; previous: number } | null;
+  };
+
   let user: { id: string; email?: string } | null = null;
   let balance = { income: 0, expense: 0, total: 0 };
   let recentTransactions: Array<Record<string, unknown>> = [];
   let categoryData: Array<{ name: string; amount: number }> = [];
   let profile = { monthly_income: 0, savings_target: 0 };
+  let ytd: { current: number; previous: number } | null = null;
   let loading = true;
+  // True only until something is on screen. Refetches never bring the skeleton back.
   let dataLoading = true;
   let unsubscribe: (() => void) | null = null;
   let showChecklist = true;
@@ -35,6 +44,55 @@
     { id: "report", label: "View your first report", completed: false },
   ];
 
+  // Calendar facts for the pace marker. Computed once per page load.
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const pacePct = (dayOfMonth / daysInMonth) * 100;
+  const monthLabel = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+  $: savingsPct =
+    profile.savings_target > 0
+      ? Math.min(100, Math.max(0, (balance.total / profile.savings_target) * 100))
+      : 0;
+  $: spentPct =
+    profile.monthly_income > 0
+      ? Math.max(0, (balance.expense / profile.monthly_income) * 100)
+      : 0;
+  $: spendingAhead = spentPct > pacePct;
+  $: keptPct =
+    balance.income > 0
+      ? Math.min(100, Math.max(0, ((balance.income - balance.expense) / balance.income) * 100))
+      : 0;
+
+  $: recentByDay = recentTransactions.reduce<Array<[string, Array<Record<string, unknown>>]>>(
+    (days, t) => {
+      const key = String(t.txn_date);
+      const last = days[days.length - 1];
+      if (last && last[0] === key) last[1].push(t);
+      else days.push([key, [t]]);
+      return days;
+    },
+    [],
+  );
+
+  // Top five categories, the rest folded into "Other". Bars are scaled to the largest.
+  $: rankedCategories = (() => {
+    const top = categoryData.slice(0, 5);
+    const rest = categoryData.slice(5);
+    const items = rest.length
+      ? [...top, { name: "Other", amount: rest.reduce((s, c) => s + c.amount, 0) }]
+      : top;
+    const max = items[0]?.amount || 1;
+    const total = categoryData.reduce((s, c) => s + c.amount, 0) || 1;
+    return items.map((c) => ({
+      ...c,
+      width: (c.amount / max) * 100,
+      share: (c.amount / total) * 100,
+    }));
+  })();
+
   function handleDashboardVisibilityChange() {
     if (!document.hidden && user) {
       loadDashboardData();
@@ -42,8 +100,10 @@
   }
 
   onMount(() => {
+    let disposed = false;
     async function initializeDashboard() {
       const { data } = await supabase.auth.getSession();
+      if (disposed) return;
       user = data.session?.user || null;
       loading = false;
 
@@ -70,6 +130,7 @@
     void initializeDashboard();
 
     return () => {
+      disposed = true;
       window.removeEventListener("transactionUpdated", loadDashboardData);
       document.removeEventListener(
         "visibilitychange",
@@ -79,33 +140,50 @@
     };
   });
 
+  // Local calendar date as YYYY-MM-DD. toISOString() would shift by the UTC offset.
+  function toIsoDate(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function applySnapshot(s: Snapshot) {
+    balance = s.balance;
+    recentTransactions = s.recentTransactions;
+    categoryData = s.categoryData;
+    profile = s.profile;
+    ytd = s.ytd ?? null;
+    dataLoading = false;
+  }
+
   async function loadDashboardData() {
     if (!user) return;
-    dataLoading = true;
 
-    // Try loading from cache if offline
-    if (!navigator.onLine) {
-      const cached = await get("cached_dashboard");
-      if (cached) {
-        balance = cached.balance;
-        recentTransactions = cached.recentTransactions;
-        categoryData = cached.categoryData;
-        profile = cached.profile;
-        dataLoading = false;
-        toast.info("Showing cached data (offline)");
-        return;
-      }
+    // Paint the last known numbers first, then replace them when the network answers.
+    // Only for this month: last month's cache would be misleading as "current".
+    let cached: Snapshot | undefined;
+    if (dataLoading) {
+      cached = await get<Snapshot>("cached_dashboard");
+      if (cached && cached.month === monthKey) applySnapshot(cached);
+      else cached = undefined;
     }
 
-    const month = new Date().toISOString().slice(0, 7);
-    const [year, monthNum] = month.split("-");
-    const startDate = `${year}-${monthNum}-01`;
-    const endDate = new Date(parseInt(year), parseInt(monthNum), 0)
-      .toISOString()
-      .split("T")[0];
+    if (!navigator.onLine) {
+      if (cached) toast.info("Showing cached data (offline)");
+      else dataLoading = false;
+      return;
+    }
 
-    // Batch queries using Promise.all
-    const [profileResult, transactionsResult, budgetsResult] =
+    const startDate = toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const endDate = toIsoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
+    const lastYearSameDay = new Date(
+      now.getFullYear() - 1,
+      now.getMonth(),
+      now.getDate(),
+    );
+
+    // Batch queries using Promise.all. YTD sums run in Postgres, not in the browser.
+    const [profileResult, transactionsResult, budgetsResult, ytdNow, ytdPrev] =
       await Promise.all([
         supabase
           .from("profiles")
@@ -120,25 +198,44 @@
           .lte("txn_date", endDate)
           .order("txn_date", { ascending: false }),
         supabase.from("budgets").select("id").eq("user_id", user.id).limit(1),
+        supabase.rpc("expense_total", {
+          p_from: toIsoDate(yearStart),
+          p_to: toIsoDate(now),
+        }),
+        supabase.rpc("expense_total", {
+          p_from: toIsoDate(lastYearStart),
+          p_to: toIsoDate(lastYearSameDay),
+        }),
       ]);
 
     if (profileResult.data) {
       profile = profileResult.data;
     }
 
+    // Missing RPC (SQL not run yet) hides the YTD line instead of breaking the page.
+    if (ytdNow.error || ytdPrev.error) {
+      console.warn("YTD unavailable:", ytdNow.error ?? ytdPrev.error);
+      ytd = null;
+    } else {
+      ytd = {
+        current: Number(ytdNow.data ?? 0),
+        previous: Number(ytdPrev.data ?? 0),
+      };
+    }
+
     if (transactionsResult.data) {
       const transactions = transactionsResult.data;
-      recentTransactions = transactions.slice(0, 5);
+      recentTransactions = transactions.slice(0, 8);
 
-      balance.income = transactions
+      const income = transactions
         .filter((t) => t.type === "income")
         .reduce((sum, t) => sum + t.amount, 0);
 
-      balance.expense = transactions
+      const expense = transactions
         .filter((t) => t.type === "expense")
         .reduce((sum, t) => sum + t.amount, 0);
 
-      balance.total = balance.income - balance.expense;
+      balance = { income, expense, total: income - expense };
 
       const categoryTotals: { [key: string]: number } = {};
       transactions
@@ -154,16 +251,19 @@
         .sort((a, b) => b.amount - a.amount);
     }
 
-    // Cache dashboard data for offline use
+    dataLoading = false;
+
+    // Cache dashboard data for offline use and for the next instant paint.
     await set("cached_dashboard", {
+      month: monthKey,
       balance,
       recentTransactions,
       categoryData,
       profile,
+      ytd,
       timestamp: Date.now(),
-    });
+    } satisfies Snapshot & { timestamp: number });
 
-    dataLoading = false;
     updateChecklistProgress(budgetsResult.data);
   }
 
@@ -199,11 +299,21 @@
     showChecklist = false;
   }
 
-  function formatCurrency(amount: number) {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-    }).format(amount);
+  // Hero figure: digits only, the "Rp" is set beside it in the sans.
+  function formatFigure(amount: number) {
+    return new Intl.NumberFormat("id-ID").format(Math.abs(amount));
+  }
+
+  function formatDay(key: string) {
+    return new Date(`${key}T00:00:00`).toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  }
+
+  function formatPct(value: number) {
+    return `${Math.round(value)}%`;
   }
 
   // Structured data for SEO (only for landing page)
@@ -286,11 +396,13 @@
     </main>
   </div>
 {:else}
-  <!-- Dashboard for authenticated users -->
-  <div class="space-y-6 sm:space-y-8">
-    <h1 class="text-3xl sm:text-4xl font-bold">Dashboard</h1>
+  <!-- Ledger: one sheet, the balance is the only large figure -->
+  <div class="max-w-[1040px] space-y-10">
+    <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <h1 class="text-xl font-semibold tracking-tight">{monthLabel}</h1>
+      <p class="font-mono text-xs text-ink-3">Day {dayOfMonth} of {daysInMonth}</p>
+    </header>
 
-    <!-- Onboarding Checklist -->
     {#if showChecklist && !dataLoading}
       <OnboardingChecklist
         tasks={checklistTasks}
@@ -299,7 +411,6 @@
       />
     {/if}
 
-    <!-- Empty State for New Users -->
     {#if !dataLoading && recentTransactions.length === 0}
       <EmptyState
         title="Start Tracking Your Finances"
@@ -308,222 +419,174 @@
         icon="💰"
         onAction={() => goto(resolve("/transactions"))}
       />
+    {:else if dataLoading}
+      <Skeleton type="card" count={3} />
     {:else}
-      <!-- Balance Cards -->
-      {#if dataLoading}
-        <Skeleton type="card" count={3} />
-      {:else}
-        <div
-          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6"
-        >
-          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-            <h3
-              class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
-            >
-              Total Income
-            </h3>
-            <p class="text-2xl sm:text-3xl font-bold text-green-400 break-all">
-              {formatCurrency(balance.income)}
-            </p>
-          </div>
-
-          <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-            <h3
-              class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
-            >
-              Total Expense
-            </h3>
-            <p class="text-2xl sm:text-3xl font-bold text-red-400 break-all">
-              {formatCurrency(balance.expense)}
-            </p>
-          </div>
-
-          <div
-            class="bg-card p-4 sm:p-6 rounded-lg border border-border sm:col-span-2 md:col-span-1"
-          >
-            <h3
-              class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
-            >
-              Balance
-            </h3>
-            <p
-              class="text-2xl sm:text-3xl font-bold break-all {balance.total >=
-              0
-                ? 'text-green-400'
-                : 'text-red-400'}"
-            >
-              {formatCurrency(balance.total)}
-            </p>
-          </div>
-        </div>
-      {/if}
-
-      <!-- Savings & Spending Progress -->
-      {#if profile.savings_target > 0 || profile.monthly_income > 0}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {#if profile.savings_target > 0}
-            <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-              <h3
-                class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
-              >
-                Savings Progress
-              </h3>
-              <div
-                class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1"
-              >
-                <span
-                  class="text-lg sm:text-2xl font-bold text-blue-400 truncate"
-                >
-                  {formatCurrency(balance.total)}
-                </span>
-                <span class="text-xs sm:text-sm text-muted-foreground">
-                  / {formatCurrency(profile.savings_target)}
-                </span>
-              </div>
-              <div class="w-full bg-muted rounded-full h-2">
-                <div
-                  class="bg-blue-400 h-2 rounded-full transition-all"
-                  style="width: {Math.min(
-                    100,
-                    Math.max(0, (balance.total / profile.savings_target) * 100),
-                  )}%"
-                ></div>
-              </div>
-              <p class="text-xs text-muted-foreground mt-1">
-                {Math.round((balance.total / profile.savings_target) * 100)}% of
-                target
-              </p>
-            </div>
-          {/if}
-
-          {#if profile.monthly_income > 0}
-            <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-              <h3
-                class="text-xs sm:text-sm font-medium text-muted-foreground mb-2"
-              >
-                Spending Ratio
-              </h3>
-              <div
-                class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1"
-              >
-                <span class="text-lg sm:text-2xl font-bold text-orange-400">
-                  {Math.round(
-                    (balance.expense / profile.monthly_income) * 100,
-                  )}%
-                </span>
-                <span class="text-xs sm:text-sm text-muted-foreground">
-                  of income spent
-                </span>
-              </div>
-              <div class="w-full bg-muted rounded-full h-2">
-                <div
-                  class="bg-orange-400 h-2 rounded-full transition-all"
-                  style="width: {Math.min(
-                    100,
-                    (balance.expense / profile.monthly_income) * 100,
-                  )}%"
-                ></div>
-              </div>
-              <p class="text-xs text-muted-foreground mt-1 truncate">
-                {formatCurrency(balance.expense)} / {formatCurrency(
-                  profile.monthly_income,
-                )}
-              </p>
-            </div>
-          {/if}
-        </div>
-      {/if}
-
-      <!-- Smart Insights -->
-      <SmartInsights />
-
-      <!-- Quick Actions -->
-      <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-        <button
-          on:click={() => goto(resolve("/transactions"))}
-          class="w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm sm:text-base"
-        >
-          Add Transaction
-        </button>
-        <button
-          on:click={() => goto(resolve("/reports"))}
-          class="w-full sm:w-auto px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium text-sm sm:text-base"
-        >
-          View Reports
-        </button>
-      </div>
-
-      <!-- Charts -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-          <h2 class="text-lg sm:text-xl font-semibold mb-4">
-            Income vs Expense
-          </h2>
-          <BalanceChart income={balance.income} expense={balance.expense} />
-        </div>
-
-        <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-          <h2 class="text-lg sm:text-xl font-semibold mb-4">
-            Expense Categories
-          </h2>
-          <CategoryChart categories={categoryData} />
-        </div>
-      </div>
-
-      <!-- Recent Transactions -->
-      <div class="bg-card p-4 sm:p-6 rounded-lg border border-border">
-        <h2 class="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">
-          Recent Transactions
-        </h2>
-
-        {#if recentTransactions.length === 0}
-          <p
-            class="text-muted-foreground text-center py-8 text-sm sm:text-base"
-          >
-            No transactions yet.
-            <a
-              href={resolve("/transactions")}
-              class="text-primary hover:underline">Add your first transaction</a
-            >
+      <div class="grid gap-10 md:grid-cols-2 md:gap-x-10 min-[1120px]:grid-cols-[7fr_5fr] min-[1120px]:gap-x-16">
+        <!-- Hero: balance, income and expense as lines, kept vs spent as one bar -->
+        <section class="min-w-0 md:col-span-2 min-[1120px]:col-span-1 min-[1120px]:row-span-2" aria-labelledby="h-balance">
+          <h2 id="h-balance" class="text-[13px] font-medium text-ink-2">Balance</h2>
+          <p class="amt mt-2 flex w-fit max-w-full items-baseline gap-[0.18em] border-b-[3px] border-double border-ink-3 pb-3.5 text-[clamp(2.5rem,8vw,4.75rem)] leading-none font-medium tracking-[-0.035em]">
+            {#if balance.total < 0}<span>−</span>{/if}
+            <span class="text-[0.36em] font-medium tracking-normal font-sans text-ink-2">Rp</span>
+            <span>{formatFigure(balance.total)}</span>
           </p>
-        {:else}
-          <div class="space-y-3 sm:space-y-4">
-            {#each recentTransactions as transaction (transaction.id)}
-              <div
-                class="flex justify-between items-start sm:items-center py-3 border-b border-border last:border-b-0 gap-3"
-              >
-                <div class="min-w-0 flex-1">
-                  <p class="font-medium text-sm sm:text-base truncate">
-                    {transaction.description || "No description"}
-                  </p>
-                  <p class="text-xs sm:text-sm text-muted-foreground">
-                    {new Date(
-                      transaction.txn_date as string,
-                    ).toLocaleDateString()}
+          {#if balance.total < 0}
+            <p class="mt-2 text-sm text-ink-2">Expense is higher than income this month.</p>
+          {/if}
+
+          <dl class="mt-6 grid gap-2.5">
+            <div class="flex items-baseline gap-2.5">
+              <dt class="text-sm text-ink-2">Income</dt>
+              <i class="min-w-3 flex-1 -translate-y-1 border-b border-dotted border-rule-strong"></i>
+              <dd class="amt text-[15px] text-blue-text">+ Rp {formatFigure(balance.income)}</dd>
+            </div>
+            <div class="flex items-baseline gap-2.5">
+              <dt class="text-sm text-ink-2">Expense</dt>
+              <i class="min-w-3 flex-1 -translate-y-1 border-b border-dotted border-rule-strong"></i>
+              <dd class="amt text-[15px]">− Rp {formatFigure(balance.expense)}</dd>
+            </div>
+            {#if ytd}
+              <div class="flex items-baseline gap-2.5">
+                <dt class="text-sm text-ink-2">Expense this year</dt>
+                <i class="min-w-3 flex-1 -translate-y-1 border-b border-dotted border-rule-strong"></i>
+                <dd class="amt text-[15px]">Rp {formatFigure(ytd.current)}</dd>
+              </div>
+            {/if}
+          </dl>
+
+          {#if balance.income > 0}
+            <div class="mt-6 flex h-2 gap-0.5" role="img" aria-label="{formatPct(keptPct)} of income kept, {formatPct(100 - keptPct)} spent">
+              <i class="block h-full rounded-l-sm bg-primary" style="width: {keptPct}%"></i>
+              <i class="block h-full flex-1 rounded-r-sm bg-spent"></i>
+            </div>
+            <p class="mt-2 flex flex-wrap justify-between gap-x-3 font-mono text-xs text-ink-3">
+              <span class="inline-flex items-center gap-2"><i class="size-2 rounded-sm bg-primary"></i>{formatPct(keptPct)} of income kept</span>
+              <span class="inline-flex items-center gap-2"><i class="size-2 rounded-sm bg-spent"></i>{formatPct(100 - keptPct)} spent</span>
+            </p>
+          {/if}
+
+          {#if ytd}
+            <p class="mt-4 font-mono text-xs text-ink-3">
+              Same period last year Rp {formatFigure(ytd.previous)}
+            </p>
+          {/if}
+
+          <a
+            href={resolve("/transactions")}
+            data-sveltekit-preload-data
+            class="mt-8 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 active:scale-[0.98]"
+          >
+            Add transaction
+          </a>
+        </section>
+
+        <!-- Targets -->
+        {#if profile.savings_target > 0 || profile.monthly_income > 0}
+          <section class="min-w-0 border-t border-border pt-5 md:col-span-2 min-[1120px]:col-span-1" aria-labelledby="h-targets">
+            <h2 id="h-targets" class="pb-4 text-[15px] font-semibold">Targets</h2>
+            <div class="grid gap-7 md:grid-cols-2 md:gap-10 min-[1120px]:grid-cols-1">
+              {#if profile.savings_target > 0}
+                <div>
+                  <div class="flex items-baseline justify-between gap-3">
+                    <span class="text-sm text-ink-2">Savings target</span>
+                    <span class="amt text-[22px] leading-none">{formatPct(savingsPct)}</span>
+                  </div>
+                  <div class="mt-3 h-1.5 rounded-sm bg-blue-track" role="img" aria-label="{formatPct(savingsPct)} of savings target">
+                    <i class="block h-full rounded-r-sm bg-primary" style="width: {savingsPct}%"></i>
+                  </div>
+                  <p class="mt-2 flex flex-wrap justify-between gap-x-3 font-mono text-xs text-ink-3">
+                    <span>Rp {formatFigure(balance.total)} of Rp {formatFigure(profile.savings_target)}</span>
+                    <span>Rp {formatFigure(Math.max(0, profile.savings_target - balance.total))} to go</span>
                   </p>
                 </div>
-                <div class="text-right flex-shrink-0">
-                  <p
-                    class="font-semibold text-sm sm:text-base {transaction.type ===
-                    'income'
-                      ? 'text-green-400'
-                      : 'text-red-400'}"
-                  >
-                    {transaction.type === "income" ? "+" : "-"}{formatCurrency(
-                      transaction.amount as number,
-                    )}
-                  </p>
-                  <p
-                    class="text-xs sm:text-sm text-muted-foreground capitalize"
-                  >
-                    {transaction.type}
+              {/if}
+
+              {#if profile.monthly_income > 0}
+                <div>
+                  <div class="flex items-baseline justify-between gap-3">
+                    <span class="text-sm text-ink-2">Spent of monthly income</span>
+                    <span class="amt text-[22px] leading-none {spendingAhead ? 'text-warning' : ''}">{formatPct(spentPct)}</span>
+                  </div>
+                  <div class="relative mt-3 h-1.5 rounded-sm {spendingAhead ? 'bg-warning-track' : 'bg-blue-track'}" role="img" aria-label="{formatPct(spentPct)} of monthly income spent, {formatPct(pacePct)} of the month gone">
+                    <i class="block h-full rounded-r-sm {spendingAhead ? 'bg-warning' : 'bg-primary'}" style="width: {Math.min(100, spentPct)}%"></i>
+                    <b class="absolute -top-1 -bottom-1 w-0.5 -ml-px rounded-full bg-foreground shadow-[0_0_0_2px_var(--color-background)]" style="left: {pacePct}%" title="Today, day {dayOfMonth} of {daysInMonth}"></b>
+                  </div>
+                  <p class="mt-2 flex flex-wrap justify-between gap-x-3 font-mono text-xs text-ink-3">
+                    <span>Rp {formatFigure(balance.expense)} of Rp {formatFigure(profile.monthly_income)}</span>
+                    <span class="inline-flex items-center gap-2">
+                      {#if spendingAhead}
+                        <i class="inline-block size-[9px] bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]"></i>Faster than the month
+                      {:else}
+                        {formatPct(pacePct)} of the month gone
+                      {/if}
+                    </span>
                   </p>
                 </div>
+              {/if}
+            </div>
+          </section>
+        {/if}
+
+        <!-- Insights -->
+        <div class="min-w-0 border-t border-border pt-5 md:col-span-2 min-[1120px]:col-span-1">
+          <SmartInsights />
+        </div>
+
+        <!-- Spending by category: one series, so one color on every bar -->
+        {#if rankedCategories.length > 0}
+          <section class="min-w-0 border-t border-border pt-5 md:col-span-2 min-[1120px]:col-span-1" aria-labelledby="h-cats">
+            <div class="flex items-baseline justify-between gap-4 pb-4">
+              <h2 id="h-cats" class="text-[15px] font-semibold">Spending by category</h2>
+              <a href={resolve("/reports")} data-sveltekit-preload-data class="inline-flex items-center gap-1.5 text-[13px] text-blue-text hover:underline">Reports</a>
+            </div>
+            <ol class="grid gap-4">
+              {#each rankedCategories as category (category.name)}
+                <li>
+                  <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-baseline gap-3">
+                    <span class="truncate text-sm">{category.name}</span>
+                    <span class="w-[5ch] text-right font-mono text-xs text-ink-3">{category.share.toFixed(1)}%</span>
+                    <span class="amt min-w-[13ch] text-right text-sm">Rp {formatFigure(category.amount)}</span>
+                  </div>
+                  <div class="mt-2 h-1 bg-transparent" role="img" aria-label="{category.name}, {formatPct(category.width)} of the largest category">
+                    <i class="block h-full rounded-r-sm bg-primary" style="width: {category.width}%"></i>
+                  </div>
+                </li>
+              {/each}
+            </ol>
+          </section>
+        {/if}
+
+        <!-- Recent transactions, grouped by day -->
+        <section class="min-w-0 border-t border-border pt-5 md:col-span-2" aria-labelledby="h-recent">
+          <div class="flex items-baseline justify-between gap-4 pb-4">
+            <h2 id="h-recent" class="text-[15px] font-semibold">Recent transactions</h2>
+            <a href={resolve("/transactions")} data-sveltekit-preload-data class="inline-flex items-center gap-1.5 text-[13px] text-blue-text hover:underline">All transactions</a>
+          </div>
+
+          {#if recentByDay.length === 0}
+            <p class="py-8 text-center text-sm text-ink-2">No transactions yet.</p>
+          {:else}
+            {#each recentByDay as [day, items] (day)}
+              <div>
+                <h3 class="pt-4 pb-2 font-mono text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase first:pt-0">{formatDay(day)}</h3>
+                <ul>
+                  {#each items as transaction (transaction.id)}
+                    <li class="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-0.5 border-t border-border py-3 md:grid-cols-[minmax(0,1fr)_120px_minmax(12ch,auto)]">
+                      <span class="truncate text-sm md:text-[15px]">{transaction.description || "No description"}</span>
+                      <span class="amt text-sm {transaction.type === 'income' ? 'text-blue-text' : ''}">
+                        {transaction.type === "income" ? "+" : "−"} Rp {formatFigure(transaction.amount as number)}
+                      </span>
+                      <span class="col-start-1 text-[13px] text-ink-3 md:col-start-auto md:text-sm">{(transaction.categories as { name?: string } | null)?.name ?? "No Category"}</span>
+                    </li>
+                  {/each}
+                </ul>
               </div>
             {/each}
-          </div>
-        {/if}
+          {/if}
+        </section>
       </div>
+
     {/if}
   </div>
 {/if}
