@@ -9,28 +9,24 @@
 
   const steps = [
     {
-      title: "Welcome to CZmoneY! 💰",
+      title: "Welcome to CZmoneY",
       description:
-        "Your personal finance manager with AI-powered insights. Let's get you started in 3 simple steps.",
-      icon: "💰",
+        "Your personal finance manager with AI-powered insights. This takes four short steps.",
     },
     {
-      title: "Track Every Transaction 📊",
+      title: "Track every transaction",
       description:
-        "Add your income and expenses easily. Categorize them to see where your money goes. Works offline too!",
-      icon: "📊",
+        "Add income and expenses in a few taps. Categorize them to see where the money goes. Works offline too.",
     },
     {
-      title: "Set Your Budget Goals 🎯",
+      title: "Set budget limits",
       description:
-        "Set monthly budgets for each category. Get smart alerts when you're approaching your limits.",
-      icon: "🎯",
+        "Set a monthly limit for each category. You get an alert when spending gets close to it.",
     },
     {
-      title: "Get AI Insights 🤖",
+      title: "Get AI insights",
       description:
-        "Receive personalized financial advice and spending analysis powered by AI. Make smarter money decisions.",
-      icon: "🤖",
+        "Read a plain summary of your spending, with suggestions based on your own transactions.",
     },
   ];
 
@@ -61,28 +57,22 @@
   }
 </script>
 
-<Modal bind:open size="lg">
-  <div class="text-center mb-6">
-    <div class="text-5xl sm:text-6xl mb-4">{steps[currentStep].icon}</div>
-    <h2 class="text-xl sm:text-2xl font-bold mb-2">{steps[currentStep].title}</h2>
-    <p class="text-sm sm:text-base text-muted-foreground">{steps[currentStep].description}</p>
-  </div>
+<Modal bind:open size="md">
+  <p class="font-mono text-xs text-ink-3">Step {currentStep + 1} of {steps.length}</p>
+  <h2 class="mt-3 text-xl font-semibold tracking-tight">{steps[currentStep].title}</h2>
+  <p class="mt-2 text-[15px] leading-relaxed text-ink-2">{steps[currentStep].description}</p>
 
-  <div class="flex justify-center gap-2 mb-6">
+  <div class="mt-6 flex gap-1.5" aria-hidden="true">
     {#each stepIndices as i (i)}
-      <div
-        class="h-2 rounded-full transition-all {i === currentStep
-          ? 'w-8 bg-primary'
-          : 'w-2 bg-muted'}"
-      ></div>
+      <span class="h-1 rounded-full {i === currentStep ? 'w-8 bg-primary' : 'w-4 bg-rule-strong'}"></span>
     {/each}
   </div>
 
-  <div class="flex justify-between items-center">
+  <div class="mt-8 flex items-center justify-between gap-3">
     <button
       type="button"
       on:click={skip}
-      class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+      class="min-h-11 text-sm text-ink-2 hover:text-foreground"
     >
       Skip
     </button>
@@ -92,7 +82,7 @@
         <button
           type="button"
           on:click={prevStep}
-          class="px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors"
+          class="min-h-11 rounded-lg border border-rule-strong px-4 text-sm hover:bg-accent"
         >
           Back
         </button>
@@ -100,9 +90,9 @@
       <button
         type="button"
         on:click={nextStep}
-        class="px-3 sm:px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        class="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 active:scale-[0.98]"
       >
-        {currentStep === steps.length - 1 ? "Get Started" : "Next"}
+        {currentStep === steps.length - 1 ? "Get started" : "Next"}
       </button>
     </div>
   </div>
