@@ -369,29 +369,30 @@
     <Skeleton type="card" count={3} />
   </div>
 {:else if !user}
-  <!-- Landing Page -->
-  <div class="min-h-screen flex flex-col">
-    <main class="flex-1 flex items-center justify-center px-4">
-      <div class="max-w-md mx-auto text-center w-full">
-        <h1 class="text-3xl sm:text-4xl font-bold mb-4">CZmoneY</h1>
-        <p class="text-muted-foreground mb-8 text-sm sm:text-base">
-          Track expenses, view reports, get insights.
-        </p>
+  <!-- Landing -->
+  <div class="flex min-h-screen flex-col justify-center px-6 py-12">
+    <main class="mx-auto w-full max-w-md">
+      <p class="text-sm font-semibold text-blue-text">CZmoneY</p>
+      <h1 class="mt-6 text-3xl font-semibold tracking-tight sm:text-4xl">Track where the money goes.</h1>
+      <p class="mt-4 text-[15px] leading-relaxed text-ink-2">
+        Track expenses, view reports, get insights. Works offline, and your numbers stay in your own account.
+      </p>
 
-        <div class="space-y-3">
-          <a
-            href={resolve("/auth/register")}
-            class="block w-full px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium text-sm sm:text-base"
-          >
-            Get Started
-          </a>
-          <a
-            href={resolve("/auth/login")}
-            class="block w-full px-6 py-3 border border-border rounded-lg hover:bg-accent font-medium text-sm sm:text-base"
-          >
-            Sign In
-          </a>
-        </div>
+      <div class="mt-10 flex flex-col gap-3 sm:flex-row">
+        <a
+          href={resolve("/auth/register")}
+          data-sveltekit-preload-data
+          class="flex min-h-11 flex-1 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 active:scale-[0.98]"
+        >
+          Get started
+        </a>
+        <a
+          href={resolve("/auth/login")}
+          data-sveltekit-preload-data
+          class="flex min-h-11 flex-1 items-center justify-center rounded-lg border border-rule-strong px-5 text-sm hover:bg-accent"
+        >
+          Sign in
+        </a>
       </div>
     </main>
   </div>
@@ -416,7 +417,6 @@
         title="Start Tracking Your Finances"
         description="Add your first transaction to see your spending patterns, charts, and AI-powered insights."
         actionLabel="Add Transaction"
-        icon="💰"
         onAction={() => goto(resolve("/transactions"))}
       />
     {:else if dataLoading}
