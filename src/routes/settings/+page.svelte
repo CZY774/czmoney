@@ -155,175 +155,103 @@
   <title>Settings - CZmoneY</title>
 </svelte:head>
 
-<div class="space-y-4 sm:space-y-6">
-  <h1 class="text-2xl sm:text-3xl font-bold">Settings</h1>
+<div class="max-w-[1040px] space-y-10">
+  <h1 class="text-xl font-semibold tracking-tight">Settings</h1>
 
   {#if loading}
-    <div class="flex items-center justify-center min-h-64">
-      <div class="text-base sm:text-lg">Loading settings...</div>
-    </div>
+    <p class="py-16 text-center text-sm text-ink-2">Loading</p>
   {:else}
-    <!-- Profile Settings -->
-    <div class="bg-card p-4 sm:p-6 rounded-lg border">
-      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Profile</h2>
-      <div class="space-y-3 sm:space-y-4">
-        <div>
-          <label
-            for="full-name"
-            class="block text-xs sm:text-sm font-medium mb-1">Full Name</label
-          >
-          <input
-            id="full-name"
-            type="text"
-            bind:value={profile.full_name}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-            placeholder="Your full name"
-          />
-        </div>
-
-        <div>
-          <label
-            for="monthly-income"
-            class="block text-xs sm:text-sm font-medium mb-1"
-            >Monthly Income (IDR)</label
-          >
-          <input
-            id="monthly-income"
-            type="number"
-            bind:value={profile.monthly_income}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-            placeholder="0"
-            min="0"
-            step="100000"
-            style="color-scheme: dark;"
-          />
-        </div>
-
-        <div>
-          <label
-            for="savings-target"
-            class="block text-xs sm:text-sm font-medium mb-1"
-            >Monthly Savings Target (IDR)</label
-          >
-          <input
-            id="savings-target"
-            type="number"
-            bind:value={profile.savings_target}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-            placeholder="0"
-            min="0"
-            step="50000"
-            style="color-scheme: dark;"
-          />
-        </div>
-
-        <div>
-          <label
-            for="currency"
-            class="block text-xs sm:text-sm font-medium mb-1"
-            >Preferred Currency</label
-          >
-          <select
-            id="currency"
-            bind:value={profile.preferred_currency}
-            class="w-full p-2 text-sm sm:text-base border border-border rounded bg-background"
-          >
-            <option value="IDR">IDR (Indonesian Rupiah)</option>
-            <option value="USD">USD (US Dollar)</option>
-            <option value="EUR">EUR (Euro)</option>
-          </select>
-        </div>
-
-        <button
-          on:click={saveProfile}
-          disabled={saving}
-          class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Save Profile"}
-        </button>
-      </div>
-    </div>
-
-    <!-- Sync Status -->
-    <div class="bg-card p-4 sm:p-6 rounded-lg border">
-      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
-        Offline Sync
-      </h2>
-      <div class="space-y-3 sm:space-y-4">
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <p class="font-medium text-sm sm:text-base">Connection Status</p>
-            <p class="text-xs sm:text-sm text-muted-foreground">
-              {isOffline ? "Offline" : "Online"}
-            </p>
-          </div>
-          <div
-            class="w-3 h-3 rounded-full flex-shrink-0 {isOffline
-              ? 'bg-red-500'
-              : 'bg-green-500'}"
-          ></div>
-        </div>
-
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <p class="font-medium text-sm sm:text-base">Pending Transactions</p>
-            <p class="text-xs sm:text-sm text-muted-foreground">
-              {syncStatus.pending} transactions waiting to sync
-            </p>
-          </div>
-          <span
-            class="px-2 py-1 text-xs sm:text-sm bg-accent rounded flex-shrink-0"
-          >
-            {syncStatus.pending}
-          </span>
-        </div>
-
-        {#if syncStatus.lastSync}
+    <div class="grid gap-10 md:grid-cols-2 md:gap-x-16">
+      <!-- Profile -->
+      <section aria-labelledby="h-profile" class="border-t border-border pt-5">
+        <h2 id="h-profile" class="pb-4 text-[15px] font-semibold">Profile</h2>
+        <form class="grid gap-5" on:submit|preventDefault={saveProfile}>
           <div>
-            <p class="font-medium text-sm sm:text-base">Last Sync</p>
-            <p class="text-xs sm:text-sm text-muted-foreground break-all">
-              {new Date(syncStatus.lastSync).toLocaleString()}
-            </p>
+            <label for="full-name" class="mb-1.5 block text-sm text-ink-2">Full name</label>
+            <input id="full-name" type="text" bind:value={profile.full_name} placeholder="Your full name" class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3" />
           </div>
-        {/if}
 
+          <div>
+            <label for="monthly-income" class="mb-1.5 block text-sm text-ink-2">Monthly income (IDR)</label>
+            <input id="monthly-income" type="number" inputmode="numeric" min="0" step="100000" bind:value={profile.monthly_income} placeholder="0" class="amt h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3" />
+          </div>
+
+          <div>
+            <label for="savings-target" class="mb-1.5 block text-sm text-ink-2">Monthly savings target (IDR)</label>
+            <input id="savings-target" type="number" inputmode="numeric" min="0" step="50000" bind:value={profile.savings_target} placeholder="0" class="amt h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3" />
+          </div>
+
+          <div>
+            <label for="currency" class="mb-1.5 block text-sm text-ink-2">Preferred currency</label>
+            <select id="currency" bind:value={profile.preferred_currency} class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
+              <option value="IDR">IDR, Indonesian rupiah</option>
+              <option value="USD">USD, US dollar</option>
+              <option value="EUR">EUR, euro</option>
+            </select>
+          </div>
+
+          <div>
+            <button type="submit" disabled={saving} class="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-40 active:scale-[0.98]">
+              {saving ? "Saving" : "Save profile"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Sync -->
+      <section aria-labelledby="h-sync" class="border-t border-border pt-5">
+        <h2 id="h-sync" class="pb-4 text-[15px] font-semibold">Offline sync</h2>
+        <dl class="grid gap-4">
+          <div class="flex items-baseline justify-between gap-4">
+            <dt class="text-sm text-ink-2">Connection</dt>
+            <dd class="flex items-center gap-2 text-[15px]">
+              <i class="inline-block size-[9px] {isOffline ? 'bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]' : 'rounded-full bg-blue-text'}"></i>
+              {isOffline ? "Offline" : "Online"}
+            </dd>
+          </div>
+          <div class="flex items-baseline justify-between gap-4">
+            <dt class="text-sm text-ink-2">Waiting to sync</dt>
+            <dd class="amt text-[15px]">{syncStatus.pending}</dd>
+          </div>
+          {#if syncStatus.lastSync}
+            <div class="flex items-baseline justify-between gap-4">
+              <dt class="text-sm text-ink-2">Last sync</dt>
+              <dd class="font-mono text-xs text-ink-3">{new Date(syncStatus.lastSync).toLocaleString()}</dd>
+            </div>
+          {/if}
+        </dl>
+        <p class="mt-4 text-sm text-ink-3">Transactions you add offline are kept on this device until they can be sent.</p>
         <button
+          type="button"
           on:click={manualSync}
           disabled={syncing || isOffline || syncStatus.pending === 0}
-          class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base border border-border rounded hover:bg-accent disabled:opacity-50"
+          class="mt-5 min-h-11 rounded-lg border border-rule-strong px-5 text-sm hover:bg-accent disabled:opacity-40"
         >
-          {syncing ? "Syncing..." : "Sync Now"}
+          {syncing ? "Syncing" : "Sync now"}
         </button>
-      </div>
-    </div>
+      </section>
 
-    <!-- Account Info -->
-    <div class="bg-card p-4 sm:p-6 rounded-lg border">
-      <h2 class="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Account</h2>
-      <div class="space-y-3 sm:space-y-4">
-        <div>
-          <p class="font-medium text-sm sm:text-base">Email</p>
-          <p class="text-xs sm:text-sm text-muted-foreground break-all">
-            {user?.email}
-          </p>
-        </div>
-
-        <div>
-          <p class="font-medium text-sm sm:text-base">User ID</p>
-          <p
-            class="text-xs sm:text-sm text-muted-foreground font-mono break-all"
-          >
-            {user?.id}
-          </p>
-        </div>
-
+      <!-- Account -->
+      <section aria-labelledby="h-account" class="border-t border-border pt-5 md:col-span-2">
+        <h2 id="h-account" class="pb-4 text-[15px] font-semibold">Account</h2>
+        <dl class="grid gap-4 md:grid-cols-2">
+          <div>
+            <dt class="text-sm text-ink-2">Email</dt>
+            <dd class="mt-1 break-all text-[15px]">{user?.email}</dd>
+          </div>
+          <div>
+            <dt class="text-sm text-ink-2">User ID</dt>
+            <dd class="amt mt-1 text-xs break-all text-ink-3">{user?.id}</dd>
+          </div>
+        </dl>
         <button
+          type="button"
           on:click={signOut}
-          class="w-full sm:w-auto px-4 py-2 text-sm sm:text-base text-destructive border border-destructive rounded hover:bg-destructive hover:text-destructive-foreground"
+          class="mt-6 min-h-11 rounded-lg border border-critical px-5 text-sm text-critical hover:bg-critical hover:text-white"
         >
-          Log Out
+          Log out
         </button>
-      </div>
+      </section>
     </div>
   {/if}
 </div>
