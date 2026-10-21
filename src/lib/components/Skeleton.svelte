@@ -7,13 +7,13 @@
 <div class="animate-pulse" aria-hidden="true">
   {#if type === 'card'}
     <div class="space-y-6">
-      {#each Array(count) as _, i (i)}
+      {#each [...Array(count).keys()] as i (i)}
         <div class="h-16 rounded bg-muted"></div>
       {/each}
     </div>
   {:else if type === 'list'}
     <ul>
-      {#each Array(count) as _, i (i)}
+      {#each [...Array(count).keys()] as i (i)}
         <li class="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-t border-border py-4">
           <div class="space-y-2">
             <div class="h-4 w-2/3 rounded bg-muted"></div>
