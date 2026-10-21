@@ -12,7 +12,8 @@ This repository is intentionally documented conservatively. Do not claim financi
 - TypeScript
 - Tailwind CSS 4
 - Supabase Auth and PostgreSQL
-- ApexCharts
+- ApexCharts (Reports only; the dashboard uses plain CSS bars)
+- Self-hosted IBM Plex Sans and IBM Plex Mono (`static/fonts/`, latin subset)
 - Google Gemini API
 - IndexedDB through `idb-keyval`
 - Upstash Redis for optional server-side rate limiting and idempotency cache
@@ -21,7 +22,8 @@ This repository is intentionally documented conservatively. Do not claim financi
 ## Features
 
 - User authentication through Supabase.
-- Dashboard for monthly income, expense, balance, recent transactions, and category charts.
+- Dashboard for the current month: balance, income and expense, the share of income kept, expense so far this year against the same period last year, savings target progress, spending pace against the day of the month, category breakdown, and recent transactions grouped by day. Figures from the last visit show immediately while fresh numbers load.
+- Navigation: bottom tab bar with a centre add button below 768px, an icon rail from 768px, and a labelled sidebar from 1120px.
 - Transaction create, update, delete, filtering, search, and pagination.
 - Budget management by expense category.
 - Smart insights endpoint for budget alerts, spending projection, and savings target checks.
@@ -73,6 +75,10 @@ static/
   robots.txt
   sitemap.xml
 ```
+
+## Database Setup for the Dashboard
+
+The year-to-date expense lines call a Postgres function. Run `scripts/add-expense-totals.sql` once in the Supabase SQL editor. Until it is run, the dashboard hides the year-to-date line and the rest of the page works.
 
 ## Environment Variables
 
