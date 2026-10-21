@@ -20,17 +20,21 @@
     alert_threshold: 80
   };
 
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
-    user = data.session?.user || null;
+  onMount(() => {
+    async function initializeBudgets() {
+      const { data } = await supabase.auth.getSession();
+      user = data.session?.user || null;
 
-    if (!user) {
-      goto(resolve("/auth/login"));
-      return;
+      if (!user) {
+        goto(resolve("/auth/login"));
+        return;
+      }
+
+      await loadData();
+      loading = false;
     }
 
-    await loadData();
-    loading = false;
+    void initializeBudgets();
   });
 
   async function loadData() {
