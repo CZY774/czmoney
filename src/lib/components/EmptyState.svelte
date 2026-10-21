@@ -2,21 +2,17 @@
   export let title: string;
   export let description: string;
   export let actionLabel: string;
-  export let icon = "📊";
   export let onAction: () => void;
 </script>
 
-<div class="flex flex-col items-center justify-center py-12 px-4 text-center">
-  <div class="text-6xl sm:text-7xl mb-4">{icon}</div>
-  <h3 class="text-lg sm:text-xl font-semibold mb-2">{title}</h3>
-  <p class="text-sm sm:text-base text-muted-foreground mb-6 max-w-md">
-    {description}
-  </p>
+<section class="border-t border-border py-12">
+  <h2 class="text-xl font-semibold tracking-tight">{title}</h2>
+  <p class="mt-2 max-w-md text-[15px] leading-relaxed text-ink-2">{description}</p>
   <button
     type="button"
     on:click={onAction}
-    class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm sm:text-base"
+    class="mt-6 min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 active:scale-[0.98]"
   >
     {actionLabel}
   </button>
-</div>
+</section>
