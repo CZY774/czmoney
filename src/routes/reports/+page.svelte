@@ -37,8 +37,10 @@
   let trendAbortController: AbortController | null = null;
 
   onMount(() => {
+    let disposed = false;
     async function initializeReports() {
       const { data } = await supabase.auth.getSession();
+      if (disposed) return;
       user = data.session?.user || null;
 
       if (!user) {
@@ -53,6 +55,7 @@
 
       // Load main data first (fast)
       await Promise.all([loadMonthlyData(), fetchCategoryTrends()]);
+      if (disposed) return;
 
       // Load AI summary in background (slow, don't block UI)
       loadAISummary();
@@ -70,6 +73,7 @@
     void initializeReports();
 
     return () => {
+      disposed = true;
       window.removeEventListener("transactionUpdated", loadMonthlyData);
       trendAbortController?.abort();
       if (unsubscribe) unsubscribe();
