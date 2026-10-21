@@ -24,7 +24,6 @@
   let loading = true;
   let syncStatus = { pending: 0, lastSync: null };
   let isOffline = false;
-  let mobileMenuOpen = false;
   let showWelcomeModal = false;
   let syncStatusInterval: ReturnType<typeof setInterval> | null = null;
   let appVersionInterval: ReturnType<typeof setInterval> | null = null;
@@ -188,206 +187,145 @@
   function isActive(path: string) {
     return $page.url.pathname === path;
   }
+
+  $: syncState = isOffline
+    ? "offline"
+    : syncStatus.pending > 0
+      ? "syncing"
+      : "synced";
+  $: syncLabel = { offline: "Offline", syncing: "Syncing", synced: "Synced" }[
+    syncState
+  ];
+  $: syncShape =
+    syncState === "offline"
+      ? "bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]"
+      : syncState === "syncing"
+        ? "rounded-full border-[1.5px] border-ink-3"
+        : "rounded-full bg-ink-3";
 </script>
 
 <div class="min-h-screen bg-background text-foreground">
   {#if loading}
     <div class="min-h-screen flex items-center justify-center">
-      <div class="text-muted-foreground">Loading...</div>
+      <div class="text-muted-foreground text-sm">Loading</div>
     </div>
   {:else if user}
-    <nav class="border-b border-border bg-card/50 backdrop-blur">
-      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-14 sm:h-16">
-          <span class="font-semibold text-base sm:text-lg">CZmoneY</span>
+    <svg class="absolute h-0 w-0 overflow-hidden" aria-hidden="true" focusable="false">
+      <symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h.01M3 12h.01M3 18h.01M8 6h13M8 12h13M8 18h13"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+      <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    </svg>
 
-          <!-- Desktop Menu -->
-          <div class="hidden md:flex items-center space-x-8">
-            <a
-              href={resolve("/")}
-              class="text-sm font-medium transition-colors {isActive('/')
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'}"
-            >
-              Dashboard
-            </a>
-            <a
-              href={resolve("/transactions")}
-              data-sveltekit-preload-data
-              class="text-sm font-medium transition-colors {isActive(
-                '/transactions',
-              )
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'}"
-            >
-              Transactions
-            </a>
-            <a
-              href={resolve("/budgets")}
-              data-sveltekit-preload-data
-              class="text-sm font-medium transition-colors {isActive('/budgets')
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'}"
-            >
-              Budgets
-            </a>
-            <a
-              href={resolve("/reports")}
-              data-sveltekit-preload-data
-              class="text-sm font-medium transition-colors {isActive('/reports')
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'}"
-            >
-              Reports
-            </a>
-            <a
-              href={resolve("/settings")}
-              data-sveltekit-preload-data
-              class="text-sm font-medium transition-colors {isActive(
-                '/settings',
-              )
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'}"
-            >
-              Settings
-            </a>
+    <div class="min-h-screen md:grid md:grid-cols-[92px_minmax(0,1fr)] min-[1120px]:grid-cols-[232px_minmax(0,1fr)]">
+      <!-- Mobile header: brand, sync state, settings. Navigation sits at the bottom. -->
+      <header class="flex items-center justify-between px-4 pt-4 md:hidden">
+        <span class="text-base font-semibold tracking-tight">CZmoneY</span>
+        <div class="flex items-center gap-2">
+          <span class="flex items-center gap-2 text-xs text-ink-3">
+            <i class="inline-block size-[9px] {syncShape}"></i>{syncLabel}
+          </span>
+          <a
+            href={resolve("/settings")}
+            aria-label="Settings"
+            class="-mr-3 grid size-11 place-items-center rounded-lg text-ink-2 hover:text-foreground"
+          >
+            <svg class="size-5" aria-hidden="true"><use href="#i-sliders" /></svg>
+          </a>
+        </div>
+      </header>
 
-            <div class="flex items-center space-x-3">
-              {#if syncStatus.pending > 0}
-                <div
-                  class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"
-                  title="Syncing..."
-                ></div>
-              {:else if isOffline}
-                <div
-                  class="w-2 h-2 bg-red-500 rounded-full"
-                  title="Offline"
-                ></div>
-              {:else}
-                <div
-                  class="w-2 h-2 bg-green-500 rounded-full"
-                  title="Online"
-                ></div>
-              {/if}
+      <nav
+        aria-label="Primary"
+        class="fixed inset-x-0 bottom-0 z-50 flex items-stretch gap-1 border-t border-border bg-background px-2 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] md:sticky md:top-0 md:col-start-1 md:row-start-1 md:h-dvh md:flex-col md:self-start md:border-t-0 md:border-r md:px-1.5 md:py-5 min-[1120px]:px-4 min-[1120px]:py-6"
+      >
+        <a
+          href={resolve("/")}
+          class="hidden items-center justify-center md:order-first md:flex md:h-8 min-[1120px]:justify-start min-[1120px]:gap-2.5 min-[1120px]:px-3"
+          aria-label="CZmoneY"
+        >
+          <span class="font-mono text-sm font-medium tracking-wide text-blue-text min-[1120px]:hidden">CZ</span>
+          <span class="hidden text-[17px] font-semibold tracking-tight min-[1120px]:inline">CZmoneY</span>
+        </a>
 
-              <button
-                on:click={signOut}
-                class="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
+        <a
+          href={resolve("/")}
+          data-sveltekit-preload-data
+          aria-current={isActive("/") ? "page" : undefined}
+          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+        >
+          <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-dash" /></svg>
+          <span>Dashboard</span>
+        </a>
+        <a
+          href={resolve("/transactions")}
+          data-sveltekit-preload-data
+          aria-current={isActive("/transactions") ? "page" : undefined}
+          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/transactions') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+        >
+          <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-list" /></svg>
+          <span>Transactions</span>
+        </a>
 
-          <!-- Mobile Menu Button -->
+        <a
+          href={resolve("/transactions")}
+          aria-label="Add transaction"
+          class="flex h-11 w-14 flex-none items-center justify-center self-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/85 active:scale-95 md:order-first md:mx-2 md:my-4 md:h-12 md:w-auto md:self-stretch min-[1120px]:mx-0 min-[1120px]:mb-4 min-[1120px]:mt-5 min-[1120px]:gap-2 min-[1120px]:text-sm min-[1120px]:font-semibold"
+        >
+          <svg class="size-5.5" aria-hidden="true"><use href="#i-plus" /></svg>
+          <span class="hidden min-[1120px]:inline">Add transaction</span>
+        </a>
+
+        <a
+          href={resolve("/budgets")}
+          data-sveltekit-preload-data
+          aria-current={isActive("/budgets") ? "page" : undefined}
+          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/budgets') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+        >
+          <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-target" /></svg>
+          <span>Budgets</span>
+        </a>
+        <a
+          href={resolve("/reports")}
+          data-sveltekit-preload-data
+          aria-current={isActive("/reports") ? "page" : undefined}
+          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/reports') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+        >
+          <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-chart" /></svg>
+          <span>Reports</span>
+        </a>
+
+        <div class="hidden md:mt-auto md:flex md:flex-col md:gap-1">
+          <span class="hidden items-center gap-2 px-3 pb-2 text-xs text-ink-3 md:flex">
+            <i class="inline-block size-[9px] {syncShape}"></i>{syncLabel}
+          </span>
+          <a
+            href={resolve("/settings")}
+            data-sveltekit-preload-data
+            aria-current={isActive("/settings") ? "page" : undefined}
+            class="flex min-h-10 items-center justify-start gap-3 rounded-lg px-3 text-sm text-ink-3 hover:text-foreground {isActive('/settings') ? 'text-foreground' : ''}"
+          >
+            <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-sliders" /></svg>
+            <span class="hidden min-[1120px]:inline">Settings</span>
+          </a>
           <button
             type="button"
-            class="md:hidden p-1.5 rounded-md hover:bg-accent"
-            aria-label="Toggle mobile menu"
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-menu"
-            on:click={() => (mobileMenuOpen = !mobileMenuOpen)}
+            on:click={signOut}
+            class="flex min-h-10 items-center justify-start gap-3 rounded-lg px-3 text-sm text-ink-3 hover:text-foreground"
           >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              role="img"
-              aria-hidden="true"
-            >
-              <title>Menu</title>
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-out" /></svg>
+            <span class="hidden min-[1120px]:inline">Sign out</span>
           </button>
         </div>
+      </nav>
 
-        <!-- Mobile Menu -->
-        {#if mobileMenuOpen}
-          <div id="mobile-menu" class="md:hidden py-3 border-t border-border">
-            <div class="flex flex-col space-y-2">
-              <a
-                href={resolve("/")}
-                on:click={() => (mobileMenuOpen = false)}
-                class="py-2 text-sm font-medium {isActive('/')
-                  ? 'text-primary'
-                  : 'text-muted-foreground'}"
-              >
-                Dashboard
-              </a>
-              <a
-                href={resolve("/transactions")}
-                data-sveltekit-preload-data
-                on:click={() => (mobileMenuOpen = false)}
-                class="py-2 text-sm font-medium {isActive('/transactions')
-                  ? 'text-primary'
-                  : 'text-muted-foreground'}"
-              >
-                Transactions
-              </a>
-              <a
-                href={resolve("/budgets")}
-                data-sveltekit-preload-data
-                on:click={() => (mobileMenuOpen = false)}
-                class="py-2 text-sm font-medium {isActive('/budgets')
-                  ? 'text-primary'
-                  : 'text-muted-foreground'}"
-              >
-                Budgets
-              </a>
-              <a
-                href={resolve("/reports")}
-                data-sveltekit-preload-data
-                on:click={() => (mobileMenuOpen = false)}
-                class="py-2 text-sm font-medium {isActive('/reports')
-                  ? 'text-primary'
-                  : 'text-muted-foreground'}"
-              >
-                Reports
-              </a>
-              <a
-                href={resolve("/settings")}
-                data-sveltekit-preload-data
-                on:click={() => (mobileMenuOpen = false)}
-                class="py-2 text-sm font-medium {isActive('/settings')
-                  ? 'text-primary'
-                  : 'text-muted-foreground'}"
-              >
-                Settings
-              </a>
-              <div
-                class="flex items-center justify-between py-2 border-t border-border mt-2 pt-3"
-              >
-                <button
-                  on:click={signOut}
-                  class="text-sm font-medium text-muted-foreground"
-                >
-                  Sign Out
-                </button>
-                {#if syncStatus.pending > 0}
-                  <div
-                    class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"
-                  ></div>
-                {:else if isOffline}
-                  <div class="w-2 h-2 bg-red-500 rounded-full"></div>
-                {:else}
-                  <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                {/if}
-              </div>
-            </div>
-          </div>
-        {/if}
-      </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-      <slot />
-    </main>
+      <main class="min-w-0 px-4 pt-4 pb-28 sm:px-6 md:col-start-2 md:row-start-1 md:px-8 md:pt-8 md:pb-14 min-[1120px]:px-12 min-[1120px]:pt-10">
+        <slot />
+      </main>
+    </div>
 
     <WelcomeModal
       bind:open={showWelcomeModal}
