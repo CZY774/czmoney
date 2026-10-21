@@ -44,13 +44,16 @@
   }
 
   onMount(() => {
+    let disposed = false;
     async function initializeForm() {
       const { data } = await supabase.auth.getSession();
+      if (disposed) return;
       user = data.session?.user || null;
 
       if (user) {
         await loadCategories();
       }
+      if (disposed) return;
 
       // Monitor online status
       isOffline = !navigator.onLine;
@@ -61,6 +64,7 @@
     void initializeForm();
 
     return () => {
+      disposed = true;
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
