@@ -30,77 +30,38 @@
   }
 </script>
 
-<div class="min-h-screen flex items-center justify-center px-4 bg-background">
-  <div class="max-w-md w-full">
-    <div class="bg-card rounded-lg shadow-xl p-8 border border-border">
-      {#if emailSent}
-        <div class="text-center">
-          <div class="mb-4">
-            <svg
-              class="w-16 h-16 mx-auto text-primary"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
-          <h2 class="text-2xl font-bold mb-2">Check Your Email</h2>
-          <p class="text-muted-foreground mb-4">
-            We've sent a password reset link to <strong class="text-foreground">{email}</strong>
-          </p>
-          <p class="text-sm text-muted-foreground mb-6">
-            Click the link in the email to reset your password. The link expires in 1 hour.
-          </p>
-          <a
-            href={resolve("/auth/login")}
-            class="inline-block w-full py-2.5 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
-          >
-            Back to Login
-          </a>
+<svelte:head>
+  <title>Reset password - CZmoneY</title>
+</svelte:head>
+
+<div class="flex min-h-screen items-center justify-center px-6 py-12">
+  <div class="w-full max-w-sm">
+    {#if emailSent}
+      <p class="text-sm font-semibold text-blue-text">CZmoneY</p>
+      <h1 class="mt-6 text-2xl font-semibold tracking-tight">Check your email</h1>
+      <p class="mt-3 text-[15px] text-ink-2">
+        A reset link is on its way to <span class="text-foreground">{email}</span>.
+      </p>
+      <p class="mt-2 text-sm text-ink-3">The link expires in one hour.</p>
+      <a href={resolve("/auth/login")} class="mt-8 inline-flex min-h-11 w-full rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-40 active:scale-[0.98] items-center justify-center">Back to sign in</a>
+    {:else}
+      <p class="text-sm font-semibold text-blue-text">CZmoneY</p>
+      <h1 class="mt-6 text-2xl font-semibold tracking-tight">Forgot your password?</h1>
+      <p class="mt-2 text-[15px] text-ink-2">Enter your email and we'll send a link to reset it.</p>
+
+      <form on:submit|preventDefault={handleSubmit} class="mt-8 grid gap-5">
+        <div>
+          <label for="email" class="mb-1.5 block text-sm text-ink-2">Email</label>
+          <input id="email" type="email" bind:value={email} placeholder="you@example.com" required disabled={loading} class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3" />
         </div>
-      {:else}
-        <div class="text-center mb-8">
-          <h2 class="text-2xl font-bold mb-2">Forgot Password?</h2>
-          <p class="text-muted-foreground">
-            Enter your email to receive a password reset link.
-          </p>
-        </div>
+        <button type="submit" disabled={loading} class="min-h-11 w-full rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-40 active:scale-[0.98]">
+          {loading ? "Sending" : "Send reset link"}
+        </button>
+      </form>
 
-        <form on:submit|preventDefault={handleSubmit} class="space-y-4">
-          <div>
-            <label for="email" class="block text-sm font-medium mb-2">Email Address</label>
-            <input
-              id="email"
-              type="email"
-              bind:value={email}
-              placeholder="your@email.com"
-              required
-              disabled={loading}
-              class="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            class="w-full py-2.5 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-          >
-            {loading ? "Sending..." : "Send Reset Link"}
-          </button>
-
-          <div class="text-center">
-            <a href={resolve("/auth/login")} class="text-sm text-primary hover:underline">
-              Back to Login
-            </a>
-          </div>
-        </form>
-      {/if}
-    </div>
+      <p class="mt-8 text-sm">
+        <a href={resolve("/auth/login")} class="text-blue-text hover:underline">Back to sign in</a>
+      </p>
+    {/if}
   </div>
 </div>
