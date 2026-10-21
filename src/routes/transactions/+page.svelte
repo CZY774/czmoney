@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
   import { realtimeManager } from "$lib/services/realtimeManager";
   import { goto } from "$app/navigation";
@@ -48,35 +48,43 @@
 
   const debouncedLoadTransactions = debounce(loadTransactions, 300);
 
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
-    user = data.session?.user || null;
+  onMount(() => {
+    let disposed = false;
+    async function initializeTransactions() {
+      const { data } = await supabase.auth.getSession();
+      // Unmounted while waiting: attach nothing, or the subscription would never be released.
+      if (disposed) return;
+      user = data.session?.user || null;
 
-    if (!user) {
-      goto(resolve("/auth/login"));
-      return;
+      if (!user) {
+        goto(resolve("/auth/login"));
+        return;
+      }
+
+      loadCategories();
+      loadTransactions();
+
+      unsubscribe = realtimeManager.subscribe(
+        "transactions-list",
+        "transactions",
+        user.id,
+        () => {
+          // Debounce realtime updates to prevent race with optimistic updates
+          setTimeout(() => {
+            if (pendingOperations.size === 0) {
+              loadTransactions();
+            }
+          }, 300);
+        },
+      );
     }
 
-    loadCategories();
-    loadTransactions();
+    void initializeTransactions();
 
-    unsubscribe = realtimeManager.subscribe(
-      "transactions-list",
-      "transactions",
-      user.id,
-      () => {
-        // Debounce realtime updates to prevent race with optimistic updates
-        setTimeout(() => {
-          if (pendingOperations.size === 0) {
-            loadTransactions();
-          }
-        }, 300);
-      },
-    );
-  });
-
-  onDestroy(() => {
-    if (unsubscribe) unsubscribe();
+    return () => {
+      disposed = true;
+      if (unsubscribe) unsubscribe();
+    };
   });
 
   async function loadCategories() {
