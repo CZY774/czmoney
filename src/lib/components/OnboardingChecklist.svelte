@@ -19,61 +19,44 @@
 </script>
 
 {#if !allCompleted}
-  <div class="bg-card border border-border rounded-lg p-4 sm:p-6">
-    <div class="flex items-start justify-between mb-4">
-      <div>
-        <h3 class="text-base sm:text-lg font-semibold mb-1">Get Started</h3>
-        <p class="text-xs sm:text-sm text-muted-foreground">
-          {completedCount} of {tasks.length} completed
-        </p>
-      </div>
-      <button
-        type="button"
-        on:click={dismiss}
-        class="text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Dismiss"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
-    </div>
-
-    <div class="w-full bg-muted rounded-full h-2 mb-4">
-      <div
-        class="bg-primary h-2 rounded-full transition-all duration-300"
-        style="width: {progress}%"
-      ></div>
-    </div>
-
-    <div class="space-y-2">
-      {#each tasks as task (task.id)}
+  <section aria-labelledby="h-start" class="border-t border-border pt-5">
+    <div class="flex items-baseline justify-between gap-4 pb-3">
+      <h2 id="h-start" class="text-[15px] font-semibold">Get started</h2>
+      <div class="flex items-baseline gap-4">
+        <p class="font-mono text-xs text-ink-3">{completedCount} of {tasks.length}</p>
         <button
           type="button"
-          on:click={() => toggleTask(task.id)}
-          class="w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors text-left"
+          on:click={dismiss}
+          class="min-h-8 text-xs text-ink-3 underline-offset-4 hover:text-foreground hover:underline"
         >
-          <div
-            class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 {task.completed
-              ? 'bg-primary border-primary'
-              : 'border-muted-foreground'}"
-          >
-            {#if task.completed}
-              <svg class="w-3 h-3 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-              </svg>
-            {/if}
-          </div>
-          <span class="text-sm {task.completed ? 'line-through text-muted-foreground' : ''}">
-            {task.label}
-          </span>
+          Hide
         </button>
-      {/each}
+      </div>
     </div>
-  </div>
+
+    <div class="mb-3 h-1 rounded-sm bg-blue-track" role="img" aria-label="{Math.round(progress)} percent complete">
+      <div class="h-full rounded-sm bg-primary transition-[width] duration-300" style="width: {progress}%"></div>
+    </div>
+
+    <ul>
+      {#each tasks as task (task.id)}
+        <li>
+          <button
+            type="button"
+            on:click={() => toggleTask(task.id)}
+            class="flex min-h-11 w-full items-center gap-3 text-left text-sm hover:text-foreground {task.completed ? 'text-ink-3' : 'text-ink-2'}"
+          >
+            <span class="grid size-4 flex-none place-items-center rounded-full border {task.completed ? 'border-primary bg-primary' : 'border-rule-strong'}" aria-hidden="true">
+              {#if task.completed}
+                <svg class="size-2.5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                </svg>
+              {/if}
+            </span>
+            <span class={task.completed ? "line-through" : ""}>{task.label}</span>
+          </button>
+        </li>
+      {/each}
+    </ul>
+  </section>
 {/if}
