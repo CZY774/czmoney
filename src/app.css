@@ -42,6 +42,11 @@
 /* Palette: black paper, one blue (Cobalt). Warm colors are status only.
    Token names are kept from the old theme so pages not yet ported still render. */
 @theme {
+  /* Labelled sidebar and two-column dashboard. Must be in rem like the default
+     breakpoints: a px arbitrary variant (min-[1120px]:) is emitted before md:
+     in the built CSS, so md: utilities override it. */
+  --breakpoint-wide: 70rem;
+
   --color-border: #2a2d34;
   --color-input: #2a2d34;
   --color-ring: #7c9cff;
