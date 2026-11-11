@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { supabase } from "$lib/services/supabase";
+  import { localDateString } from "$lib/utils/localDate";
+  import { readPageCache, writePageCache } from "$lib/stores/pageCache";
 
   interface Insight {
     type: string;
@@ -30,7 +32,14 @@
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
 
-      const response = await fetch("/api/insights", {
+      const cacheKey = `insights:${session.session?.user.id}:${localDateString()}`;
+      const cached = readPageCache<Insight[]>(cacheKey);
+      if (cached) {
+        insights = [...cached];
+        loading = false;
+      }
+
+      const response = await fetch(`/api/insights?today=${localDateString()}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -39,6 +48,7 @@
       if (response.ok) {
         const result = await response.json();
         insights = result.insights || [];
+        writePageCache(cacheKey, [...insights]);
       }
     } catch (error) {
       console.error("Failed to load insights:", error);
