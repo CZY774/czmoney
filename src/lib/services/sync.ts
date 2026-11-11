@@ -10,10 +10,22 @@ interface PendingTransaction {
   action: "create" | "update" | "delete";
   timestamp: number;
   retryCount?: number;
+  lastError?: string;
 }
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 1000; // Start with 1s, exponential backoff
+export interface PendingItem {
+  id: string;
+  action: "create" | "update" | "delete";
+  data: Record<string, unknown>;
+  retryCount: number;
+  lastError?: string;
+  timestamp: number;
+}
+
+export interface SyncResult {
+  synced: number;
+  failed: number;
+}
 
 // Queue transaction for offline sync
 export async function queueTransaction(
@@ -33,126 +45,177 @@ export async function queueTransaction(
   };
 
   await set(id, pending);
+  notifyQueueChanged();
   return id;
 }
 
-// Exponential backoff delay
-function getRetryDelay(retryCount: number): number {
-  return RETRY_DELAY_MS * Math.pow(2, retryCount);
+function notifyQueueChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("syncStatusChanged"));
+  }
 }
 
-// Process all pending transactions with retry logic
-export async function syncPendingTransactions() {
+function isPendingKey(key: IDBValidKey): boolean {
+  return key.toString().startsWith("pending_");
+}
+
+// Items are never removed here. A failed item keeps its place in the queue
+// and is retried on the next run. If the item was discarded while the request
+// was in flight, it is not written back.
+async function recordFailure(
+  key: string,
+  pending: PendingTransaction,
+  lastError: string,
+) {
+  if ((await get(key)) === undefined) return;
+  pending.retryCount = (pending.retryCount || 0) + 1;
+  pending.lastError = lastError;
+  await set(key, pending);
+}
+
+async function sendPending(
+  pending: PendingTransaction,
+  token: string,
+): Promise<Response> {
+  switch (pending.action) {
+    case "create":
+      return fetch("/api/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "Idempotency-Key": pending.idempotencyKey,
+        },
+        body: JSON.stringify(pending.data),
+      });
+    case "update":
+      return fetch("/api/transactions", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "Idempotency-Key": pending.idempotencyKey,
+        },
+        body: JSON.stringify(pending.data),
+      });
+    case "delete":
+      return fetch("/api/transactions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: pending.data.id }),
+      });
+  }
+}
+
+// Sends one queued item. Returns true when it was accepted and removed.
+async function syncOne(key: string): Promise<boolean> {
+  let pending: PendingTransaction | undefined;
+  try {
+    pending = await get<PendingTransaction>(key);
+    if (!pending) return false;
+
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
+    if (!token) {
+      await recordFailure(key, pending, "Not signed in");
+      return false;
+    }
+
+    const response = await sendPending(pending, token);
+    if (response.ok) {
+      await del(key);
+      return true;
+    }
+
+    await recordFailure(key, pending, `HTTP ${response.status}`);
+    return false;
+  } catch (error) {
+    logError(error, "Sync Transaction");
+    if (pending) {
+      const message = error instanceof Error ? error.message : String(error);
+      await recordFailure(key, pending, message).catch(() => undefined);
+    }
+    return false;
+  }
+}
+
+let inFlight: Promise<SyncResult> | null = null;
+
+async function runSync(): Promise<SyncResult> {
   if (!navigator.onLine) return { synced: 0, failed: 0 };
 
-  const pendingKeys = await keys();
-  const pendingIds = pendingKeys.filter((key) =>
-    key.toString().startsWith("pending_"),
-  );
+  const pendingKeys = (await keys()).filter(isPendingKey).map(String);
 
   let synced = 0;
   let failed = 0;
-
-  for (const key of pendingIds) {
-    try {
-      const pending: PendingTransaction | undefined = await get(key);
-      if (!pending) continue;
-
-      // Check if max retries exceeded
-      if ((pending.retryCount || 0) >= MAX_RETRIES) {
-        logError(
-          new Error(`Max retries exceeded for ${pending.action}`),
-          "Sync",
-        );
-        await del(key); // Remove from queue
-        failed++;
-        continue;
-      }
-
-      // Get auth token
-      const { data: session } = await supabase.auth.getSession();
-      const token = session.session?.access_token;
-
-      if (!token) {
-        failed++;
-        continue;
-      }
-
-      let success = false;
-
-      switch (pending.action) {
-        case "create": {
-          const response = await fetch("/api/transactions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-              "Idempotency-Key": pending.idempotencyKey,
-            },
-            body: JSON.stringify(pending.data),
-          });
-          success = response.ok;
-          break;
-        }
-
-        case "update": {
-          const response = await fetch("/api/transactions", {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-              "Idempotency-Key": pending.idempotencyKey,
-            },
-            body: JSON.stringify(pending.data),
-          });
-          success = response.ok;
-          break;
-        }
-
-        case "delete": {
-          const response = await fetch("/api/transactions", {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ id: pending.data.id }),
-          });
-          success = response.ok;
-          break;
-        }
-      }
-
-      if (success) {
-        await del(key);
-        synced++;
-      } else {
-        // Increment retry count and save back
-        pending.retryCount = (pending.retryCount || 0) + 1;
-        await set(key, pending);
-
-        // Wait before next retry (exponential backoff)
-        await new Promise((resolve) =>
-          setTimeout(resolve, getRetryDelay(pending.retryCount!)),
-        );
-
-        failed++;
-      }
-    } catch (error) {
-      logError(error, "Sync Transaction");
-      failed++;
-    }
+  for (const key of pendingKeys) {
+    if (await syncOne(key)) synced++;
+    else failed++;
   }
 
+  notifyQueueChanged();
   return { synced, failed };
+}
+
+// Process all pending transactions. A run that is already in progress is
+// shared rather than started again.
+export function syncPendingTransactions(): Promise<SyncResult> {
+  if (!inFlight) {
+    inFlight = runSync().finally(() => {
+      inFlight = null;
+    });
+  }
+  return inFlight;
+}
+
+// All queued items, oldest first
+export async function listPendingTransactions(): Promise<PendingItem[]> {
+  const pendingKeys = (await keys()).filter(isPendingKey).map(String);
+  const entries = await Promise.all(
+    pendingKeys.map((key) => get<PendingTransaction>(key)),
+  );
+
+  return entries
+    .filter((p): p is PendingTransaction => !!p)
+    .map((p) => ({
+      id: p.id,
+      action: p.action,
+      data: p.data,
+      retryCount: p.retryCount || 0,
+      lastError: p.lastError,
+      timestamp: p.timestamp,
+    }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+// Sends one queued item again. Returns false when offline or when it fails.
+// Waits for a run in progress first, so the same item is never sent twice.
+export async function retryPendingTransaction(id: string): Promise<boolean> {
+  if (!navigator.onLine) return false;
+  if (inFlight) await inFlight;
+  if ((await get(id)) === undefined) {
+    // The run that just finished already sent it
+    notifyQueueChanged();
+    return true;
+  }
+  const ok = await syncOne(id);
+  notifyQueueChanged();
+  return ok;
+}
+
+// Removes one queued item without sending it
+export async function discardPendingTransaction(id: string) {
+  await del(id);
+  notifyQueueChanged();
 }
 
 // Get sync status
 export async function getSyncStatus() {
   const pendingKeys = await keys();
-  const pendingCount = pendingKeys.filter((key) =>
-    key.toString().startsWith("pending_"),
-  ).length;
+  const pendingCount = pendingKeys.filter(isPendingKey).length;
 
   return {
     pending: pendingCount,
@@ -175,15 +238,4 @@ export async function clearTransactionCache() {
   await del("cached_transactions");
   await del("cached_dashboard");
   window.dispatchEvent(new CustomEvent("transactionUpdated"));
-}
-
-// Auto-sync when online
-if (typeof window !== "undefined") {
-  window.addEventListener("online", () => {
-    syncPendingTransactions().then(() => {
-      set("lastSync", Date.now());
-      // Clear cache to force fresh data fetch
-      clearTransactionCache();
-    });
-  });
 }
