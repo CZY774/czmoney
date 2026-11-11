@@ -1,19 +1,30 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { CHART_OTHER_COLOR } from "$lib/config/chartPalette";
 
   export let data: {
     months: string[];
     categories: Array<{
       name: string;
-      color: string;
       amounts: number[];
     }>;
   };
+  // Series name -> hex, built once by the Reports page for both charts
+  export let colors: Map<string, string> = new Map();
 
   let chartContainer: HTMLElement;
+  let chart: ApexCharts | null = null;
+
+  function buildSeries(d: typeof data, c: Map<string, string>) {
+    return d.categories.map((cat) => ({
+      name: cat.name,
+      data: cat.amounts,
+      color: c.get(cat.name) ?? CHART_OTHER_COLOR,
+    }));
+  }
 
   onMount(() => {
-    let chart: ApexCharts | null = null;
+    let destroyed = false;
 
     (async () => {
       const ApexCharts = (await import("apexcharts")).default;
@@ -37,11 +48,7 @@
         },
       },
       dataLabels: { enabled: false },
-      series: data.categories.map((cat) => ({
-        name: cat.name,
-        data: cat.amounts,
-        color: cat.color,
-      })),
+      series: buildSeries(data, colors),
       xaxis: {
         categories: data.months,
         labels: {
@@ -88,14 +95,28 @@
       },
     };
 
-      chart = new ApexCharts(chartContainer, options);
-      chart.render();
+      const instance = new ApexCharts(chartContainer, options);
+      await instance.render();
+      if (destroyed) {
+        instance.destroy();
+        return;
+      }
+      chart = instance;
     })();
 
     return () => {
+      destroyed = true;
       if (chart) chart.destroy();
     };
   });
+
+  // Period toggles and background refreshes pass new data to the same chart
+  $: if (chart) {
+    chart.updateOptions({
+      series: buildSeries(data, colors),
+      xaxis: { categories: data.months },
+    });
+  }
 </script>
 
 <div bind:this={chartContainer} class="chart-container"></div>
