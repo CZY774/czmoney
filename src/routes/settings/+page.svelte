@@ -3,7 +3,15 @@
   import { supabase } from "$lib/services/supabase";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import { syncPendingTransactions, getSyncStatus } from "$lib/services/sync";
+  import {
+    syncPendingTransactions,
+    getSyncStatus,
+    listPendingTransactions,
+    retryPendingTransaction,
+    discardPendingTransaction,
+    clearTransactionCache,
+    type PendingItem,
+  } from "$lib/services/sync";
   import { toast } from "$lib/stores/toast";
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
   import { localDateString } from "$lib/utils/localDate";
@@ -29,6 +37,12 @@
   let showDeleteSnapshotConfirm = false;
   let snapshotToDelete: string | null = null;
 
+  // Offline queue: items waiting to reach the server
+  let pendingItems: PendingItem[] = [];
+  let retryingId: string | null = null;
+  let showDiscardConfirm = false;
+  let discardId: string | null = null;
+
   // The profile form as last filled from the cache. The background refresh only
   // replaces the form while it still equals this, so typing is never overwritten.
   let profileFromCache: string | null = null;
@@ -40,6 +54,10 @@
 
   function handleOnline() {
     isOffline = false;
+    loadSyncStatus();
+  }
+
+  function handleSyncStatusChanged() {
     loadSyncStatus();
   }
 
@@ -77,12 +95,14 @@
       window.addEventListener("offline", handleOffline);
     }
 
+    window.addEventListener("syncStatusChanged", handleSyncStatusChanged);
     void initializeSettings();
 
     return () => {
       disposed = true;
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("syncStatusChanged", handleSyncStatusChanged);
     };
   });
 
@@ -111,6 +131,49 @@
 
   async function loadSyncStatus() {
     syncStatus = await getSyncStatus();
+    pendingItems = await listPendingTransactions();
+  }
+
+  async function retryItem(id: string) {
+    retryingId = id;
+    try {
+      const ok = await retryPendingTransaction(id);
+      if (ok) {
+        toast.success("Transaction synced");
+        await clearTransactionCache();
+      } else {
+        toast.error("Still could not sync this transaction");
+      }
+    } catch {
+      toast.error("Still could not sync this transaction");
+    } finally {
+      retryingId = null;
+    }
+    await loadSyncStatus();
+  }
+
+  function askDiscard(id: string) {
+    discardId = id;
+    showDiscardConfirm = true;
+  }
+
+  async function confirmDiscard() {
+    if (!discardId) return;
+    const id = discardId;
+    discardId = null;
+    await discardPendingTransaction(id);
+    await loadSyncStatus();
+  }
+
+  function pendingLabel(item: PendingItem): string {
+    const description = String(item.data.description ?? "");
+    return item.action === "update" ? `Edit: ${description}` : description;
+  }
+
+  function failureText(item: PendingItem): string {
+    const times = item.retryCount === 1 ? "time" : "times";
+    const reason = item.lastError ? ` (${item.lastError})` : "";
+    return `Failed ${item.retryCount} ${times}${reason}`;
   }
 
   async function saveProfile() {
@@ -272,7 +335,16 @@
 </svelte:head>
 
 <div class="mx-auto max-w-[1040px] space-y-10">
-  <h1 class="text-xl font-semibold tracking-tight">Settings</h1>
+  <header class="flex items-center justify-between gap-4">
+    <h1 class="text-xl font-semibold tracking-tight">Settings</h1>
+    <button
+      type="button"
+      on:click={signOut}
+      class="flex-none min-h-11 rounded-lg border border-critical px-5 text-sm text-critical hover:bg-critical hover:text-white"
+    >
+      Log out
+    </button>
+  </header>
 
   {#if loading}
     <p class="py-16 text-center text-sm text-ink-2">Loading</p>
@@ -336,6 +408,49 @@
             </div>
           {/if}
         </dl>
+
+        {#if pendingItems.length > 0}
+          <ul class="mt-4">
+            {#each pendingItems as item (item.id)}
+              {@const isDelete = item.action === "delete"}
+              <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border py-3">
+                <div class="min-w-0">
+                  <div class="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    {#if isDelete}
+                      <span class="text-[15px]">Delete a transaction</span>
+                    {:else}
+                      <span class="text-[15px] whitespace-nowrap">{formatSnapshotDate(String(item.data.txn_date))}</span>
+                      <span class="amt text-[15px] whitespace-nowrap">{formatCurrency(Number(item.data.amount))}</span>
+                    {/if}
+                  </div>
+                  {#if !isDelete}
+                    <p class="mt-0.5 text-sm break-words text-ink-2">{pendingLabel(item)}</p>
+                  {/if}
+                  {#if item.retryCount > 0}
+                    <p class="mt-1 text-xs break-words text-ink-3">{failureText(item)}</p>
+                  {/if}
+                </div>
+                <div class="flex flex-none items-center">
+                  <button
+                    type="button"
+                    on:click={() => retryItem(item.id)}
+                    disabled={isOffline || retryingId === item.id}
+                    class="min-h-11 px-3 text-[13px] text-blue-text underline-offset-4 hover:underline disabled:opacity-40"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    on:click={() => askDiscard(item.id)}
+                    class="min-h-11 px-3 text-[13px] text-critical underline-offset-4 hover:underline"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </li>
+            {/each}
+          </ul>
+        {/if}
         <p class="mt-4 text-sm text-ink-3">Transactions you add offline are kept on this device until they can be sent.</p>
         <button
           type="button"
@@ -406,13 +521,6 @@
             <dd class="amt mt-1 text-xs break-all text-ink-3">{user?.id}</dd>
           </div>
         </dl>
-        <button
-          type="button"
-          on:click={signOut}
-          class="mt-6 min-h-11 rounded-lg border border-critical px-5 text-sm text-critical hover:bg-critical hover:text-white"
-        >
-          Log out
-        </button>
       </section>
     </div>
   {/if}
@@ -426,4 +534,14 @@
   cancelText="Cancel"
   danger={true}
   on:confirm={confirmDeleteSnapshot}
+/>
+
+<ConfirmDialog
+  bind:open={showDiscardConfirm}
+  title="Discard this transaction?"
+  message="It has not reached the server and will be deleted from this device."
+  confirmText="Discard"
+  cancelText="Cancel"
+  danger={true}
+  on:confirm={confirmDiscard}
 />
