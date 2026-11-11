@@ -4,6 +4,11 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "$env/dynamic/private";
 import { checkRateLimit } from "$lib/security/ratelimit";
 import type { Database } from "$lib/types/database";
+import {
+  localMonthString,
+  monthEndDateString,
+  parseLocalDate,
+} from "$lib/utils/localDate";
 
 const supabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -52,13 +57,23 @@ export const GET: RequestHandler = async ({ request }) => {
   }
 
   try {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - period);
-
-    // Format dates as YYYY-MM-DD for Supabase
-    const startDateStr = startDate.toISOString().split("T")[0];
-    const endDateStr = endDate.toISOString().split("T")[0];
+    // Last month of the chart, sent by the browser as ?month=YYYY-MM. Vercel
+    // runs in UTC, so its own month lags Jakarta by 7 hours on the 1st.
+    const endMonth =
+      parseLocalDate(url.searchParams.get("month")) ?? new Date();
+    const months: string[] = [];
+    for (let i = period - 1; i >= 0; i--) {
+      months.push(
+        localMonthString(
+          new Date(endMonth.getFullYear(), endMonth.getMonth() - i, 1),
+        ),
+      );
+    }
+    const startDateStr = `${months[0]}-01`;
+    const endDateStr = monthEndDateString(
+      endMonth.getFullYear(),
+      endMonth.getMonth() + 1,
+    );
 
     const { data: transactions, error } = await supabase
       .from("transactions")
@@ -77,7 +92,7 @@ export const GET: RequestHandler = async ({ request }) => {
 
     if (error) throw error;
 
-    const result = processTransactionsForChart(transactions || [], period);
+    const result = processTransactionsForChart(transactions || [], months);
 
     return json({ success: true, data: result });
   } catch (error) {
@@ -98,15 +113,8 @@ function processTransactionsForChart(
     amount: number;
     categories: { name: string; color: string } | null;
   }>,
-  period: number,
+  months: string[],
 ) {
-  const months: string[] = [];
-  const now = new Date();
-  for (let i = period - 1; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(date.toISOString().slice(0, 7));
-  }
-
   const categoryMap = new Map<
     string,
     {
