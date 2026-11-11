@@ -5,7 +5,12 @@
   import { supabase, getSession } from "$lib/services/supabase";
   import { afterNavigate, goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import { getSyncStatus } from "$lib/services/sync";
+  import { set } from "idb-keyval";
+  import {
+    getSyncStatus,
+    syncPendingTransactions,
+    clearTransactionCache,
+  } from "$lib/services/sync";
   import Toast from "$lib/components/Toast.svelte";
   import WelcomeModal from "$lib/components/WelcomeModal.svelte";
   import { startIdleTimer, stopIdleTimer } from "$lib/utils/idle-logout";
@@ -32,17 +37,90 @@
   let cleanupVisibilityChange: (() => void) | null = null;
   let cleanupServiceWorkerUpdate: (() => void) | null = null;
   let authSubscription: { unsubscribe: () => void } | null = null;
+  let offlineToastTimer: ReturnType<typeof setTimeout> | null = null;
+  let offlineToastShown = false;
+  let autoSyncRunning = false;
+
+  // Shows the offline notice only when the outage lasts a few seconds, so a
+  // brief connection flap stays quiet
+  function startOfflineToastTimer() {
+    clearOfflineToastTimer();
+    offlineToastTimer = setTimeout(() => {
+      offlineToastTimer = null;
+      if (!isOffline || offlineToastShown) return;
+      offlineToastShown = true;
+      toast.warning(
+        "You're offline. New transactions stay on this device until you're back online.",
+      );
+    }, 3000);
+  }
+
+  function clearOfflineToastTimer() {
+    if (offlineToastTimer) clearTimeout(offlineToastTimer);
+    offlineToastTimer = null;
+  }
 
   function handleOnline() {
     isOffline = false;
-    if (user) updateSyncStatus();
+    clearOfflineToastTimer();
+    offlineToastShown = false;
+    if (user) {
+      updateSyncStatus();
+      void autoSync();
+    }
   }
 
   function handleOffline() {
     isOffline = true;
+    startOfflineToastTimer();
+  }
+
+  function handleSyncStatusChanged() {
+    updateSyncStatus();
+  }
+
+  // Sends the queue when online and reports the result. Silent when nothing is pending.
+  // The guard stops two close calls from both showing the result toast.
+  async function autoSync() {
+    if (autoSyncRunning) return;
+    if (!user || !navigator.onLine) return;
+    autoSyncRunning = true;
+
+    try {
+      const before = await getSyncStatus();
+      if (before.pending === 0) return;
+
+      const { synced, failed } = await syncPendingTransactions();
+
+      if (synced > 0) {
+        await set("lastSync", Date.now());
+        await clearTransactionCache();
+        toast.success(
+          synced === 1
+            ? "1 transaction synced"
+            : `${synced} transactions synced`,
+        );
+      }
+
+      if (failed > 0) {
+        toast.error(
+          failed === 1
+            ? "1 transaction could not be synced. It stays on this device; retry from Settings."
+            : `${failed} transactions could not be synced. They stay on this device; retry from Settings.`,
+          undefined,
+          { label: "Settings", callback: () => goto(resolve("/settings")) },
+        );
+      }
+
+      await updateSyncStatus();
+    } finally {
+      autoSyncRunning = false;
+    }
   }
 
   onMount(() => {
+    window.addEventListener("syncStatusChanged", handleSyncStatusChanged);
+
     async function initializeClient() {
       // Register service worker with update detection
       if ("serviceWorker" in navigator) {
@@ -83,6 +161,9 @@
         startIdleTimer();
         preloadCriticalData();
 
+        // Reopening online with a queue sends it without waiting for an online event
+        void autoSync();
+
         // Check onboarding status
         await checkOnboardingStatus();
 
@@ -94,6 +175,7 @@
       cleanupVisibilityChange = handleVisibilityChange();
 
       isOffline = !navigator.onLine;
+      if (isOffline) startOfflineToastTimer();
       window.addEventListener("online", handleOnline);
       window.addEventListener("offline", handleOffline);
     }
@@ -108,6 +190,8 @@
       authSubscription?.unsubscribe();
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("syncStatusChanged", handleSyncStatusChanged);
+      clearOfflineToastTimer();
       stopIdleTimer();
     };
   });
@@ -208,20 +292,18 @@
     else goto(resolve("/"));
   }
 
+  // "synced" shows no label at all
   $: syncState = isOffline
     ? "offline"
     : syncStatus.pending > 0
-      ? "syncing"
+      ? "pending"
       : "synced";
-  $: syncLabel = { offline: "Offline", syncing: "Syncing", synced: "Synced" }[
-    syncState
-  ];
+  $: syncLabel =
+    syncState === "offline" ? "Offline" : `${syncStatus.pending} not synced`;
   $: syncShape =
     syncState === "offline"
       ? "bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]"
-      : syncState === "syncing"
-        ? "rounded-full border-[1.5px] border-ink-3"
-        : "rounded-full bg-ink-3";
+      : "rounded-full border-[1.5px] border-ink-3";
 </script>
 
 <div class="min-h-screen bg-background text-foreground">
@@ -246,9 +328,11 @@
       <header class="flex items-center justify-between px-4 pt-4 md:hidden">
         <span class="text-base font-semibold tracking-tight">CZmoneY</span>
         <div class="flex items-center gap-2">
-          <span class="flex items-center gap-2 text-xs text-ink-3">
-            <i class="inline-block size-[9px] {syncShape}"></i>{syncLabel}
-          </span>
+          {#if syncState !== "synced"}
+            <span class="flex items-center gap-2 text-xs text-ink-3">
+              <i class="inline-block size-[9px] {syncShape}"></i>{syncLabel}
+            </span>
+          {/if}
           {#if isActive("/settings")}
             <button
               type="button"
@@ -333,9 +417,11 @@
         </a>
 
         <div class="hidden md:mt-auto md:flex md:flex-col md:gap-1">
-          <span class="hidden items-center gap-2 px-3 pb-2 text-xs text-ink-3 md:flex">
-            <i class="inline-block size-[9px] {syncShape}"></i>{syncLabel}
-          </span>
+          {#if syncState !== "synced"}
+            <span class="hidden items-center gap-2 px-3 pb-2 text-xs text-ink-3 md:flex">
+              <i class="inline-block size-[9px] {syncShape}"></i>{syncLabel}
+            </span>
+          {/if}
           <a
             href={resolve("/settings")}
             data-sveltekit-preload-data
