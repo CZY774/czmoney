@@ -6,7 +6,10 @@ const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter: adapter({
-      runtime: "nodejs20.x",
+      runtime: "nodejs22.x",
+      // Next to Supabase in Singapore. The default, iad1 (Washington DC), put
+      // every database query on a Virginia to Singapore round trip.
+      regions: ["sin1"],
     }),
     csp: {
       mode: "auto",
