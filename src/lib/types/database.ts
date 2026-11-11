@@ -148,6 +148,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      investment_snapshots: {
+        Row: {
+          id: string;
+          user_id: string;
+          as_of: string;
+          amount: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          as_of?: string;
+          amount: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          as_of?: string;
+          amount?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
