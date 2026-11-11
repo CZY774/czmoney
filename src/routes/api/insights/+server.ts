@@ -3,6 +3,11 @@ import { json, type RequestHandler } from "@sveltejs/kit";
 import { env } from "$env/dynamic/private";
 import { checkRateLimit } from "$lib/security/ratelimit";
 import type { Database } from "$lib/types/database";
+import {
+  localMonthString,
+  monthEndDateString,
+  parseLocalDate,
+} from "$lib/utils/localDate";
 
 const supabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -44,7 +49,7 @@ async function authenticate(request: Request) {
   return { error: null, user };
 }
 
-export const GET: RequestHandler = async ({ request }) => {
+export const GET: RequestHandler = async ({ request, url }) => {
   const { error, user } = await authenticate(request);
   if (error) return error;
 
@@ -54,12 +59,15 @@ export const GET: RequestHandler = async ({ request }) => {
   }
 
   try {
-    const now = new Date();
-    const currentMonth = now.toISOString().slice(0, 7);
+    // The browser sends its local date as ?today=YYYY-MM-DD. Vercel runs in
+    // UTC, so the server's own date is 7 hours behind Jakarta.
+    const now = parseLocalDate(url.searchParams.get("today")) ?? new Date();
+    const currentMonth = localMonthString(now);
     const startOfMonth = `${currentMonth}-01`;
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      .toISOString()
-      .split("T")[0];
+    const endOfMonth = monthEndDateString(
+      now.getFullYear(),
+      now.getMonth() + 1,
+    );
 
     // Get current month spending by category
     const { data: currentSpending } = await supabase!
