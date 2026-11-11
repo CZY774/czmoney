@@ -4,6 +4,7 @@
   import { queueTransaction, clearTransactionCache } from "$lib/services/sync";
   import { generateIdempotencyKey } from "$lib/utils/idempotency";
   import { toast } from "$lib/stores/toast";
+  import { localDateString } from "$lib/utils/localDate";
 
   export let isOpen = false;
   export let transaction: {
@@ -18,7 +19,7 @@
   const dispatch = createEventDispatcher();
 
   let form = {
-    txn_date: new Date().toISOString().split("T")[0],
+    txn_date: localDateString(),
     category_id: "",
     type: "expense",
     amount: "",
@@ -208,7 +209,7 @@
   function closeModal() {
     isOpen = false;
     form = {
-      txn_date: new Date().toISOString().split("T")[0],
+      txn_date: localDateString(),
       category_id: "",
       type: "expense",
       amount: "",
@@ -224,80 +225,85 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="txn-form-title"
-      class="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-background p-5 pb-[calc(20px+env(safe-area-inset-bottom,0px))] sm:rounded-2xl sm:p-6"
+      class="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-border bg-background sm:rounded-2xl"
     >
-      <h2 id="txn-form-title" class="flex items-baseline gap-3 text-lg font-semibold tracking-tight">
+      <h2 id="txn-form-title" class="flex flex-none items-baseline gap-3 px-5 pt-5 text-lg font-semibold tracking-tight sm:px-6 sm:pt-6">
         {transaction ? "Edit transaction" : "Add transaction"}
         {#if isOffline}
           <span class="text-xs font-normal text-warning">Offline, saved on this device first</span>
         {/if}
       </h2>
 
-      <form on:submit|preventDefault={handleSubmit} class="mt-5 grid gap-4">
-        <div>
-          <label for="txn-date" class="mb-1.5 block text-xs text-ink-2">Date</label>
-          <input id="txn-date" type="date" bind:value={form.txn_date} required class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground" />
+      <form on:submit|preventDefault={handleSubmit} class="mt-5 flex min-h-0 flex-1 flex-col">
+        <!-- Only the fields scroll. The buttons sit below them, so Cancel and Add
+             stay on screen when the sheet is taller than the viewport (a phone in
+             landscape is about 375px high). -->
+        <div class="grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 pb-5 sm:px-6">
+          <div>
+            <label for="txn-date" class="mb-1.5 block text-xs text-ink-2">Date</label>
+            <input id="txn-date" type="date" bind:value={form.txn_date} required class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground" />
+          </div>
+
+          <div>
+            <label for="txn-type" class="mb-1.5 block text-xs text-ink-2">Type</label>
+            <select id="txn-type" bind:value={form.type} required class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="txn-category" class="mb-1.5 block text-xs text-ink-2">Category</label>
+            <select id="txn-category" bind:value={form.category_id} class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
+              <option value="">No category</option>
+              {#each filteredCategories as category (category.id)}
+                <option value={category.id}>{category.name}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div>
+            <label for="txn-amount" class="mb-1.5 block text-xs text-ink-2">Amount (IDR)</label>
+            <input
+              id="txn-amount"
+              type="number"
+              bind:value={form.amount}
+              min="0"
+              step="1"
+              inputmode="numeric"
+              placeholder="0"
+              required
+              class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground amt"
+            />
+          </div>
+
+          <div>
+            <label for="txn-description" class="mb-1.5 block text-xs text-ink-2">Description</label>
+            <input
+              id="txn-description"
+              type="text"
+              bind:value={form.description}
+              placeholder="For example, bus ticket Jakarta to Bandung"
+              required
+              minlength="3"
+              class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
+            />
+            <p class="mt-1.5 text-xs text-ink-3">A specific description gives the AI insights more to work with.</p>
+          </div>
         </div>
 
-        <div>
-          <label for="txn-type" class="mb-1.5 block text-xs text-ink-2">Type</label>
-          <select id="txn-type" bind:value={form.type} required class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="txn-category" class="mb-1.5 block text-xs text-ink-2">Category</label>
-          <select id="txn-category" bind:value={form.category_id} class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground">
-            <option value="">No category</option>
-            {#each filteredCategories as category (category.id)}
-              <option value={category.id}>{category.name}</option>
-            {/each}
-          </select>
-        </div>
-
-        <div>
-          <label for="txn-amount" class="mb-1.5 block text-xs text-ink-2">Amount (IDR)</label>
-          <input
-            id="txn-amount"
-            type="number"
-            bind:value={form.amount}
-            min="0"
-            step="1"
-            inputmode="numeric"
-            placeholder="0"
-            required
-            class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground amt"
-          />
-        </div>
-
-        <div>
-          <label for="txn-description" class="mb-1.5 block text-xs text-ink-2">Description</label>
-          <input
-            id="txn-description"
-            type="text"
-            bind:value={form.description}
-            placeholder="For example, bus ticket Jakarta to Bandung"
-            required
-            minlength="3"
-            class="w-full h-11 rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground"
-          />
-          <p class="mt-1.5 text-xs text-ink-3">A specific description gives the AI insights more to work with.</p>
-        </div>
-
-        <div class="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div class="flex flex-none gap-2 border-t border-border px-5 pt-4 pb-[calc(20px+env(safe-area-inset-bottom,0px))] sm:justify-end sm:px-6 sm:pb-6">
           <button
             type="button"
             on:click={closeModal}
-            class="min-h-11 rounded-lg border border-rule-strong px-5 text-sm hover:bg-accent"
+            class="min-h-11 flex-1 rounded-lg border border-rule-strong px-5 text-sm hover:bg-accent sm:flex-none"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            class="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 active:scale-[0.98]"
+            class="min-h-11 flex-1 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-50 active:scale-[0.98] sm:flex-none"
           >
             {loading ? "Saving" : transaction ? "Update" : "Add"}
           </button>
