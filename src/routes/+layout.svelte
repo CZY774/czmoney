@@ -16,6 +16,8 @@
   import { registerServiceWorkerUpdateHandler } from "$lib/services/serviceWorkerUpdate";
   import { checkForUpdates } from "$lib/services/versionCheck";
   import { toast } from "$lib/stores/toast";
+  import { requestAddTransaction } from "$lib/stores/addTransaction";
+  import { clearPageCache } from "$lib/stores/pageCache";
   import { injectAnalytics } from "@vercel/analytics/sveltekit";
 
   injectAnalytics();
@@ -54,6 +56,10 @@
       const { data: authState } = supabase.auth.onAuthStateChange(
         (event, session) => {
           user = session?.user || null;
+
+          // Every sign-out path (layout, Settings, idle timeout, password reset)
+          // ends here, so cached pages of the old session are dropped once
+          if (event === "SIGNED_OUT") clearPageCache();
 
           // Redirect to reset password page on PASSWORD_RECOVERY event
           if (event === "PASSWORD_RECOVERY") {
@@ -220,7 +226,7 @@
       <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
     </svg>
 
-    <div class="min-h-screen md:grid md:grid-cols-[92px_minmax(0,1fr)] min-[1120px]:grid-cols-[232px_minmax(0,1fr)]">
+    <div class="min-h-screen md:grid md:grid-cols-[92px_minmax(0,1fr)] wide:grid-cols-[232px_minmax(0,1fr)]">
       <!-- Mobile header: brand, sync state, settings. Navigation sits at the bottom. -->
       <header class="flex items-center justify-between px-4 pt-4 md:hidden">
         <span class="text-base font-semibold tracking-tight">CZmoneY</span>
@@ -240,62 +246,64 @@
 
       <nav
         aria-label="Primary"
-        class="fixed inset-x-0 bottom-0 z-50 flex items-stretch gap-1 border-t border-border bg-background px-2 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] md:sticky md:top-0 md:col-start-1 md:row-start-1 md:h-dvh md:flex-col md:self-start md:border-t-0 md:border-r md:px-1.5 md:py-5 min-[1120px]:px-4 min-[1120px]:py-6"
+        class="fixed inset-x-0 bottom-0 z-50 flex items-stretch gap-1 border-t border-border bg-background px-2 pt-1.5 pb-[calc(6px+env(safe-area-inset-bottom,0px))] md:sticky md:top-0 md:col-start-1 md:row-start-1 md:h-dvh md:flex-col md:self-start md:border-t-0 md:border-r md:px-1.5 md:py-5 wide:px-4 wide:py-6"
       >
         <a
           href={resolve("/")}
-          class="hidden items-center justify-center md:order-first md:flex md:h-8 min-[1120px]:justify-start min-[1120px]:gap-2.5 min-[1120px]:px-3"
+          class="hidden items-center justify-center md:order-first md:flex md:h-8 wide:justify-start wide:gap-2.5 wide:px-3"
           aria-label="CZmoneY"
         >
-          <span class="font-mono text-sm font-medium tracking-wide text-blue-text min-[1120px]:hidden">CZ</span>
-          <span class="hidden text-[17px] font-semibold tracking-tight min-[1120px]:inline">CZmoneY</span>
+          <span class="font-mono text-sm font-medium tracking-wide text-blue-text wide:hidden">CZ</span>
+          <span class="hidden text-[17px] font-semibold tracking-tight wide:inline">CZmoneY</span>
         </a>
 
         <a
           href={resolve("/")}
           data-sveltekit-preload-data
           aria-current={isActive("/") ? "page" : undefined}
-          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-dash" /></svg>
-          <span>Dashboard</span>
+          <!-- Under 320px (Galaxy Fold cover) the labels do not fit; icons only, labels stay for screen readers -->
+          <span class="max-[20rem]:sr-only">Dashboard</span>
         </a>
         <a
           href={resolve("/transactions")}
           data-sveltekit-preload-data
           aria-current={isActive("/transactions") ? "page" : undefined}
-          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/transactions') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/transactions') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-list" /></svg>
-          <span>Transactions</span>
+          <span class="max-[20rem]:sr-only">Transactions</span>
         </a>
 
         <a
           href={resolve("/transactions")}
+          on:click={requestAddTransaction}
           aria-label="Add transaction"
-          class="flex h-11 w-14 flex-none items-center justify-center self-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/85 active:scale-95 md:order-first md:mx-2 md:my-4 md:h-12 md:w-auto md:self-stretch min-[1120px]:mx-0 min-[1120px]:mb-4 min-[1120px]:mt-5 min-[1120px]:gap-2 min-[1120px]:text-sm min-[1120px]:font-semibold"
+          class="flex h-11 w-14 flex-none items-center justify-center self-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/85 active:scale-95 md:order-first md:mx-2 md:my-4 md:h-12 md:w-auto md:self-stretch wide:mx-0 wide:mb-4 wide:mt-5 wide:gap-2 wide:text-sm wide:font-semibold"
         >
           <svg class="size-5.5" aria-hidden="true"><use href="#i-plus" /></svg>
-          <span class="hidden min-[1120px]:inline">Add transaction</span>
+          <span class="hidden wide:inline">Add transaction</span>
         </a>
 
         <a
           href={resolve("/budgets")}
           data-sveltekit-preload-data
           aria-current={isActive("/budgets") ? "page" : undefined}
-          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/budgets') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/budgets') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-target" /></svg>
-          <span>Budgets</span>
+          <span class="max-[20rem]:sr-only">Budgets</span>
         </a>
         <a
           href={resolve("/reports")}
           data-sveltekit-preload-data
           aria-current={isActive("/reports") ? "page" : undefined}
-          class="flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 min-[1120px]:min-h-10 min-[1120px]:flex-row min-[1120px]:justify-start min-[1120px]:gap-3 min-[1120px]:px-3 min-[1120px]:text-sm {isActive('/reports') ? 'text-blue-text min-[1120px]:bg-primary/15 min-[1120px]:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/reports') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-chart" /></svg>
-          <span>Reports</span>
+          <span class="max-[20rem]:sr-only">Reports</span>
         </a>
 
         <div class="hidden md:mt-auto md:flex md:flex-col md:gap-1">
@@ -309,7 +317,7 @@
             class="flex min-h-10 items-center justify-start gap-3 rounded-lg px-3 text-sm text-ink-3 hover:text-foreground {isActive('/settings') ? 'text-foreground' : ''}"
           >
             <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-sliders" /></svg>
-            <span class="hidden min-[1120px]:inline">Settings</span>
+            <span class="hidden wide:inline">Settings</span>
           </a>
           <button
             type="button"
@@ -317,12 +325,12 @@
             class="flex min-h-10 items-center justify-start gap-3 rounded-lg px-3 text-sm text-ink-3 hover:text-foreground"
           >
             <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-out" /></svg>
-            <span class="hidden min-[1120px]:inline">Sign out</span>
+            <span class="hidden wide:inline">Sign out</span>
           </button>
         </div>
       </nav>
 
-      <main class="min-w-0 px-4 pt-4 pb-28 sm:px-6 md:col-start-2 md:row-start-1 md:px-8 md:pt-8 md:pb-14 min-[1120px]:px-12 min-[1120px]:pt-10">
+      <main class="min-w-0 px-4 pt-4 pb-28 sm:px-6 md:col-start-2 md:row-start-1 md:px-8 md:pt-8 md:pb-14 wide:px-12 wide:pt-10">
         <slot />
       </main>
     </div>
