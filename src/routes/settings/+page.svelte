@@ -5,6 +5,9 @@
   import { resolve } from "$app/paths";
   import { syncPendingTransactions, getSyncStatus } from "$lib/services/sync";
   import { toast } from "$lib/stores/toast";
+  import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+  import { localDateString } from "$lib/utils/localDate";
+  import { readPageCache, writePageCache } from "$lib/stores/pageCache";
 
   let user: { id: string; email?: string } | null = null;
   let profile = {
@@ -18,6 +21,22 @@
   let saving = false;
   let syncing = false;
   let isOffline = false;
+
+  // Invested assets: dated snapshots for the dashboard 4% rule
+  let snapshots: Array<{ id: string; as_of: string; amount: number }> = [];
+  let snapshot = { amount: "", as_of: localDateString(new Date()) };
+  let snapshotSaving = false;
+  let showDeleteSnapshotConfirm = false;
+  let snapshotToDelete: string | null = null;
+
+  // The profile form as last filled from the cache. The background refresh only
+  // replaces the form while it still equals this, so typing is never overwritten.
+  let profileFromCache: string | null = null;
+
+  function saveSettingsCache() {
+    if (!user) return;
+    writePageCache(`settings:${user.id}`, { profile: { ...profile }, snapshots: [...snapshots] });
+  }
 
   function handleOnline() {
     isOffline = false;
@@ -40,8 +59,15 @@
         return;
       }
 
-      await loadProfile();
-      await loadSyncStatus();
+      const cached = readPageCache<{ profile: typeof profile; snapshots: typeof snapshots }>(`settings:${user.id}`);
+      if (cached) {
+        profile = { ...cached.profile };
+        profileFromCache = JSON.stringify(profile);
+        snapshots = [...cached.snapshots];
+        loading = false;
+      }
+
+      await Promise.all([loadProfile(), loadSyncStatus(), loadSnapshots()]);
       if (disposed) return;
       loading = false;
 
@@ -69,12 +95,17 @@
       .single();
 
     if (data) {
-      profile = {
+      const fresh = {
         full_name: data.full_name || "",
         monthly_income: data.monthly_income || "",
         savings_target: data.savings_target || "",
         preferred_currency: data.preferred_currency || "IDR",
       };
+      if (profileFromCache === null || JSON.stringify(profile) === profileFromCache) {
+        profile = fresh;
+      }
+      profileFromCache = null;
+      saveSettingsCache();
     }
   }
 
@@ -104,6 +135,7 @@
         console.error(error);
       } else {
         toast.success("Profile saved successfully");
+        saveSettingsCache();
       }
     } catch (error) {
       toast.error("Error saving profile");
@@ -111,6 +143,90 @@
     } finally {
       saving = false;
     }
+  }
+
+  async function loadSnapshots() {
+    if (!user) return;
+    const { data } = await supabase
+      .from("investment_snapshots")
+      .select("id, as_of, amount")
+      .eq("user_id", user.id)
+      .order("as_of", { ascending: false });
+
+    if (data) {
+      snapshots = data;
+      saveSettingsCache();
+    }
+  }
+
+  async function saveSnapshot() {
+    if (!user) return;
+    const amount = parseFloat(snapshot.amount);
+    if (!Number.isFinite(amount) || amount < 0) return;
+
+    snapshotSaving = true;
+    try {
+      const { error } = await supabase.from("investment_snapshots").upsert(
+        {
+          user_id: user.id,
+          as_of: snapshot.as_of,
+          amount,
+        },
+        { onConflict: "user_id,as_of" },
+      );
+
+      if (error) {
+        toast.error("Failed to save invested assets");
+      } else {
+        toast.success("Invested assets saved");
+        snapshot = { amount: "", as_of: localDateString(new Date()) };
+        await loadSnapshots();
+      }
+    } catch {
+      toast.error("Error saving invested assets");
+    } finally {
+      snapshotSaving = false;
+    }
+  }
+
+  function deleteSnapshot(id: string) {
+    snapshotToDelete = id;
+    showDeleteSnapshotConfirm = true;
+  }
+
+  async function confirmDeleteSnapshot() {
+    if (!snapshotToDelete) return;
+
+    const { error } = await supabase
+      .from("investment_snapshots")
+      .delete()
+      .eq("id", snapshotToDelete);
+
+    if (error) {
+      toast.error("Failed to delete invested assets");
+    } else {
+      toast.success("Snapshot deleted");
+      await loadSnapshots();
+    }
+
+    snapshotToDelete = null;
+  }
+
+  function formatSnapshotDate(isoDate: string) {
+    const [year, month, day] = isoDate.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  function formatCurrency(amount: number) {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(amount);
   }
 
   async function manualSync() {
@@ -155,7 +271,7 @@
   <title>Settings - CZmoneY</title>
 </svelte:head>
 
-<div class="max-w-[1040px] space-y-10">
+<div class="mx-auto max-w-[1040px] space-y-10">
   <h1 class="text-xl font-semibold tracking-tight">Settings</h1>
 
   {#if loading}
@@ -231,6 +347,52 @@
         </button>
       </section>
 
+      <!-- Invested assets -->
+      <section aria-labelledby="h-assets" class="border-t border-border pt-5">
+        <h2 id="h-assets" class="pb-4 text-[15px] font-semibold">Invested assets</h2>
+        <p class="mb-5 text-sm text-ink-3">Record what your investments are worth on a date. The dashboard compares the latest record with 25 times your yearly expenses (the 4% rule).</p>
+        <form class="grid gap-5" on:submit|preventDefault={saveSnapshot}>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="snapshot-amount" class="mb-1.5 block text-sm text-ink-2">Amount (IDR)</label>
+              <input id="snapshot-amount" type="number" inputmode="numeric" min="0" step="1" required bind:value={snapshot.amount} placeholder="0" class="amt h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground placeholder:text-ink-3" />
+            </div>
+            <div>
+              <label for="snapshot-date" class="mb-1.5 block text-sm text-ink-2">As of</label>
+              <input id="snapshot-date" type="date" required bind:value={snapshot.as_of} class="h-11 w-full rounded-lg border border-rule-strong bg-background px-3 text-[15px] text-foreground" />
+            </div>
+          </div>
+          <div>
+            <button type="submit" disabled={snapshotSaving} class="min-h-11 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 disabled:opacity-40 active:scale-[0.98]">
+              {snapshotSaving ? "Saving" : "Save snapshot"}
+            </button>
+          </div>
+        </form>
+
+        {#if snapshots.length === 0}
+          <p class="mt-6 text-sm text-ink-2">No snapshots yet.</p>
+        {:else}
+          <ul class="mt-6">
+            {#each snapshots as item (item.id)}
+              <li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border py-3">
+                <!-- Wraps the amount under the date when both do not fit (Fold cover screens) -->
+                <div class="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <span class="text-[15px] whitespace-nowrap">{formatSnapshotDate(item.as_of)}</span>
+                  <span class="amt text-[15px] whitespace-nowrap">{formatCurrency(item.amount)}</span>
+                </div>
+                <button
+                  type="button"
+                  on:click={() => deleteSnapshot(item.id)}
+                  class="min-h-10 text-[13px] text-critical underline-offset-4 hover:underline"
+                >
+                  Delete
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+
       <!-- Account -->
       <section aria-labelledby="h-account" class="border-t border-border pt-5 md:col-span-2">
         <h2 id="h-account" class="pb-4 text-[15px] font-semibold">Account</h2>
@@ -255,3 +417,13 @@
     </div>
   {/if}
 </div>
+
+<ConfirmDialog
+  bind:open={showDeleteSnapshotConfirm}
+  title="Delete Snapshot"
+  message="Are you sure you want to delete this invested assets snapshot? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  danger={true}
+  on:confirm={confirmDeleteSnapshot}
+/>
