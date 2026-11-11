@@ -4,6 +4,7 @@ import { checkAIRateLimit } from "$lib/security/ratelimit";
 import { validateAndSanitize, aiSummarySchema } from "$lib/security/sanitize";
 import { authenticate, getSupabaseClient } from "$lib/middleware/auth";
 import { handleError, AppError, logError } from "$lib/services/errorHandler";
+import { monthEndDateString } from "$lib/utils/localDate";
 
 async function handleRequest(request: Request, url: URL) {
   try {
@@ -39,6 +40,7 @@ async function handleRequest(request: Request, url: URL) {
     }
 
     validateAndSanitize(aiSummarySchema, { month });
+    const [monthYear, monthNumber] = month.split("-").map(Number);
     if (lookback < 1 || lookback > 12) lookback = 3;
 
     if (!forceRefresh) {
@@ -55,7 +57,7 @@ async function handleRequest(request: Request, url: URL) {
           .select("*", { count: "exact", head: true })
           .eq("user_id", user!.id)
           .gte("txn_date", `${month}-01`)
-          .lte("txn_date", `${month}-31`);
+          .lte("txn_date", monthEndDateString(monthYear, monthNumber));
 
         return json({
           summary: cached.summary,
@@ -68,18 +70,18 @@ async function handleRequest(request: Request, url: URL) {
     }
 
     const historicalData = [];
-    const currentDate = new Date(`${month}-01`);
-
     for (let i = 0; i < lookback; i++) {
-      const targetDate = new Date(currentDate);
-      targetDate.setMonth(targetDate.getMonth() - i);
+      // Local date parts. new Date("YYYY-MM-01") is UTC midnight, and
+      // toISOString() on a local date shifts it by the UTC offset.
+      const targetDate = new Date(monthYear, monthNumber - 1 - i, 1);
 
       const targetYear = targetDate.getFullYear();
       const targetMonth = String(targetDate.getMonth() + 1).padStart(2, "0");
       const targetStartDate = `${targetYear}-${targetMonth}-01`;
-      const targetEndDate = new Date(targetYear, targetDate.getMonth() + 1, 0)
-        .toISOString()
-        .split("T")[0];
+      const targetEndDate = monthEndDateString(
+        targetYear,
+        targetDate.getMonth() + 1,
+      );
 
       const { data: monthTransactions } = await supabase
         .from("transactions")
