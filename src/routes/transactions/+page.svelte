@@ -12,6 +12,9 @@
   import Skeleton from "$lib/components/Skeleton.svelte";
   import { SvelteSet } from "svelte/reactivity";
   import { get } from "idb-keyval";
+  import { localMonthString } from "$lib/utils/localDate";
+  import { addTransactionRequested } from "$lib/stores/addTransaction";
+  import { readPageCache, writePageCache } from "$lib/stores/pageCache";
 
   let user: { id: string } | null = null;
   let transactions: Array<Record<string, unknown>> = [];
@@ -40,7 +43,7 @@
 
   // Filters
   let filters = {
-    month: new Date().toISOString().slice(0, 7), // YYYY-MM
+    month: localMonthString(),
     category: "",
     type: "",
     search: "",
@@ -101,7 +104,6 @@
   }
 
   async function loadTransactions() {
-    dataLoading = true;
     if (!user) return;
 
     // Try loading from cache if offline
@@ -113,6 +115,18 @@
         toast.info('Showing cached data (offline)');
         return;
       }
+    }
+
+    // Same filters and page as a recent visit: show those rows now, refresh below
+    const cacheKey = `transactions:${user.id}:${JSON.stringify(filters)}:${currentPage}`;
+    const cached = readPageCache<{ transactions: typeof transactions; totalCount: number }>(cacheKey);
+    if (cached) {
+      transactions = [...cached.transactions];
+      totalCount = cached.totalCount;
+      totalPages = Math.ceil(totalCount / pageSize);
+      dataLoading = false;
+    } else {
+      dataLoading = true;
     }
 
     const [year, month] = filters.month.split("-");
@@ -139,10 +153,6 @@
       countQuery = countQuery.ilike("description", `%${filters.search}%`);
     }
 
-    const { count } = await countQuery;
-    totalCount = count || 0;
-    totalPages = Math.ceil(totalCount / pageSize);
-
     // Fetch paginated data
     let query = supabase
       .from("transactions")
@@ -163,11 +173,17 @@
       query = query.ilike("description", `%${filters.search}%`);
     }
 
-    const { data } = await query
-      .order("txn_date", { ascending: false })
-      .range((currentPage - 1) * pageSize, currentPage * pageSize - 1);
+    const [{ count }, { data }] = await Promise.all([
+      countQuery,
+      query
+        .order("txn_date", { ascending: false })
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1),
+    ]);
 
+    totalCount = count || 0;
+    totalPages = Math.ceil(totalCount / pageSize);
     transactions = data || [];
+    writePageCache(cacheKey, { transactions: [...transactions], totalCount });
     
     // Cache for offline use
     if (transactions.length > 0) {
@@ -254,6 +270,13 @@
   function openAddForm() {
     editingTransaction = null;
     showForm = true;
+  }
+
+  // Opened from an "Add transaction" button, including the tab bar one while
+  // this page is already open
+  $: if ($addTransactionRequested) {
+    addTransactionRequested.set(false);
+    openAddForm();
   }
 
   function openEditForm(transaction: Record<string, unknown>) {
@@ -378,7 +401,7 @@
   <title>Transactions - CZmoneY</title>
 </svelte:head>
 
-<div class="max-w-[1040px] space-y-8">
+<div class="mx-auto max-w-[1040px] space-y-8">
   <header class="flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-xl font-semibold tracking-tight">Transactions</h1>
     <button
@@ -391,7 +414,7 @@
   </header>
 
   <!-- One filter row above the list. Every filter applies to the same list. -->
-  <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+  <div class="grid grid-cols-1 gap-3 min-[21rem]:grid-cols-2 md:grid-cols-4">
     <div class="min-w-0">
       <label for="filter-month" class="mb-1.5 block text-xs text-ink-2">Month</label>
       <input
@@ -429,7 +452,7 @@
       </select>
     </div>
 
-    <div class="col-span-2 min-w-0 md:col-span-1">
+    <div class="min-w-0 min-[21rem]:col-span-2 md:col-span-1">
       <label for="filter-search" class="mb-1.5 block text-xs text-ink-2">Search</label>
       <input
         id="filter-search"
