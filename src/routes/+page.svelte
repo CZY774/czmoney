@@ -10,6 +10,9 @@
   import OnboardingChecklist from "$lib/components/OnboardingChecklist.svelte";
   import { get, set } from "idb-keyval";
   import { toast } from "$lib/stores/toast";
+  import { CHART_OTHER_LABEL, CHART_TOP_N } from "$lib/config/chartPalette";
+  import { localDateString } from "$lib/utils/localDate";
+  import { requestAddTransaction } from "$lib/stores/addTransaction";
 
   export let data;
 
@@ -20,6 +23,12 @@
     categoryData: Array<{ name: string; amount: number }>;
     profile: { monthly_income: number; savings_target: number };
     ytd: { current: number; previous: number } | null;
+    fourPercent?: FourPercent | null;
+  };
+
+  type FourPercent = {
+    target: number;
+    snapshot: { amount: number; as_of: string } | null;
   };
 
   let user: { id: string; email?: string } | null = null;
@@ -28,6 +37,7 @@
   let categoryData: Array<{ name: string; amount: number }> = [];
   let profile = { monthly_income: 0, savings_target: 0 };
   let ytd: { current: number; previous: number } | null = null;
+  let fourPercent: FourPercent | null = null;
   let loading = true;
   // True only until something is on screen. Refetches never bring the skeleton back.
   let dataLoading = true;
@@ -61,6 +71,10 @@
       ? Math.max(0, (balance.expense / profile.monthly_income) * 100)
       : 0;
   $: spendingAhead = spentPct > pacePct;
+  $: fourPercentPct =
+    fourPercent?.snapshot && fourPercent.target > 0
+      ? (fourPercent.snapshot.amount / fourPercent.target) * 100
+      : null;
   $: keptPct =
     balance.income > 0
       ? Math.min(100, Math.max(0, ((balance.income - balance.expense) / balance.income) * 100))
@@ -77,14 +91,20 @@
     [],
   );
 
-  // Top five categories, the rest folded into "Other". Bars are scaled to the largest.
+  // Top categories, the rest folded into "Other". Same count as Reports, and a
+  // category literally named "Other" folds in too. Bars are scaled to the largest.
   $: rankedCategories = (() => {
-    const top = categoryData.slice(0, 5);
-    const rest = categoryData.slice(5);
+    const named = categoryData.filter((c) => c.name !== CHART_OTHER_LABEL);
+    const top = named.slice(0, CHART_TOP_N);
+    const rest = categoryData.filter((c) => !top.includes(c));
     const items = rest.length
-      ? [...top, { name: "Other", amount: rest.reduce((s, c) => s + c.amount, 0) }]
+      ? [
+          ...top,
+          { name: CHART_OTHER_LABEL, amount: rest.reduce((s, c) => s + c.amount, 0) },
+        ]
       : top;
-    const max = items[0]?.amount || 1;
+    // "Other" can outweigh the top category, so scale to the largest of all bars
+    const max = Math.max(...items.map((c) => c.amount)) || 1;
     const total = categoryData.reduce((s, c) => s + c.amount, 0) || 1;
     return items.map((c) => ({
       ...c,
@@ -140,17 +160,13 @@
     };
   });
 
-  // Local calendar date as YYYY-MM-DD. toISOString() would shift by the UTC offset.
-  function toIsoDate(d: Date) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }
-
   function applySnapshot(s: Snapshot) {
     balance = s.balance;
     recentTransactions = s.recentTransactions;
     categoryData = s.categoryData;
     profile = s.profile;
     ytd = s.ytd ?? null;
+    fourPercent = s.fourPercent ?? null;
     dataLoading = false;
   }
 
@@ -172,8 +188,8 @@
       return;
     }
 
-    const startDate = toIsoDate(new Date(now.getFullYear(), now.getMonth(), 1));
-    const endDate = toIsoDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    const startDate = localDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+    const endDate = localDateString(new Date(now.getFullYear(), now.getMonth() + 1, 0));
     const yearStart = new Date(now.getFullYear(), 0, 1);
     const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
     const lastYearSameDay = new Date(
@@ -181,10 +197,23 @@
       now.getMonth(),
       now.getDate(),
     );
+    // Trailing 12 months: the day after this date last year, through today
+    const twelveMonthsStart = new Date(
+      now.getFullYear() - 1,
+      now.getMonth(),
+      now.getDate() + 1,
+    );
 
     // Batch queries using Promise.all. YTD sums run in Postgres, not in the browser.
-    const [profileResult, transactionsResult, budgetsResult, ytdNow, ytdPrev] =
-      await Promise.all([
+    const [
+      profileResult,
+      transactionsResult,
+      budgetsResult,
+      ytdNow,
+      ytdPrev,
+      expense12Result,
+      latestSnapshotResult,
+    ] = await Promise.all([
         supabase
           .from("profiles")
           .select("monthly_income, savings_target")
@@ -199,13 +228,24 @@
           .order("txn_date", { ascending: false }),
         supabase.from("budgets").select("id").eq("user_id", user.id).limit(1),
         supabase.rpc("expense_total", {
-          p_from: toIsoDate(yearStart),
-          p_to: toIsoDate(now),
+          p_from: localDateString(yearStart),
+          p_to: localDateString(now),
         }),
         supabase.rpc("expense_total", {
-          p_from: toIsoDate(lastYearStart),
-          p_to: toIsoDate(lastYearSameDay),
+          p_from: localDateString(lastYearStart),
+          p_to: localDateString(lastYearSameDay),
         }),
+        supabase.rpc("expense_total", {
+          p_from: localDateString(twelveMonthsStart),
+          p_to: localDateString(now),
+        }),
+        supabase
+          .from("investment_snapshots")
+          .select("amount, as_of")
+          .eq("user_id", user.id)
+          .order("as_of", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
     if (profileResult.data) {
@@ -220,6 +260,23 @@
       ytd = {
         current: Number(ytdNow.data ?? 0),
         previous: Number(ytdPrev.data ?? 0),
+      };
+    }
+
+    // 4% rule: target is 25 x the last 12 months of expenses. Hidden if either query fails.
+    if (expense12Result.error || latestSnapshotResult.error) {
+      console.warn(
+        "4% rule unavailable:",
+        expense12Result.error ?? latestSnapshotResult.error,
+      );
+      fourPercent = null;
+    } else {
+      const latest = latestSnapshotResult.data;
+      fourPercent = {
+        target: Number(expense12Result.data ?? 0) * 25,
+        snapshot: latest
+          ? { amount: Number(latest.amount), as_of: latest.as_of }
+          : null,
       };
     }
 
@@ -261,6 +318,7 @@
       categoryData,
       profile,
       ytd,
+      fourPercent,
       timestamp: Date.now(),
     } satisfies Snapshot & { timestamp: number });
 
@@ -284,6 +342,7 @@
   async function handleChecklistToggle(event: CustomEvent<string>) {
     const taskId = event.detail;
     if (taskId === "transaction") {
+      requestAddTransaction();
       goto(resolve("/transactions"));
     } else if (taskId === "income") {
       goto(resolve("/settings"));
@@ -308,6 +367,13 @@
     return new Date(`${key}T00:00:00`).toLocaleDateString("en-GB", {
       weekday: "short",
       day: "2-digit",
+      month: "short",
+    });
+  }
+
+  function formatShortDate(key: string) {
+    return new Date(`${key}T00:00:00`).toLocaleDateString("en-GB", {
+      day: "numeric",
       month: "short",
     });
   }
@@ -398,7 +464,7 @@
   </div>
 {:else}
   <!-- Ledger: one sheet, the balance is the only large figure -->
-  <div class="max-w-[1040px] space-y-10">
+  <div class="mx-auto max-w-[1040px] space-y-10">
     <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <h1 class="text-xl font-semibold tracking-tight">{monthLabel}</h1>
       <p class="font-mono text-xs text-ink-3">Day {dayOfMonth} of {daysInMonth}</p>
@@ -417,14 +483,20 @@
         title="Start Tracking Your Finances"
         description="Add your first transaction to see your spending patterns, charts, and AI-powered insights."
         actionLabel="Add Transaction"
-        onAction={() => goto(resolve("/transactions"))}
+        onAction={() => {
+          requestAddTransaction();
+          goto(resolve("/transactions"));
+        }}
       />
     {:else if dataLoading}
       <Skeleton type="card" count={3} />
     {:else}
-      <div class="grid gap-10 md:grid-cols-2 md:gap-x-10 min-[1120px]:grid-cols-[7fr_5fr] min-[1120px]:gap-x-16">
+      <!-- Wide: balance over categories on the left, targets and insights stacked
+           in one wrapper on the right. Placing the right-hand items in grid rows
+           tied them to the left rows, and the shorter side got an empty gap. -->
+      <div class="grid gap-10 md:grid-cols-2 md:gap-x-10 wide:grid-cols-[7fr_5fr] wide:grid-rows-[auto_1fr_auto] wide:gap-x-16">
         <!-- Hero: balance, income and expense as lines, kept vs spent as one bar -->
-        <section class="min-w-0 md:col-span-2 min-[1120px]:col-span-1 min-[1120px]:row-span-2" aria-labelledby="h-balance">
+        <section class="min-w-0 md:col-span-2 wide:col-span-1 wide:col-start-1 wide:row-start-1" aria-labelledby="h-balance">
           <h2 id="h-balance" class="text-[13px] font-medium text-ink-2">Balance</h2>
           <p class="amt mt-2 flex w-fit max-w-full items-baseline gap-[0.18em] border-b-[3px] border-double border-ink-3 pb-3.5 text-[clamp(2.5rem,8vw,4.75rem)] leading-none font-medium tracking-[-0.035em]">
             {#if balance.total < 0}<span>−</span>{/if}
@@ -453,6 +525,13 @@
                 <dd class="amt text-[15px]">Rp {formatFigure(ytd.current)}</dd>
               </div>
             {/if}
+            {#if fourPercent}
+              <div class="flex items-baseline gap-2.5">
+                <dt class="text-sm text-ink-2">4% rule target</dt>
+                <i class="min-w-3 flex-1 -translate-y-1 border-b border-dotted border-rule-strong"></i>
+                <dd class="amt text-[15px]">Rp {formatFigure(fourPercent.target)}</dd>
+              </div>
+            {/if}
           </dl>
 
           {#if balance.income > 0}
@@ -472,8 +551,21 @@
             </p>
           {/if}
 
+          {#if fourPercent}
+            {#if fourPercent.snapshot}
+              <p class="mt-2 font-mono text-xs text-ink-3">
+                {fourPercentPct !== null ? `${formatPct(fourPercentPct)} of target, ` : ""}Rp {formatFigure(fourPercent.snapshot.amount)} invested as of {formatShortDate(fourPercent.snapshot.as_of)}
+              </p>
+            {:else}
+              <p class="mt-2 text-sm text-ink-2">
+                <a href={resolve("/settings")} data-sveltekit-preload-data class="text-blue-text underline-offset-4 hover:underline">Add invested assets</a> to track progress.
+              </p>
+            {/if}
+          {/if}
+
           <a
             href={resolve("/transactions")}
+            on:click={requestAddTransaction}
             data-sveltekit-preload-data
             class="mt-8 inline-flex min-h-11 items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/85 active:scale-[0.98]"
           >
@@ -481,61 +573,63 @@
           </a>
         </section>
 
-        <!-- Targets -->
-        {#if profile.savings_target > 0 || profile.monthly_income > 0}
-          <section class="min-w-0 border-t border-border pt-5 md:col-span-2 min-[1120px]:col-span-1" aria-labelledby="h-targets">
-            <h2 id="h-targets" class="pb-4 text-[15px] font-semibold">Targets</h2>
-            <div class="grid gap-7 md:grid-cols-2 md:gap-10 min-[1120px]:grid-cols-1">
-              {#if profile.savings_target > 0}
-                <div>
-                  <div class="flex items-baseline justify-between gap-3">
-                    <span class="text-sm text-ink-2">Savings target</span>
-                    <span class="amt text-[22px] leading-none">{formatPct(savingsPct)}</span>
+        <div class="grid min-w-0 content-start gap-10 md:col-span-2 wide:col-span-1 wide:col-start-2 wide:row-span-2 wide:row-start-1">
+          <!-- Targets -->
+          {#if profile.savings_target > 0 || profile.monthly_income > 0}
+            <section class="min-w-0 border-t border-border pt-5" aria-labelledby="h-targets">
+              <h2 id="h-targets" class="pb-4 text-[15px] font-semibold">Targets</h2>
+              <div class="grid gap-7 md:grid-cols-2 md:gap-10 wide:grid-cols-1">
+                {#if profile.savings_target > 0}
+                  <div>
+                    <div class="flex items-baseline justify-between gap-3">
+                      <span class="text-sm text-ink-2">Savings target</span>
+                      <span class="amt text-[22px] leading-none">{formatPct(savingsPct)}</span>
+                    </div>
+                    <div class="mt-3 h-1.5 rounded-sm bg-blue-track" role="img" aria-label="{formatPct(savingsPct)} of savings target">
+                      <i class="block h-full rounded-r-sm bg-primary" style="width: {savingsPct}%"></i>
+                    </div>
+                    <p class="mt-2 flex flex-wrap justify-between gap-x-3 font-mono text-xs text-ink-3">
+                      <span>Rp {formatFigure(balance.total)} of Rp {formatFigure(profile.savings_target)}</span>
+                      <span>Rp {formatFigure(Math.max(0, profile.savings_target - balance.total))} to go</span>
+                    </p>
                   </div>
-                  <div class="mt-3 h-1.5 rounded-sm bg-blue-track" role="img" aria-label="{formatPct(savingsPct)} of savings target">
-                    <i class="block h-full rounded-r-sm bg-primary" style="width: {savingsPct}%"></i>
-                  </div>
-                  <p class="mt-2 flex flex-wrap justify-between gap-x-3 font-mono text-xs text-ink-3">
-                    <span>Rp {formatFigure(balance.total)} of Rp {formatFigure(profile.savings_target)}</span>
-                    <span>Rp {formatFigure(Math.max(0, profile.savings_target - balance.total))} to go</span>
-                  </p>
-                </div>
-              {/if}
+                {/if}
 
-              {#if profile.monthly_income > 0}
-                <div>
-                  <div class="flex items-baseline justify-between gap-3">
-                    <span class="text-sm text-ink-2">Spent of monthly income</span>
-                    <span class="amt text-[22px] leading-none {spendingAhead ? 'text-warning' : ''}">{formatPct(spentPct)}</span>
+                {#if profile.monthly_income > 0}
+                  <div>
+                    <div class="flex items-baseline justify-between gap-3">
+                      <span class="text-sm text-ink-2">Spent of monthly income</span>
+                      <span class="amt text-[22px] leading-none {spendingAhead ? 'text-warning' : ''}">{formatPct(spentPct)}</span>
+                    </div>
+                    <div class="relative mt-3 h-1.5 rounded-sm {spendingAhead ? 'bg-warning-track' : 'bg-blue-track'}" role="img" aria-label="{formatPct(spentPct)} of monthly income spent, {formatPct(pacePct)} of the month gone">
+                      <i class="block h-full rounded-r-sm {spendingAhead ? 'bg-warning' : 'bg-primary'}" style="width: {Math.min(100, spentPct)}%"></i>
+                      <b class="absolute -top-1 -bottom-1 w-0.5 -ml-px rounded-full bg-foreground shadow-[0_0_0_2px_var(--color-background)]" style="left: {pacePct}%" title="Today, day {dayOfMonth} of {daysInMonth}"></b>
+                    </div>
+                    <p class="mt-2 flex flex-wrap justify-between gap-x-3 font-mono text-xs text-ink-3">
+                      <span>Rp {formatFigure(balance.expense)} of Rp {formatFigure(profile.monthly_income)}</span>
+                      <span class="inline-flex items-center gap-2">
+                        {#if spendingAhead}
+                          <i class="inline-block size-[9px] bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]"></i>Faster than the month
+                        {:else}
+                          {formatPct(pacePct)} of the month gone
+                        {/if}
+                      </span>
+                    </p>
                   </div>
-                  <div class="relative mt-3 h-1.5 rounded-sm {spendingAhead ? 'bg-warning-track' : 'bg-blue-track'}" role="img" aria-label="{formatPct(spentPct)} of monthly income spent, {formatPct(pacePct)} of the month gone">
-                    <i class="block h-full rounded-r-sm {spendingAhead ? 'bg-warning' : 'bg-primary'}" style="width: {Math.min(100, spentPct)}%"></i>
-                    <b class="absolute -top-1 -bottom-1 w-0.5 -ml-px rounded-full bg-foreground shadow-[0_0_0_2px_var(--color-background)]" style="left: {pacePct}%" title="Today, day {dayOfMonth} of {daysInMonth}"></b>
-                  </div>
-                  <p class="mt-2 flex flex-wrap justify-between gap-x-3 font-mono text-xs text-ink-3">
-                    <span>Rp {formatFigure(balance.expense)} of Rp {formatFigure(profile.monthly_income)}</span>
-                    <span class="inline-flex items-center gap-2">
-                      {#if spendingAhead}
-                        <i class="inline-block size-[9px] bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]"></i>Faster than the month
-                      {:else}
-                        {formatPct(pacePct)} of the month gone
-                      {/if}
-                    </span>
-                  </p>
-                </div>
-              {/if}
-            </div>
-          </section>
-        {/if}
+                {/if}
+              </div>
+            </section>
+          {/if}
 
-        <!-- Insights -->
-        <div class="min-w-0 border-t border-border pt-5 md:col-span-2 min-[1120px]:col-span-1">
-          <SmartInsights />
+          <!-- Insights -->
+          <div class="min-w-0 border-t border-border pt-5">
+            <SmartInsights />
+          </div>
         </div>
 
         <!-- Spending by category: one series, so one color on every bar -->
         {#if rankedCategories.length > 0}
-          <section class="min-w-0 border-t border-border pt-5 md:col-span-2 min-[1120px]:col-span-1" aria-labelledby="h-cats">
+          <section class="min-w-0 border-t border-border pt-5 md:col-span-2 wide:col-span-1 wide:col-start-1 wide:row-start-2" aria-labelledby="h-cats">
             <div class="flex items-baseline justify-between gap-4 pb-4">
               <h2 id="h-cats" class="text-[15px] font-semibold">Spending by category</h2>
               <a href={resolve("/reports")} data-sveltekit-preload-data class="inline-flex items-center gap-1.5 text-[13px] text-blue-text hover:underline">Reports</a>
@@ -558,7 +652,7 @@
         {/if}
 
         <!-- Recent transactions, grouped by day -->
-        <section class="min-w-0 border-t border-border pt-5 md:col-span-2" aria-labelledby="h-recent">
+        <section class="min-w-0 border-t border-border pt-5 md:col-span-2 wide:row-start-3" aria-labelledby="h-recent">
           <div class="flex items-baseline justify-between gap-4 pb-4">
             <h2 id="h-recent" class="text-[15px] font-semibold">Recent transactions</h2>
             <a href={resolve("/transactions")} data-sveltekit-preload-data class="inline-flex items-center gap-1.5 text-[13px] text-blue-text hover:underline">All transactions</a>
