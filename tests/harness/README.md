@@ -38,15 +38,24 @@ Two paths default to this machine and can be overridden:
 | `order.cjs` | Dashboard section order at 390, 1024 and 1366 wide | Balance, Targets, Insights, Spending by category, Recent transactions |
 | `active.cjs` | After each tab click at 390, 1024 and 1440: `aria-current` and text color of every tab; sidebar Settings at 1440; the mobile header close button on /settings, after an in-app visit and after a direct open | `tab highlight checks all ok: true`, both closes land on `/` |
 | `info.cjs` | The info buttons on "Expense this year" and "4% rule target": open, note text, close, row height at 280, 344, 390 and 1440 | notes open and close; rows 23px from 344 up. At 280 the amount wraps under the label (43px), accepted |
+| `logout.cjs` | Log out sits beside the Settings title at 280, 390 and 1440, visible without scrolling, only one on the page, and signs out | every width `visibleWithoutScroll=true`, `logoutButtons=1`, `urlAfterClick=/auth/login` |
+| `sync.cjs` | Offline queue with `context.setOffline` and a mocked `/api/transactions` that can succeed, fail or fail slowly: no label when synced, offline toast after 3s but not on a 1s flap, failed sends stay queued after four runs, Retry, Discard, sync on startup, and two race cases (discard during a send, Retry during a run) | `ALL OK: true` |
 | `sheet.cjs <out.png> <maxHeight> <img...>` | Utility: tiles screenshots side by side into one image | writes the image |
 
 ## How the files depend on each other
 
 `form.cjs` starts with a copy of the first 196 lines of `shoot.cjs` (browser
 setup, fixtures and mocks), then adds the form check after the
-`// ---- form check` marker. `nav`, `order`, `period`, `revisit`, `active`
-and `info` read `form.cjs`, keep everything above that marker, and `eval` it
-with their own check appended. A change to fixtures or mocks has to go into both `shoot.cjs`
+`// ---- form check` marker. `nav`, `order`, `period`, `revisit`, `active`,
+`info`, `logout` and `sync` read `form.cjs`, keep everything above that
+marker, and `eval` it with their own check appended.
+
+`sync.cjs` only works against the dev server. Step 12 imports
+`/src/lib/services/sync.ts` inside the page, which only Vite serves, to drive
+the race cases. The service worker is off in dev, so a route not yet loaded
+cannot open offline; the script opens the add form while online, then goes
+offline before submitting. In production the service worker caches every build
+file, so the form opens offline too. A change to fixtures or mocks has to go into both `shoot.cjs`
 and `form.cjs`.
 
 The folder is excluded from `npm run lint` (`.prettierignore` and the
