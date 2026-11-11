@@ -5,6 +5,7 @@
   import { resolve } from "$app/paths";
   import { toast } from "$lib/stores/toast";
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
+  import { readPageCache, writePageCache } from "$lib/stores/pageCache";
 
   let user: { id: string } | null = null;
   let categories: Array<{ id: string; name: string; type: string }> = [];
@@ -28,6 +29,13 @@
       if (!user) {
         goto(resolve("/auth/login"));
         return;
+      }
+
+      const cached = readPageCache<{ categories: typeof categories; budgets: typeof budgets }>(`budgets:${user.id}`);
+      if (cached) {
+        categories = [...cached.categories];
+        budgets = [...cached.budgets];
+        loading = false;
       }
 
       await loadData();
@@ -57,6 +65,8 @@
       .eq("user_id", user.id);
 
     if (budgetsData) budgets = budgetsData;
+
+    writePageCache(`budgets:${user.id}`, { categories: [...categories], budgets: [...budgets] });
   }
 
   async function saveBudget() {
@@ -116,7 +126,7 @@
   <title>Budgets - CZmoneY</title>
 </svelte:head>
 
-<div class="max-w-[1040px] space-y-10">
+<div class="mx-auto max-w-[1040px] space-y-10">
   <header class="space-y-1">
     <h1 class="text-xl font-semibold tracking-tight">Budgets</h1>
     <p class="text-sm text-ink-2">One monthly limit per expense category. You are alerted at the percentage you set.</p>
