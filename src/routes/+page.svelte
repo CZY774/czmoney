@@ -38,6 +38,9 @@
   let profile = { monthly_income: 0, savings_target: 0 };
   let ytd: { current: number; previous: number } | null = null;
   let fourPercent: FourPercent | null = null;
+  // Explanation notes under the Balance rows; each toggles on its own.
+  let showYtdNote = false;
+  let showFourPercentNote = false;
   let loading = true;
   // True only until something is on screen. Refetches never bring the skeleton back.
   let dataLoading = true;
@@ -519,17 +522,23 @@
               <dd class="amt text-[15px]">− Rp {formatFigure(balance.expense)}</dd>
             </div>
             {#if ytd}
-              <div class="flex items-baseline gap-2.5">
-                <dt class="text-sm text-ink-2">Expense this year</dt>
+              <div class="flex flex-wrap items-baseline gap-x-2.5">
+                <dt class="text-sm text-ink-2">Expense this year<button type="button" class="-my-1.5 ml-0.5 inline-grid size-6 align-middle place-items-center rounded {showYtdNote ? 'text-blue-text' : 'text-ink-3 hover:text-foreground'}" aria-label="How expense this year is counted" aria-expanded={showYtdNote} aria-controls="ytd-note" on:click={() => (showYtdNote = !showYtdNote)}><svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></button></dt>
                 <i class="min-w-3 flex-1 -translate-y-1 border-b border-dotted border-rule-strong"></i>
                 <dd class="amt text-[15px]">Rp {formatFigure(ytd.current)}</dd>
+                {#if showYtdNote}
+                  <dd id="ytd-note" class="mt-1 basis-full max-w-prose text-xs leading-relaxed text-ink-3">All expenses from 1 January to today. The line below covers 1 January to the same date last year.</dd>
+                {/if}
               </div>
             {/if}
             {#if fourPercent}
-              <div class="flex items-baseline gap-2.5">
-                <dt class="text-sm text-ink-2">4% rule target</dt>
+              <div class="flex flex-wrap items-baseline gap-x-2.5">
+                <dt class="text-sm text-ink-2">4% rule target<button type="button" class="-my-1.5 ml-0.5 inline-grid size-6 align-middle place-items-center rounded {showFourPercentNote ? 'text-blue-text' : 'text-ink-3 hover:text-foreground'}" aria-label="What the 4% rule target means" aria-expanded={showFourPercentNote} aria-controls="four-percent-note" on:click={() => (showFourPercentNote = !showFourPercentNote)}><svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></button></dt>
                 <i class="min-w-3 flex-1 -translate-y-1 border-b border-dotted border-rule-strong"></i>
                 <dd class="amt text-[15px]">Rp {formatFigure(fourPercent.target)}</dd>
+                {#if showFourPercentNote}
+                  <dd id="four-percent-note" class="mt-1 basis-full max-w-prose text-xs leading-relaxed text-ink-3">Invested assets that would let you withdraw 4% a year to cover what you spent in the last 12 months. It is 25 × Rp {formatFigure(Math.round(fourPercent.target / 25))}, your expenses over the last 12 months. Progress uses the latest invested assets entry in Settings.</dd>
+                {/if}
               </div>
             {/if}
           </dl>
