@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { supabase, getSession } from "$lib/services/supabase";
-  import { goto } from "$app/navigation";
+  import { afterNavigate, goto } from "$app/navigation";
   import { resolve } from "$app/paths";
   import { getSyncStatus } from "$lib/services/sync";
   import Toast from "$lib/components/Toast.svelte";
@@ -190,8 +190,22 @@
     }
   }
 
-  function isActive(path: string) {
-    return $page.url.pathname === path;
+  let cameFromApp = false;
+
+  afterNavigate((navigation) => {
+    cameFromApp = !!navigation.from;
+  });
+
+  $: currentPath = $page.url.pathname;
+  $: isActive = pathMatcher(currentPath);
+
+  function pathMatcher(current: string) {
+    return (path: string) => current === path;
+  }
+
+  function closeSettings() {
+    if (cameFromApp) history.back();
+    else goto(resolve("/"));
   }
 
   $: syncState = isOffline
@@ -222,7 +236,8 @@
       <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></symbol>
       <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
       <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3"/></symbol>
-      <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+      <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
       <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
     </svg>
 
@@ -234,13 +249,24 @@
           <span class="flex items-center gap-2 text-xs text-ink-3">
             <i class="inline-block size-[9px] {syncShape}"></i>{syncLabel}
           </span>
-          <a
-            href={resolve("/settings")}
-            aria-label="Settings"
-            class="-mr-3 grid size-11 place-items-center rounded-lg text-ink-2 hover:text-foreground"
-          >
-            <svg class="size-5" aria-hidden="true"><use href="#i-sliders" /></svg>
-          </a>
+          {#if isActive("/settings")}
+            <button
+              type="button"
+              aria-label="Close settings"
+              on:click={closeSettings}
+              class="-mr-3 grid size-11 place-items-center rounded-lg text-ink-2 hover:text-foreground"
+            >
+              <svg class="size-5" aria-hidden="true"><use href="#i-x" /></svg>
+            </button>
+          {:else}
+            <a
+              href={resolve("/settings")}
+              aria-label="Settings"
+              class="-mr-3 grid size-11 place-items-center rounded-lg text-ink-2 hover:text-foreground"
+            >
+              <svg class="size-5" aria-hidden="true"><use href="#i-gear" /></svg>
+            </a>
+          {/if}
         </div>
       </header>
 
@@ -261,7 +287,7 @@
           href={resolve("/")}
           data-sveltekit-preload-data
           aria-current={isActive("/") ? "page" : undefined}
-          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : 'text-ink-3 hover:text-foreground'}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-dash" /></svg>
           <!-- Under 320px (Galaxy Fold cover) the labels do not fit; icons only, labels stay for screen readers -->
@@ -271,7 +297,7 @@
           href={resolve("/transactions")}
           data-sveltekit-preload-data
           aria-current={isActive("/transactions") ? "page" : undefined}
-          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/transactions') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/transactions') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : 'text-ink-3 hover:text-foreground'}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-list" /></svg>
           <span class="max-[20rem]:sr-only">Transactions</span>
@@ -291,7 +317,7 @@
           href={resolve("/budgets")}
           data-sveltekit-preload-data
           aria-current={isActive("/budgets") ? "page" : undefined}
-          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/budgets') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/budgets') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : 'text-ink-3 hover:text-foreground'}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-target" /></svg>
           <span class="max-[20rem]:sr-only">Budgets</span>
@@ -300,7 +326,7 @@
           href={resolve("/reports")}
           data-sveltekit-preload-data
           aria-current={isActive("/reports") ? "page" : undefined}
-          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none text-ink-3 hover:text-foreground md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/reports') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : ''}"
+          class="flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] leading-none md:flex-none md:min-h-14 wide:min-h-10 wide:flex-row wide:justify-start wide:gap-3 wide:px-3 wide:text-sm {isActive('/reports') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : 'text-ink-3 hover:text-foreground'}"
         >
           <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-chart" /></svg>
           <span class="max-[20rem]:sr-only">Reports</span>
@@ -314,9 +340,9 @@
             href={resolve("/settings")}
             data-sveltekit-preload-data
             aria-current={isActive("/settings") ? "page" : undefined}
-            class="flex min-h-10 items-center justify-start gap-3 rounded-lg px-3 text-sm text-ink-3 hover:text-foreground {isActive('/settings') ? 'text-foreground' : ''}"
+            class="flex min-h-10 items-center justify-start gap-3 rounded-lg px-3 text-sm {isActive('/settings') ? 'text-blue-text wide:bg-primary/15 wide:text-foreground' : 'text-ink-3 hover:text-foreground'}"
           >
-            <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-sliders" /></svg>
+            <svg class="size-5 flex-none" aria-hidden="true"><use href="#i-gear" /></svg>
             <span class="hidden wide:inline">Settings</span>
           </a>
           <button
