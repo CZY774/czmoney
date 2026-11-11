@@ -8,6 +8,7 @@ import {
 import { authenticate, getSupabaseClient } from "$lib/middleware/auth";
 import { handleError, AppError } from "$lib/services/errorHandler";
 import { VALIDATION } from "$lib/config/constants";
+import { monthEndDateString } from "$lib/utils/localDate";
 
 export const GET: RequestHandler = async ({ url, request }) => {
   try {
@@ -34,9 +35,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
     if (month) {
       const [year, monthNum] = month.split("-");
       const startDate = `${year}-${monthNum}-01`;
-      const endDate = new Date(parseInt(year), parseInt(monthNum), 0)
-        .toISOString()
-        .split("T")[0];
+      const endDate = monthEndDateString(parseInt(year), parseInt(monthNum));
       query = query.gte("txn_date", startDate).lte("txn_date", endDate);
     }
 
