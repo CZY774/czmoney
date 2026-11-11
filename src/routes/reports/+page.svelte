@@ -7,10 +7,17 @@
   import { toast } from "$lib/stores/toast";
   import CategoryChart from "$lib/components/CategoryChart.svelte";
   import CategoryTrendsChart from "$lib/components/CategoryTrendsChart.svelte";
-  import { generatePDF } from "$lib/services/pdfExport";
+  import { localMonthString } from "$lib/utils/localDate";
+  import { readPageCache, writePageCache } from "$lib/stores/pageCache";
+  import {
+    CHART_OTHER_LABEL,
+    CHART_PALETTE,
+    CHART_TOP_N,
+  } from "$lib/config/chartPalette";
 
   let user: { id: string } | null = null;
-  let selectedMonth = new Date().toISOString().slice(0, 7);
+  const today = new Date();
+  let selectedMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   let monthlyData: {
     income: number;
     expense: number;
@@ -27,14 +34,98 @@
   let unsubscribe: (() => void) | null = null;
 
   let selectedPeriod: 3 | 6 | 12 = 3;
-  let trendData: {
-    months: string[];
-    categories: Array<{ name: string; color: string; amounts: number[] }>;
-  } | null = null;
+  type TrendData = { months: string[]; categories: Array<{ name: string; color: string; amounts: number[] }> };
+  let trendData: TrendData | null = null;
+  // 12 months from the API, loaded once. The 3 and 6 month views are slices of it.
+  let yearTrend: TrendData | null = null;
   let loadingTrends = false;
   let exportingPDF = false;
   let chartElement: HTMLElement;
   let trendAbortController: AbortController | null = null;
+
+  function rankByTrendTotals(data: {
+    categories: Array<{ name: string; amounts: number[] }>;
+  }) {
+    return data.categories
+      .map((c) => ({ name: c.name, total: c.amounts.reduce((sum, v) => sum + v, 0) }))
+      .sort((a, b) => b.total - a.total)
+      .map((c) => c.name);
+  }
+
+  // Category names ranked by the last 12 months of expense, so colors stay put
+  // when the period toggles, and a category that was large in another month
+  // keeps its own color instead of hiding in "Other".
+  $: yearRanking = yearTrend ? rankByTrendTotals(yearTrend) : [];
+
+  // One color per category for both charts. Top N get palette slots in rank order:
+  // the 12-month ranking first, then this month's names it lacks ("No Category"
+  // is not in the trends data), then the trends period as a last resort.
+  // A category literally named "Other" (seeded by default) never takes a slot;
+  // it folds into the merged "Other" bucket so the two never share a name.
+  $: rankedNames = [
+    ...new Set([
+      ...yearRanking,
+      ...categoryData.map((c) => c.name),
+      ...(trendData ? rankByTrendTotals(trendData) : []),
+    ]),
+  ].filter((name) => name !== CHART_OTHER_LABEL);
+  $: colorMap = new Map<string, string>(
+    rankedNames
+      .slice(0, CHART_TOP_N)
+      .map((name, i): [string, string] => [name, CHART_PALETTE[i]]),
+  );
+
+  // Donut: one slice per colored category, plus one "Other" slice for the rest
+  $: expenseSlices = (() => {
+    const top = categoryData.filter((c) => colorMap.has(c.name));
+    const rest = categoryData.filter((c) => !colorMap.has(c.name));
+    if (rest.length === 0) return top;
+    return [
+      ...top,
+      {
+        name: CHART_OTHER_LABEL,
+        amount: rest.reduce((sum, c) => sum + c.amount, 0),
+      },
+    ];
+  })();
+
+  // Trends: categories outside the color map merge into one "Other" series
+  function mergeTrendSeries(
+    data: { months: string[]; categories: Array<{ name: string; amounts: number[] }> },
+    map: Map<string, string>,
+  ) {
+    const top = data.categories
+      .filter((c) => map.has(c.name))
+      .map((c) => ({ name: c.name, amounts: c.amounts }));
+    const rest = data.categories.filter((c) => !map.has(c.name));
+    if (rest.length > 0) {
+      top.push({
+        name: CHART_OTHER_LABEL,
+        amounts: data.months.map((_, i) =>
+          rest.reduce((sum, c) => sum + c.amounts[i], 0),
+        ),
+      });
+    }
+    return { months: data.months, categories: top };
+  }
+
+  // Last `period` months of the 12-month data. Categories with nothing in that
+  // window are dropped, as the API did when asked for the shorter period.
+  function sliceTrend(data: TrendData, period: number): TrendData {
+    return {
+      months: data.months.slice(-period),
+      categories: data.categories
+        .map((c) => ({ ...c, amounts: c.amounts.slice(-period) }))
+        .filter((c) => c.amounts.some((v) => v > 0)),
+    };
+  }
+
+  $: trendData = yearTrend ? sliceTrend(yearTrend, selectedPeriod) : null;
+
+  $: trendChartData =
+    trendData && trendData.categories.length > 0
+      ? mergeTrendSeries(trendData, colorMap)
+      : null;
 
   onMount(() => {
     let disposed = false;
@@ -82,13 +173,23 @@
 
   async function loadMonthlyData() {
     if (!user) return;
-    dataLoading = true;
+    const requestedMonth = selectedMonth;
+    const monthKey = `reports-month:${user.id}:${requestedMonth}`;
+    const cachedMonth = readPageCache<{ monthlyData: typeof monthlyData; categoryData: typeof categoryData }>(monthKey);
+    if (cachedMonth) {
+      monthlyData = { ...cachedMonth.monthlyData };
+      categoryData = [...cachedMonth.categoryData];
+      dataLoading = false;
+    } else {
+      dataLoading = true;
+    }
 
     const [year, month] = selectedMonth.split("-");
     const startDate = `${year}-${month}-01`;
-    const endDate = new Date(parseInt(year), parseInt(month), 0)
-      .toISOString()
-      .split("T")[0];
+    // Last day of the month from local dates. toISOString() would shift it back
+    // a day east of UTC and drop the month's last day from the query.
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    const endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
 
     const { data: transactions } = await supabase
       .from("transactions")
@@ -97,6 +198,7 @@
       .gte("txn_date", startDate)
       .lte("txn_date", endDate)
       .order("txn_date", { ascending: false });
+    if (selectedMonth !== requestedMonth) return;
 
     if (transactions) {
       monthlyData.transactions = transactions;
@@ -122,6 +224,8 @@
       categoryData = Object.entries(categoryTotals)
         .map(([name, amount]) => ({ name, amount }))
         .sort((a, b) => b.amount - a.amount);
+
+      writePageCache(monthKey, { monthlyData: { ...monthlyData }, categoryData: [...categoryData] });
     }
 
     dataLoading = false;
@@ -129,6 +233,14 @@
 
   async function loadAISummary() {
     if (!user) return;
+
+    const aiKey = `reports-ai:${user.id}:${selectedMonth}`;
+    const cachedAI = readPageCache<{ summary: string; generatedAt: string | null; isStale: boolean }>(aiKey);
+    if (cachedAI) {
+      aiSummary = cachedAI.summary;
+      aiGeneratedAt = cachedAI.generatedAt;
+      aiIsStale = cachedAI.isStale;
+    }
 
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -150,6 +262,7 @@
         aiSummary = data.summary;
         aiGeneratedAt = data.generated_at;
         aiIsStale = data.is_stale || false;
+        writePageCache(aiKey, { summary: aiSummary, generatedAt: aiGeneratedAt, isStale: aiIsStale });
       }
     } catch (error) {
       console.error("Failed to load AI summary:", error);
@@ -194,6 +307,9 @@
       aiSummary = data.summary;
       aiGeneratedAt = data.generated_at;
       aiIsStale = false;
+      if (user) {
+        writePageCache(`reports-ai:${user.id}:${selectedMonth}`, { summary: aiSummary, generatedAt: aiGeneratedAt, isStale: aiIsStale });
+      }
       toast.success("AI summary generated successfully!");
     } catch (error) {
       console.error("AI summary error:", error);
@@ -214,13 +330,16 @@
     trendAbortController = new AbortController();
     const signal = trendAbortController.signal;
 
-    loadingTrends = true;
+    const trendKey = `reports-trend:${user?.id}:${localMonthString()}`;
+    const cachedTrend = readPageCache<TrendData>(trendKey);
+    if (cachedTrend) yearTrend = cachedTrend;
+    loadingTrends = !cachedTrend;
     try {
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
 
       const res = await fetch(
-        `/api/reports/category-trends?period=${selectedPeriod}`,
+        `/api/reports/category-trends?period=12&month=${localMonthString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -235,7 +354,8 @@
       const result = await res.json();
 
       if (result.success) {
-        trendData = result.data;
+        yearTrend = result.data;
+        writePageCache(trendKey, result.data);
       } else {
         toast.error(result.error || "Failed to load trends");
       }
@@ -299,6 +419,8 @@
     exportingPDF = true;
 
     try {
+      // jsPDF is about 144 KB gzip; load it on click, not with the page
+      const { generatePDF } = await import("$lib/services/pdfExport");
       await generatePDF({
         transactions: monthlyData.transactions.map((t) => ({
           date: (t as { txn_date: string }).txn_date,
@@ -320,7 +442,11 @@
                 100
               : 0,
         },
-        period: new Date(selectedMonth + "-01").toLocaleDateString("en-US", {
+        period: new Date(
+          Number(selectedMonth.slice(0, 4)),
+          Number(selectedMonth.slice(5, 7)) - 1,
+          1,
+        ).toLocaleDateString("en-US", {
           month: "long",
           year: "numeric",
         }),
@@ -353,7 +479,6 @@
   function setPeriod(period: 3 | 6 | 12) {
     if (selectedPeriod === period || !user || loading) return;
     selectedPeriod = period;
-    fetchCategoryTrends();
   }
 </script>
 
@@ -361,7 +486,7 @@
   <title>Reports - CZmoneY</title>
 </svelte:head>
 
-<div class="max-w-[1040px] space-y-10">
+<div class="mx-auto max-w-[1040px] space-y-10">
   <header class="flex flex-wrap items-end justify-between gap-4">
     <div class="space-y-1">
       <h1 class="text-xl font-semibold tracking-tight">Reports</h1>
@@ -471,12 +596,14 @@
             <button
               type="button"
               aria-pressed={selectedPeriod === period}
+              aria-label="{period} months"
               on:click={() => setPeriod(period as 3 | 6 | 12)}
-              class="min-h-10 rounded-lg px-3 {selectedPeriod === period
+              class="min-h-10 rounded-lg px-3 whitespace-nowrap {selectedPeriod === period
                 ? 'bg-blue-wash text-foreground underline decoration-primary underline-offset-4'
                 : 'text-ink-2 hover:text-foreground'}"
             >
-              {period} months
+              <!-- "months" does not fit three times on a Fold cover screen -->
+              {period}<span class="max-[21rem]:hidden">&nbsp;months</span><span class="min-[21rem]:hidden">&nbsp;mo</span>
             </button>
           {/each}
         </div>
@@ -484,8 +611,8 @@
 
       {#if loadingTrends}
         <div class="h-96 animate-pulse rounded bg-muted"></div>
-      {:else if trendData && trendData.categories.length > 0}
-        <CategoryTrendsChart data={trendData} />
+      {:else if trendChartData}
+        <CategoryTrendsChart data={trendChartData} colors={colorMap} />
       {:else}
         <p class="py-10 text-center text-sm text-ink-2">No expense data for this period.</p>
       {/if}
@@ -496,7 +623,7 @@
       <section aria-labelledby="h-split" class="border-t border-border pt-5">
         <h2 id="h-split" class="pb-4 text-[15px] font-semibold">Expense by category</h2>
         <div bind:this={chartElement}>
-          <CategoryChart categories={categoryData} />
+          <CategoryChart categories={expenseSlices} colors={colorMap} />
         </div>
         <ul class="mt-6">
           {#each categoryData as category (category.name)}
