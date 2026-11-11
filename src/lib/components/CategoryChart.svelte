@@ -1,8 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
+  import { CHART_OTHER_COLOR } from "$lib/config/chartPalette";
 
   export let categories: Array<{ name: string; amount: number }> = [];
+  // Series name -> hex, built once by the Reports page for both charts
+  export let colors: Map<string, string> = new Map();
+
+  function sliceColors(items: Array<{ name: string }>, map: Map<string, string>) {
+    return items.map((d) => map.get(d.name) ?? CHART_OTHER_COLOR);
+  }
 
   let chartContainer: HTMLElement;
   let loading = true;
@@ -40,6 +47,7 @@
     chart.updateOptions({
       series: categories.map((d) => d.amount),
       labels: categories.map((d) => d.name),
+      colors: sliceColors(categories, colors),
     });
   }
 
@@ -58,6 +66,7 @@
           toolbar: { show: false },
         },
         labels: categories.map((d) => d.name),
+        colors: sliceColors(categories, colors),
         theme: { mode: "dark" },
         legend: {
           position: "bottom",
